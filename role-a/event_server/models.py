@@ -129,6 +129,8 @@ class EventIn(BaseModel):
     """An immutable observed activity event."""
 
     id: UUID
+    # Keep exports forward-compatible without introducing user or device identity.
+    schema_version: int = Field(default=1, ge=1, le=99)
     ts: int = Field(ge=0, description="UTC Unix seconds")
     source: str = Field(min_length=1, max_length=32)
     type: str = Field(min_length=1, max_length=64)
@@ -165,6 +167,7 @@ class EventIn(BaseModel):
     def as_record(self) -> dict[str, Any]:
         return {
             "id": str(self.id),
+            "schema_version": self.schema_version,
             "ts": self.ts,
             "source": self.source,
             "type": self.type,
@@ -187,3 +190,7 @@ class IngestResult(BaseModel):
     ok: bool = True
     inserted: bool
     event: EventOut
+
+
+class CapturePause(BaseModel):
+    paused: bool

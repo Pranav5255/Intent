@@ -39,3 +39,16 @@ class RestoreTests(unittest.TestCase):
     def test_rejects_unsafe_url_scheme(self) -> None:
         with self.assertRaises(ValueError):
             ResumePayload(urls=["file:///home/pranav/private.txt"])
+
+    @patch("event_server.restore._already_open_files")
+    @patch("event_server.restore._launch")
+    @patch("event_server.restore.shutil.which")
+    def test_continue_skips_visible_files_and_uses_a_terminal_tab(self, which, launch, open_files) -> None:
+        which.side_effect = lambda name: {"code": "/usr/bin/code", "gnome-terminal": "/usr/bin/gnome-terminal"}.get(name)
+        open_files.return_value = {str(self.file.resolve())}
+
+        result = restore(ResumePayload(mode="continue", files=[str(self.file)], shell={"cwd": str(self.root)}))
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.restored["files"], 0)
+        self.assertEqual(launch.call_args.args[0], ["/usr/bin/gnome-terminal", "--tab", f"--working-directory={self.root.resolve()}"])

@@ -16,6 +16,7 @@ class ShellState(BaseModel):
 
 
 class ResumePayload(BaseModel):
+    mode: str = "resume"
     files: list[str] = Field(default_factory=list)
     urls: list[str] = Field(default_factory=list)
     shell: ShellState = Field(default_factory=ShellState)
@@ -25,6 +26,12 @@ class ResumePayload(BaseModel):
         value = list(dict.fromkeys(value))
         if len(value) > 5:
             raise ValueError("at most five files may be restored")
+        return value
+
+    @validator("mode")
+    def valid_mode(cls, value: str) -> str:
+        if value not in {"resume", "continue"}:
+            raise ValueError("mode must be resume or continue")
         return value
 
     @validator("urls")
@@ -49,6 +56,22 @@ def _launch(arguments: list[str]) -> None:
     subprocess.Popen(arguments, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _already_open_files(files: list[str]) -> set[str]:
+    """Best-effort VS Code window inspection used only by Continue.
+
+    wmctrl exposes window titles, not editor tabs, so this intentionally errs on
+    the side of reopening a file rather than claiming it was restored.
+    """
+    wmctrl = shutil.which("wmctrl")
+    if not wmctrl:
+        return set()
+    try:
+        output = subprocess.run([wmctrl, "-l"], check=False, capture_output=True, text=True, timeout=1).stdout
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    return {item for item in files if Path(item).name in output}
+
+
 def restore(payload: ResumePayload) -> RestoreResult:
     """Launch files, URLs and terminal state without using a shell interpreter."""
     restored: dict[str, int | bool] = {"files": 0, "urls": 0, "shell": False}
@@ -59,6 +82,9 @@ def restore(payload: ResumePayload) -> RestoreResult:
     missing_files = [str(item) for item in files if not item.is_file()]
     if missing_files:
         failed.append(f"files not found: {', '.join(missing_files)}")
+    if payload.mode == "continue":
+        open_files = _already_open_files(existing_files)
+        existing_files = [item for item in existing_files if item not in open_files]
     if existing_files:
         code = shutil.which("code")
         if code:
@@ -93,7 +119,11 @@ def restore(payload: ResumePayload) -> RestoreResult:
         else:
             try:
                 # Do not pre-fill or execute last_cmd. It may contain sensitive or destructive input.
-                _launch([terminal, f"--working-directory={cwd.resolve()}"])
+                arguments = [terminal]
+                if payload.mode == "continue":
+                    arguments.append("--tab")
+                arguments.append(f"--working-directory={cwd.resolve()}")
+                _launch(arguments)
                 restored["shell"] = True
             except OSError as exc:
                 failed.append(f"terminal launch failed: {exc}")

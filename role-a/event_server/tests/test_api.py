@@ -37,6 +37,23 @@ class EventApiTests(unittest.TestCase):
         self.assertFalse(duplicate.json()["inserted"])
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(len(listed.json()), 1)
+        self.assertEqual(listed.json()[0]["schema_version"], 1)
+
+    def test_capture_can_be_paused_from_the_local_tray(self) -> None:
+        paused = self.client.post("/v1/capture/pause", json={"paused": True})
+        payload = {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "ts": 2,
+            "source": "linux",
+            "type": "app_focus",
+            "payload": {"app": "code", "title": "main.py"},
+        }
+        ignored = self.client.post("/v1/event", json=payload)
+        resumed = self.client.post("/v1/capture/pause", json={"paused": False})
+
+        self.assertEqual(paused.json(), {"ok": True, "paused": True})
+        self.assertEqual(ignored.status_code, 204)
+        self.assertEqual(resumed.json(), {"ok": True, "paused": False})
 
     def test_invalid_event_is_rejected(self) -> None:
         response = self.client.post(

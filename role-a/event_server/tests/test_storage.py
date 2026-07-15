@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -67,3 +68,14 @@ class EventStoreTests(unittest.TestCase):
                 type="tab_change",
                 payload={"url": "https://example.com", "title": "Example"},
             )
+
+    def test_existing_databases_are_migrated_to_schema_version_one(self) -> None:
+        legacy_path = Path(self.temp_dir.name) / "legacy.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute("CREATE TABLE events (id TEXT PRIMARY KEY, ts INTEGER, source TEXT, type TEXT, payload TEXT, ingested_at INTEGER)")
+        migrated = EventStore(legacy_path)
+        event = self.event("00000000-0000-4000-8000-000000000006", self.now)
+
+        migrated.insert(event)
+
+        self.assertEqual(migrated.list_events()[0].schema_version, 1)

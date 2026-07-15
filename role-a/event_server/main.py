@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, s
 from fastapi.middleware.cors import CORSMiddleware
 
 from .detailed_capture import editor_event_is_approved, is_detailed_event, is_enabled, load as load_detailed_config, public_config
-from .models import DayExport, EventIn, EventOut, IngestResult
+from .models import CapturePause, DayExport, EventIn, EventOut, IngestResult
 from .redaction import redact_event
 from .restore import RestoreResult, ResumePayload, restore
 from .storage import EventStore, default_database_path
@@ -35,6 +35,7 @@ def create_app(database_path: str | None = None, detailed_capture_config_path: s
     @app.on_event("startup")
     def initialise_store() -> None:
         app.state.store = EventStore(default_database_path() if database_path is None else Path(database_path))
+        app.state.capture_paused = False
 
     extension_origin = os.environ.get("INTENT_OS_FIREFOX_EXTENSION_ORIGIN")
     app.add_middleware(
@@ -55,6 +56,8 @@ def create_app(database_path: str | None = None, detailed_capture_config_path: s
         store: EventStore = Depends(get_store),
         detailed_config: dict[str, object] = Depends(get_detailed_config),
     ) -> IngestResult | Response:
+        if app.state.capture_paused:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
         if is_detailed_event(event.source, event.type) and not is_enabled(event.source, event.type, detailed_config):
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         if event.source == "vscode" and event.type == "document_change" and not editor_event_is_approved(event.payload, detailed_config):
@@ -98,6 +101,13 @@ def create_app(database_path: str | None = None, detailed_capture_config_path: s
     def restore_state(payload: ResumePayload) -> RestoreResult:
         return restore(payload)
 
+    @app.post("/v1/capture/pause")
+    def set_capture_paused(payload: CapturePause, request: Request) -> dict[str, object]:
+        # The tray uses this in the local, single-user graphical session.
+        # It intentionally does not alter stored events.
+        request.app.state.capture_paused = payload.paused
+        return {"ok": True, "paused": request.app.state.capture_paused}
+
     @app.get("/v1/status")
     def source_status(
         store: EventStore = Depends(get_store), detailed_config: dict[str, object] = Depends(get_detailed_config)
@@ -105,6 +115,7 @@ def create_app(database_path: str | None = None, detailed_capture_config_path: s
         return {
             "ok": True,
             "session_type": os.environ.get("XDG_SESSION_TYPE", "unknown"),
+            "capture_paused": app.state.capture_paused,
             "sources": store.source_status(),
             "detailed_capture": {**public_config(detailed_config), "event_counts": store.detailed_event_counts()},
         }

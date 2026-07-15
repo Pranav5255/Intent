@@ -9,8 +9,10 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
-from urllib import request
+from typing import Any
+from urllib import error, request
 
 INSTALL_ROOT = Path(os.environ.get("INTENT_OS_INSTALL_ROOT", "/opt/intent-os"))
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,8 @@ SHELL_SOURCES = {
 MARKER_START = "# >>> Intent OS shell integration >>>"
 MARKER_END = "# <<< Intent OS shell integration <<<"
 UNIT_NAMES = ("intent-os-server.service", "intent-os-x11-tracker.service", "intent-os-workspace-watch.service")
+INTENT_API = "http://127.0.0.1:9478"
+EVENT_API = "http://127.0.0.1:9477"
 
 
 def run_systemctl(*arguments: str) -> None:
@@ -60,6 +64,14 @@ def disable_services() -> None:
 def session_start() -> None:
     import_graphical_environment()
     run_systemctl("start", *UNIT_NAMES)
+    start_tray()
+
+
+def start_tray() -> None:
+    tray = IMPORT_ROOT / "tools" / "intent_os_tray.py"
+    if not tray.is_file():
+        raise RuntimeError(f"tray helper is unavailable: {tray}")
+    subprocess.Popen([sys.executable, str(tray)], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def install_autostart() -> None:
@@ -137,13 +149,13 @@ def update_shell_integration(shell: str, enabled: bool, home: Path | None = None
     return rc_path
 
 
-def fetch_json(url: str) -> dict[str, object]:
+def fetch_json(url: str) -> Any:
     with request.urlopen(url, timeout=1) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
-def post_json(url: str) -> dict[str, object]:
-    req = request.Request(url, data=b"{}", method="POST", headers={"Content-Type": "application/json"})
+def post_json(url: str, payload: dict[str, object] | None = None) -> dict[str, object]:
+    req = request.Request(url, data=json.dumps(payload or {}).encode("utf-8"), method="POST", headers={"Content-Type": "application/json"})
     with request.urlopen(req, timeout=1) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -166,6 +178,54 @@ def command_export(date: str) -> int:
         return 1
 
 
+def wait_for_json(url: str, timeout: float = 30) -> Any:
+    """Wait through graphical-session startup without polling forever."""
+    deadline = time.monotonic() + timeout
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            return fetch_json(url)
+        except (OSError, error.URLError, ValueError) as exc:
+            last_error = exc
+            time.sleep(1)
+    raise RuntimeError(f"service did not become ready: {url} ({last_error})")
+
+
+def command_notify_yesterday() -> int:
+    try:
+        wait_for_json(f"{EVENT_API}/healthz")
+        intents = wait_for_json(f"{INTENT_API}/intents/yesterday")
+    except RuntimeError as exc:
+        print(f"Intent OS notification skipped: {exc}", file=sys.stderr)
+        return 0
+    if not isinstance(intents, list) or not intents:
+        return 0
+    top = intents[0]
+    if not isinstance(top, dict):
+        return 0
+    label = str(top.get("label", "your work"))
+    summary = str(top.get("summary", "Open Intent OS to continue."))
+    message = f"Good morning. Yesterday you were {label.lower()}.\n{summary}"
+    notify = shutil.which("notify-send")
+    if not notify:
+        print("Intent OS notification skipped: notify-send is unavailable", file=sys.stderr)
+        return 0
+    try:
+        result = subprocess.run(
+            [notify, "--app-name=Intent OS", "--icon=dialog-information", "--action=default=Open", "Intent OS", message],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout.strip() == "default":
+            opener = shutil.which("xdg-open")
+            if opener:
+                subprocess.Popen([opener, "http://127.0.0.1:9479"], start_new_session=True)
+    except OSError as exc:
+        print(f"Intent OS notification skipped: {exc}", file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -175,6 +235,8 @@ def main() -> int:
     subparsers.add_parser("status")
     export = subparsers.add_parser("export-day")
     export.add_argument("--date", required=True, help="YYYY-MM-DD")
+    subparsers.add_parser("notify-yesterday", help="show the morning intent notification after local services start")
+    subparsers.add_parser("tray", help="start the local GNOME tray indicator")
     vscode = subparsers.add_parser("vscode")
     vscode.add_argument("action", choices=("install", "uninstall"))
     cursor = subparsers.add_parser("cursor")
@@ -202,6 +264,10 @@ def main() -> int:
             return command_status()
         elif args.command == "export-day":
             return command_export(args.date)
+        elif args.command == "notify-yesterday":
+            return command_notify_yesterday()
+        elif args.command == "tray":
+            start_tray()
         elif args.command == "vscode":
             install_vscode() if args.action == "install" else uninstall_vscode()
         elif args.command == "cursor":

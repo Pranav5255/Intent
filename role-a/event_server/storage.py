@@ -36,6 +36,7 @@ class EventStore:
                 );
                 CREATE TABLE IF NOT EXISTS events (
                     id TEXT PRIMARY KEY,
+                    schema_version INTEGER NOT NULL DEFAULT 1,
                     ts INTEGER NOT NULL,
                     source TEXT NOT NULL,
                     type TEXT NOT NULL,
@@ -46,6 +47,9 @@ class EventStore:
                 CREATE INDEX IF NOT EXISTS idx_events_source_type_ts ON events(source, type, ts);
                 """
             )
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(events)")}
+            if "schema_version" not in columns:
+                connection.execute("ALTER TABLE events ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 1")
             connection.execute(
                 "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                 (1, int(time.time())),
@@ -57,21 +61,38 @@ class EventStore:
         with self._connection() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO events(id, ts, source, type, payload, ingested_at)
-                VALUES (:id, :ts, :source, :type, :payload, :ingested_at)
+                INSERT INTO events(id, schema_version, ts, source, type, payload, ingested_at)
+                VALUES (:id, :schema_version, :ts, :source, :type, :payload, :ingested_at)
                 ON CONFLICT(id) DO NOTHING
                 """,
                 {**record, "payload": json.dumps(record["payload"], separators=(",", ":")), "ingested_at": ingested_at},
             )
             if cursor.rowcount:
-                return True, EventOut(**record, ingested_at=ingested_at)
+                persisted = EventOut(**record, ingested_at=ingested_at)
+                self._append_event_log(persisted)
+                return True, persisted
             row = connection.execute("SELECT * FROM events WHERE id = ?", (record["id"],)).fetchone()
         return False, self._event_from_row(row)
+
+    @staticmethod
+    def _append_event_log(event: EventOut) -> None:
+        """Best-effort JSONL for demo-day diagnosis; storage remains SQLite-first."""
+        data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+        log_dir = data_home / "intent-os" / "logs"
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            with (log_dir / "events.jsonl").open("a", encoding="utf-8") as log:
+                serializer = getattr(event, "model_dump_json", event.json)
+                log.write(serializer() + "\n")
+        except OSError:
+            # A non-writable log directory must never stop local capture.
+            pass
 
     @staticmethod
     def _event_from_row(row: sqlite3.Row) -> EventOut:
         return EventOut(
             id=row["id"],
+            schema_version=row["schema_version"],
             ts=row["ts"],
             source=row["source"],
             type=row["type"],
