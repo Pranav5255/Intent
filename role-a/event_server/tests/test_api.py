@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from event_server.main import create_app
+
+
+class EventApiTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.client_context = TestClient(create_app(str(Path(self.temp_dir.name) / "events.db")))
+        self.client = self.client_context.__enter__()
+
+    def tearDown(self) -> None:
+        self.client_context.__exit__(None, None, None)
+        self.temp_dir.cleanup()
+
+    def test_event_and_legacy_routes_are_idempotent(self) -> None:
+        payload = {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "ts": 1783911700,
+            "source": "firefox",
+            "type": "tab_change",
+            "payload": {"url": "https://example.com/docs", "title": "Docs", "tab_id": 2},
+        }
+        first = self.client.post("/v1/event", json=payload)
+        duplicate = self.client.post("/event", json=payload)
+        listed = self.client.get("/v1/events", params={"since": 1783911700})
+
+        self.assertEqual(first.status_code, 201)
+        self.assertTrue(first.json()["inserted"])
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertFalse(duplicate.json()["inserted"])
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(len(listed.json()), 1)
+
+    def test_invalid_event_is_rejected(self) -> None:
+        response = self.client.post(
+            "/v1/event",
+            json={
+                "id": "00000000-0000-4000-8000-000000000011",
+                "ts": 1,
+                "source": "vscode",
+                "type": "file_open",
+                "payload": {},
+            },
+        )
+        self.assertEqual(response.status_code, 422)

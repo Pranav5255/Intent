@@ -1,0 +1,15 @@
+[Unit]
+Description=Intent OS workspace fallback watcher
+After=intent-os-server.service
+Wants=intent-os-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/intent-os
+ExecStart=/usr/bin/intent-os-workspace-watch
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

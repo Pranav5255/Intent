@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Intent OS session bootstrap
+Comment=Make the graphical session available to Intent OS user services
+Exec=/usr/bin/intent-osctl session-start
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

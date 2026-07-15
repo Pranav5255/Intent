@@ -1,0 +1,40 @@
+{
+  "name": "intent-os-vscode",
+  "displayName": "Intent OS Companion",
+  "description": "Sends editor metadata to the local Intent OS application.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "intent-os",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Intent OS",
+      "properties": {
+        "intentOS.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:9477/v1/event",
+          "description": "Local Intent OS event API endpoint."
+        },
+        "intentOS.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow Intent OS to send local editor metadata."
+        },
+        "intentOS.detailedCapture": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture bounded inserted text from approved workspaces after detailed capture is enabled in Intent OS."
+        }
+      }
+    }
+  }
+}

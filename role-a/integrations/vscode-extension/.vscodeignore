@@ -1,0 +1,4 @@
+tests/**
+*.vsix
+dist/**
+node_modules/**

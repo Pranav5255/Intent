@@ -1,0 +1,15 @@
+[Unit]
+Description=Intent OS X11 foreground tracker
+After=intent-os-server.service
+Wants=intent-os-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/intent-os
+ExecStart=/usr/bin/python3 collectors/x11/tracker.py --endpoint http://127.0.0.1:9477/v1/event
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

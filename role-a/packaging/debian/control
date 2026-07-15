@@ -1,0 +1,10 @@
+Package: intent-os
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: Intent OS contributors <intent-os@local.invalid>
+Depends: python3 (>= 3.10), python3-fastapi, python3-uvicorn, python3-watchdog, xdotool, x11-utils
+Description: Local Ubuntu activity capture for Intent OS
+ Captures consented desktop, Firefox, VS Code, and shell metadata locally for
+ Intent OS. It stores events on the current machine and exposes a loopback API.

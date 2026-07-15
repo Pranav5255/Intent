@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+ROOT=/opt/intent-os
+POLICY_FILE=/etc/firefox/policies/policies.json
+POLICY_XPI=/etc/firefox/policies/intent-os-firefox.xpi
+TEMPLATE="$ROOT/packaging/debian/firefox-policies.json"
+
+# This runs while package files still exist, so only the exact policy installed
+# by Intent OS is removed. Administrator-managed policies are always retained.
+if [ "${1:-}" = "remove" ] || [ "${1:-}" = "upgrade" ]; then
+  if [ -f "$POLICY_FILE" ] && [ -f "$TEMPLATE" ] && cmp -s "$POLICY_FILE" "$TEMPLATE"; then
+    rm -f "$POLICY_FILE"
+    rm -f "$POLICY_XPI"
+  fi
+fi
+
+exit 0
