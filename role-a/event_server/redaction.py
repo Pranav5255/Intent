@@ -59,6 +59,9 @@ def redact_event(event: EventIn) -> EventIn:
                 target.pop("href", None)
             else:
                 target["href"] = clean_href
+        context = payload.get("context")
+        if isinstance(context, dict) and isinstance(context.get("text_excerpt"), str) and should_redact_text(context["text_excerpt"]):
+            payload.pop("context", None)
 
     copier = getattr(event, "model_copy", event.copy)
     return copier(update={"payload": payload})

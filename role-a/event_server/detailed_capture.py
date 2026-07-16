@@ -13,7 +13,7 @@ from typing import Any
 from tools.workspaces import load as load_workspaces
 
 
-DETAILED_EVENT_KINDS = {("vscode", "document_change"), ("firefox", "user_action")}
+DETAILED_EVENT_KINDS = {("vscode", "document_change"), ("firefox", "user_action"), ("filesystem", "file_content")}
 DEFAULT_EXCLUDED_PATTERNS = [
     ".env",
     ".env.*",
@@ -27,7 +27,8 @@ DEFAULT_EXCLUDED_PATTERNS = [
 ]
 DEFAULT_CONFIG: dict[str, Any] = {
     "editor": {"enabled": False, "excluded_patterns": DEFAULT_EXCLUDED_PATTERNS},
-    "browser": {"enabled": False},
+    "browser": {"enabled": False, "context_enabled": False},
+    "filesystem": {"enabled": False},
 }
 
 
@@ -45,13 +46,17 @@ def _normalise(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("detailed-capture config must be an object")
     config = deepcopy(DEFAULT_CONFIG)
-    for source in ("editor", "browser"):
+    for source in ("editor", "browser", "filesystem"):
         value = raw.get(source, {})
         if not isinstance(value, dict):
             raise ValueError(f"detailed-capture {source} config must be an object")
         if "enabled" in value and not isinstance(value["enabled"], bool):
             raise ValueError(f"detailed-capture {source}.enabled must be a boolean")
         config[source]["enabled"] = value.get("enabled", config[source]["enabled"])
+    browser_context = raw.get("browser", {}).get("context_enabled", False)
+    if not isinstance(browser_context, bool):
+        raise ValueError("detailed-capture browser.context_enabled must be a boolean")
+    config["browser"]["context_enabled"] = browser_context
 
     patterns = raw.get("editor", {}).get("excluded_patterns", DEFAULT_EXCLUDED_PATTERNS)
     if not isinstance(patterns, list) or not all(isinstance(item, str) and item for item in patterns):
@@ -83,10 +88,17 @@ def save(config: dict[str, Any], path: Path | None = None) -> Path:
 
 
 def set_enabled(kind: str, enabled: bool, path: Path | None = None) -> dict[str, Any]:
-    if kind not in {"editor", "browser"}:
+    if kind not in {"editor", "browser", "filesystem"}:
         raise ValueError("detailed-capture kind must be editor or browser")
     config = load(path)
     config[kind]["enabled"] = enabled
+    save(config, path)
+    return config
+
+
+def set_browser_context_enabled(enabled: bool, path: Path | None = None) -> dict[str, Any]:
+    config = load(path)
+    config["browser"]["context_enabled"] = enabled
     save(config, path)
     return config
 
@@ -100,6 +112,8 @@ def is_enabled(source: str, event_type: str, config: dict[str, Any]) -> bool:
         return bool(config["editor"]["enabled"])
     if (source, event_type) == ("firefox", "user_action"):
         return bool(config["browser"]["enabled"])
+    if (source, event_type) == ("filesystem", "file_content"):
+        return bool(config["filesystem"]["enabled"])
     return True
 
 
@@ -144,7 +158,8 @@ def public_config(config: dict[str, Any]) -> dict[str, Any]:
             "enabled": config["editor"]["enabled"],
             "excluded_patterns": config["editor"]["excluded_patterns"],
         },
-        "browser": {"enabled": config["browser"]["enabled"]},
+        "browser": {"enabled": config["browser"]["enabled"], "context_enabled": config["browser"]["context_enabled"]},
+        "filesystem": {"enabled": config["filesystem"]["enabled"]},
         "approved_workspaces": approved_workspaces(),
         "retention": "indefinite",
         "export_includes_details": True,

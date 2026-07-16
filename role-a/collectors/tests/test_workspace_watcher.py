@@ -30,6 +30,9 @@ class WorkspaceWatcherTests(unittest.TestCase):
         self.assertFalse(should_capture(git_file, self.root))
         self.assertFalse(should_capture(outside, self.root))
 
+    def test_ignores_virtual_system_paths(self) -> None:
+        self.assertFalse(should_capture(Path("/proc/cpuinfo"), Path("/")))
+
     def test_emits_fallback_schema(self) -> None:
         event = make_event("file_modify", {"path": "/tmp/a.py", "workspace": "/tmp"})
         self.assertEqual(event["source"], "filesystem")

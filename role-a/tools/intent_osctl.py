@@ -21,7 +21,7 @@ if str(IMPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(IMPORT_ROOT))
 
 from event_server import detailed_capture
-from tools import workspaces
+from tools import filesystem_capture, workspaces
 
 
 AUTOSTART_SOURCE = INSTALL_ROOT / "packaging" / "debian" / "autostart" / "intent-os.desktop"
@@ -248,8 +248,12 @@ def main() -> int:
     workspace.add_argument("action", choices=("add", "remove", "list"))
     workspace.add_argument("path", type=Path, nargs="?")
     detailed = subparsers.add_parser("detailed", help="control consented detailed capture")
-    detailed.add_argument("source", choices=("editor", "browser"))
+    detailed.add_argument("source", choices=("editor", "browser", "filesystem"))
     detailed.add_argument("action", choices=("enable", "disable"))
+    browser_context = subparsers.add_parser("browser-context", help="control bounded public-post context on explicit browser actions")
+    browser_context.add_argument("action", choices=("enable", "disable"))
+    filesystem = subparsers.add_parser("filesystem", help="control broad user-readable filesystem observation")
+    filesystem.add_argument("action", choices=("enable-all-accessible", "disable-all-accessible"))
     subparsers.add_parser("purge-detailed", help="delete locally stored detailed events")
     args = parser.parse_args()
 
@@ -283,6 +287,14 @@ def main() -> int:
                 print(json.dumps(update_workspace(args.path, args.action == "add"), indent=2))
         elif args.command == "detailed":
             print(json.dumps(detailed_capture.set_enabled(args.source, args.action == "enable"), indent=2))
+        elif args.command == "browser-context":
+            print(json.dumps(detailed_capture.set_browser_context_enabled(args.action == "enable"), indent=2))
+        elif args.command == "filesystem":
+            config = filesystem_capture.load()
+            config["all_accessible"] = args.action == "enable-all-accessible"
+            filesystem_capture.save(config)
+            subprocess.run(["systemctl", "--user", "try-restart", "intent-os-workspace-watch.service"], check=False)
+            print(json.dumps(config, indent=2))
         elif args.command == "purge-detailed":
             print(json.dumps(post_json("http://127.0.0.1:9477/v1/detailed-capture/purge"), indent=2))
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:

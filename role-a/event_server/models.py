@@ -22,13 +22,14 @@ EVENT_PAYLOAD_FIELDS: dict[tuple[str, str], tuple[str, ...]] = {
     ("vscode", "document_change"): ("path", "workspace", "changes"),
     ("filesystem", "file_modify"): ("path", "workspace"),
     ("filesystem", "workspace_seen"): ("workspace",),
+    ("filesystem", "file_content"): ("path", "workspace", "kind", "mime", "size_bytes", "sha256", "excerpt"),
     ("shell", "command"): ("cmd", "cwd", "exit_code"),
 }
 
 MAX_DOCUMENT_CHANGES = 25
 MAX_DOCUMENT_TEXT_BYTES = 8 * 1024
 CHANGE_KINDS = {"insert", "delete", "replace"}
-USER_ACTIONS = {"click", "link_activation", "form_submit", "toggle", "select_change"}
+USER_ACTIONS = {"click", "link_activation", "form_submit", "toggle", "select_change", "like", "reply", "repost", "share", "follow", "unfollow"}
 
 
 def _bounded_string(value: object, field: str, maximum: int) -> None:
@@ -91,7 +92,7 @@ def _validate_document_change(payload: dict[str, Any]) -> None:
 
 
 def _validate_user_action(payload: dict[str, Any]) -> None:
-    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page"}
+    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page", "context"}
     if set(payload) - allowed_payload_fields:
         raise ValueError("user_action payload contains unsupported fields")
     _bounded_string(payload["url"], "url", 4096)
@@ -123,6 +124,26 @@ def _validate_user_action(payload: dict[str, Any]) -> None:
             raise ValueError(f"payload target.{field} must be a string of at most {maximum} characters")
     if "checked" in target and not isinstance(target["checked"], bool):
         raise ValueError("payload target.checked must be a boolean")
+    if "context" in payload:
+        context = payload["context"]
+        if not isinstance(context, dict) or set(context) - {"kind", "author", "text_excerpt"}:
+            raise ValueError("payload context has invalid fields")
+        _bounded_string(context.get("kind"), "context.kind", 32)
+        if "author" in context:
+            _bounded_string(context["author"], "context.author", 160)
+        _bounded_string(context.get("text_excerpt"), "context.text_excerpt", 1000)
+
+
+def _validate_file_content(payload: dict[str, Any]) -> None:
+    allowed = {"path", "workspace", "kind", "mime", "size_bytes", "sha256", "excerpt"}
+    if set(payload) - allowed:
+        raise ValueError("file_content payload contains unsupported fields")
+    for field, maximum in (("path", 4096), ("workspace", 4096), ("kind", 16), ("mime", 128), ("sha256", 64), ("excerpt", 4000)):
+        _bounded_string(payload[field], field, maximum)
+    if payload["kind"] not in {"text", "pdf", "image"}:
+        raise ValueError("file_content payload kind is invalid")
+    if not isinstance(payload["size_bytes"], int) or payload["size_bytes"] < 0:
+        raise ValueError("file_content payload size_bytes must be a non-negative integer")
 
 
 class EventIn(BaseModel):
@@ -162,6 +183,8 @@ class EventIn(BaseModel):
             _validate_document_change(payload)
         if (source, event_type) == ("firefox", "user_action"):
             _validate_user_action(payload)
+        if (source, event_type) == ("filesystem", "file_content"):
+            _validate_file_content(payload)
         return values
 
     def as_record(self) -> dict[str, Any]:

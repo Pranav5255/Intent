@@ -3,7 +3,7 @@ const CONFIG_ENDPOINT = "http://127.0.0.1:9477/v1/detailed-capture/config";
 const MAX_PENDING_EVENTS = 100;
 const DEBOUNCE_MS = 300;
 const CONFIG_CACHE_MS = 30_000;
-const USER_ACTIONS = new Set(["click", "link_activation", "form_submit", "toggle", "select_change"]);
+const USER_ACTIONS = new Set(["click", "link_activation", "form_submit", "toggle", "select_change", "like", "reply", "repost", "share", "follow", "unfollow"]);
 
 const pendingEvents = [];
 const lastTabFingerprint = new Map();
@@ -67,6 +67,14 @@ export function makeUserActionEvent(tab, actionPayload) {
     if (typeof rawTarget.checked === "boolean") target.checked = rawTarget.checked;
   }
 
+  let context;
+  if (!sensitivePage && actionPayload.context && typeof actionPayload.context === "object") {
+    const kind = boundedText(actionPayload.context.kind, 32);
+    const text_excerpt = boundedText(actionPayload.context.text_excerpt, 1000);
+    const author = boundedText(actionPayload.context.author, 160);
+    if (kind && text_excerpt) context = { kind, text_excerpt, ...(author ? { author } : {}) };
+  }
+
   return {
     id: crypto.randomUUID(),
     ts: Math.floor(Date.now() / 1000),
@@ -78,7 +86,8 @@ export function makeUserActionEvent(tab, actionPayload) {
       window_id: tab.windowId,
       action,
       target,
-      sensitive_page: sensitivePage
+      sensitive_page: sensitivePage,
+      ...(context ? { context } : {})
     }
   };
 }
@@ -155,7 +164,8 @@ function scheduleTab(tabId) {
 async function handleMessage(message, sender) {
   if (!message || !message.kind || !sender.tab || sender.tab.incognito) return { enabled: false };
   if (message.kind === "intent-os-detailed-capture-status") {
-    return { enabled: await detailedCaptureEnabled() };
+    const config = await getDetailedConfig();
+    return { enabled: Boolean(config && config.browser && config.browser.enabled), context_enabled: Boolean(config && config.browser && config.browser.context_enabled) };
   }
   if (message.kind !== "intent-os-user-action" || !(await detailedCaptureEnabled())) {
     return { accepted: false };

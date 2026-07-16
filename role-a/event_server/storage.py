@@ -155,6 +155,7 @@ class EventStore:
                 FROM events
                 WHERE (source = 'vscode' AND type = 'document_change')
                    OR (source = 'firefox' AND type = 'user_action')
+                   OR (source = 'filesystem' AND type = 'file_content')
                 GROUP BY source, type
                 ORDER BY source, type
                 """
@@ -168,6 +169,7 @@ class EventStore:
                 DELETE FROM events
                 WHERE (source = 'vscode' AND type = 'document_change')
                    OR (source = 'firefox' AND type = 'user_action')
+                   OR (source = 'filesystem' AND type = 'file_content')
                 """
             )
         return cursor.rowcount
