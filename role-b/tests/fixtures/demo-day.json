@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "date": "2026-07-13",
+  "exported_at": 1783969200,
+  "events": [
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000001","schema_version":1,"ts":1783911600,"source":"linux","type":"app_focus","payload":{"app":"code","title":"iam.tf - infra - Visual Studio Code"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000002","schema_version":1,"ts":1783911615,"source":"vscode","type":"workspace_open","payload":{"folder":"/home/pranav/work/infra"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000003","schema_version":1,"ts":1783911620,"source":"vscode","type":"file_open","payload":{"path":"/home/pranav/work/infra/iam.tf"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000004","schema_version":1,"ts":1783911660,"source":"firefox","type":"tab_change","payload":{"url":"https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_saml.html","title":"IAM trust policies - AWS Documentation","tab_id":9}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000005","schema_version":1,"ts":1783911740,"source":"vscode","type":"document_change","payload":{"path":"/home/pranav/work/infra/iam.tf","workspace":"/home/pranav/work/infra","language":"terraform","changes":[{"kind":"insert","range":{"start":{"line":1,"character":0},"end":{"line":1,"character":0}},"removed_characters":0,"text":"assume_role_policy = jsonencode({})"}]}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000006","schema_version":1,"ts":1783911900,"source":"firefox","type":"tab_change","payload":{"url":"https://www.google.com/search?q=aws+iam+trust+policy","title":"AWS IAM trust policy - Google","tab_id":10}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000007","schema_version":1,"ts":1783912000,"source":"firefox","type":"tab_change","payload":{"url":"https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role","title":"aws_iam_role | Terraform","tab_id":11}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000008","schema_version":1,"ts":1783912140,"source":"linux","type":"app_focus","payload":{"app":"firefox","title":"IAM roles - AWS Documentation"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000009","schema_version":1,"ts":1783912220,"source":"firefox","type":"user_action","payload":{"url":"https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html","tab_id":12,"window_id":1,"action":"link_activation","target":{"tag":"a","role":"link","label":"Principal element","href":"https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html"},"sensitive_page":false}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000010","schema_version":1,"ts":1783912440,"source":"firefox","type":"tab_change","payload":{"url":"https://www.google.com/search?q=iam+trust+policy+AccessDenied","title":"IAM trust policy AccessDenied - Google","tab_id":15}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000011","schema_version":1,"ts":1783912620,"source":"vscode","type":"document_change","payload":{"path":"/home/pranav/work/infra/iam.tf","workspace":"/home/pranav/work/infra","language":"terraform","changes":[{"kind":"insert","range":{"start":{"line":8,"character":2},"end":{"line":8,"character":2}},"removed_characters":0,"text":"# TODO restrict principal after deploy"}]}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000012","schema_version":1,"ts":1783912800,"source":"vscode","type":"file_save","payload":{"path":"/home/pranav/work/infra/iam.tf"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000013","schema_version":1,"ts":1783913000,"source":"shell","type":"command","payload":{"cmd":"cd /home/pranav/work/infra","cwd":"/home/pranav/work/infra","exit_code":0}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000014","schema_version":1,"ts":1783913040,"source":"linux","type":"app_focus","payload":{"app":"gnome-terminal","title":"infra — bash"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000015","schema_version":1,"ts":1783913100,"source":"shell","type":"command","payload":{"cmd":"terraform fmt","cwd":"/home/pranav/work/infra","exit_code":0}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000016","schema_version":1,"ts":1783913200,"source":"shell","type":"command","payload":{"cmd":"terraform plan","cwd":"/home/pranav/work/infra","exit_code":0}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000017","schema_version":1,"ts":1783913340,"source":"shell","type":"command","payload":{"cmd":"terraform apply","cwd":"/home/pranav/work/infra","exit_code":1}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000018","schema_version":1,"ts":1783913420,"source":"firefox","type":"tab_change","payload":{"url":"https://www.google.com/search?q=terraform+apply+AccessDenied+iam","title":"terraform apply AccessDenied IAM - Google","tab_id":13}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000019","schema_version":1,"ts":1783913500,"source":"firefox","type":"tab_change","payload":{"url":"https://console.aws.amazon.com/iam/","title":"IAM Dashboard - AWS","tab_id":14}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000020","schema_version":1,"ts":1783913600,"source":"linux","type":"app_focus","payload":{"app":"code","title":"iam.tf - infra - Visual Studio Code"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000021","schema_version":1,"ts":1783913660,"source":"vscode","type":"file_open","payload":{"path":"/home/pranav/work/infra/iam.tf"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000022","schema_version":1,"ts":1783913740,"source":"vscode","type":"document_change","payload":{"path":"/home/pranav/work/infra/iam.tf","workspace":"/home/pranav/work/infra","language":"terraform","changes":[{"kind":"insert","range":{"start":{"line":4,"character":0},"end":{"line":4,"character":0}},"removed_characters":0,"text":"condition = { StringEquals = {} }"}]}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000023","schema_version":1,"ts":1783913860,"source":"vscode","type":"file_save","payload":{"path":"/home/pranav/work/infra/iam.tf"}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000024","schema_version":1,"ts":1783914000,"source":"firefox","type":"user_action","payload":{"url":"https://console.aws.amazon.com/iam/","tab_id":14,"window_id":1,"action":"click","target":{"tag":"button","role":"button","label":"Roles"},"sensitive_page":false}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000025","schema_version":1,"ts":1783914200,"source":"shell","type":"command","payload":{"cmd":"terraform apply","cwd":"/home/pranav/work/infra","exit_code":1}},
+    {"id":"4a1dba0b-92bf-42f0-a5e9-000000000026","schema_version":1,"ts":1783914300,"source":"linux","type":"app_focus","payload":{"app":"firefox","title":"AccessDenied troubleshooting - AWS"}}
+  ]
+}

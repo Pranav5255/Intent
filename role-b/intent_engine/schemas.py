@@ -1,0 +1,196 @@
+"""Pydantic contracts shared across the Role B intent-engine pipeline."""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class EventPayload(BaseModel):
+    """Forward-compatible Role A event payload."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class RawEvent(BaseModel):
+    """An event received from Role A's event or day-export APIs."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    ts: int
+    source: str
+    type: str
+    payload: EventPayload
+    schema_version: int = 1
+
+
+class DayExport(BaseModel):
+    """Role A's complete export for one calendar day."""
+
+    version: int = 1
+    date: str
+    exported_at: int
+    events: list[RawEvent] = Field(default_factory=list)
+
+
+class EventEntities(BaseModel):
+    """Deterministically extracted facts from one normalized event."""
+
+    project_paths: list[str] = Field(default_factory=list)
+    file_path: str | None = None
+    file_name: str | None = None
+    file_kind: Literal["code", "pdf", "image", "other"] | None = None
+    domain: str | None = None
+    title: str | None = None
+    command: str | None = None
+    command_family: str | None = None
+    cwd: str | None = None
+    exit_code: int | None = None
+
+
+class EventSignals(BaseModel):
+    """Lightweight behavioral signals derived from one event."""
+
+    typed_chars: int = 0
+    save: bool = False
+    todo_added: bool = False
+
+
+class NormalizedEvent(BaseModel):
+    """Role B's privacy-safe, pipeline-ready representation of a raw event."""
+
+    id: str
+    ts: int
+    ordinal: int
+    source: str
+    family: Literal["editor", "browser", "command", "focus", "file_change", "idle", "other"]
+    category: str
+    text: str
+    entities: EventEntities = Field(default_factory=EventEntities)
+    signals: EventSignals = Field(default_factory=EventSignals)
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class ResumePayload(BaseModel):
+    """Context Role A can restore after the user chooses to resume an intent."""
+
+    files: list[str] = Field(default_factory=list, max_length=5)
+    urls: list[str] = Field(default_factory=list, max_length=8)
+    shell: dict[str, Any] = Field(default_factory=dict)
+
+
+class IntentStats(BaseModel):
+    event_count: int
+    duration_seconds: int
+    sources: dict[str, int] = Field(default_factory=dict)
+    unique_apps: list[str] = Field(default_factory=list)
+
+
+class IntentInsights(BaseModel):
+    editor: list[dict[str, Any]] = Field(default_factory=list)
+    browser: list[dict[str, Any]] = Field(default_factory=list)
+    shell: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class TodoObservation(BaseModel):
+    path: str
+    observed_ts: int
+    marker: Literal["TODO", "FIXME", "XXX"]
+
+
+class Intent(BaseModel):
+    """A user-facing work intent, optionally containing sub-intents."""
+
+    id: str
+    parent_id: str | None = None
+    date: str
+    label: str
+    summary: str
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    start_ts: int
+    end_ts: int
+    depth: int
+    tags: list[str] = Field(default_factory=list)
+    stats: IntentStats
+    insights: IntentInsights
+    todos: list[TodoObservation] = Field(default_factory=list)
+    resume_payload: ResumePayload
+    prefix: tuple[str, str, str] | None = None
+    children: list[Intent] = Field(default_factory=list)
+
+
+class PipelineWarning(BaseModel):
+    level: Literal["error", "warning"]
+    message: str
+    event_id: str | None = None
+
+
+class PipelineResult(BaseModel):
+    intents: list[Intent] = Field(default_factory=list)
+    warnings: list[PipelineWarning] = Field(default_factory=list)
+    source_hash: str
+    pipeline_version: str
+    cached: bool = False
+
+
+class CurrentIntent(BaseModel):
+    label: str
+    summary: str
+    confidence: float
+    since_ts: int
+
+
+class PredictionResponse(BaseModel):
+    predicted_label: str
+    confidence: float
+    resume_payload: ResumePayload
+
+
+class CitedIntent(BaseModel):
+    intent_id: str
+    date: str
+    label: str
+    summary: str
+
+
+class ResumeProposal(BaseModel):
+    """Generative briefing paired with an unchanged store-derived resume payload."""
+
+    intent_id: str
+    resume_payload: ResumePayload
+    # Briefing is generative text only; resume_payload comes from store/resume.py.
+    briefing: str | None = None
+
+
+class CopilotQueryRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    date_from: str | None = None
+    date_to: str | None = None
+    mode: Literal["auto", "search", "qa", "briefing", "narrative"] = "auto"
+    intent_id: str | None = None
+    conversation_id: str | None = None
+
+
+class CopilotQueryResponse(BaseModel):
+    answer: str
+    citations: list[CitedIntent] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0)
+    evidence_status: Literal["sufficient", "insufficient"]
+    resume_proposal: ResumeProposal | None = None
+    tool_calls_made: list[str] = Field(default_factory=list)
+    conversation_id: str | None = None
+    cached_summary: str | None = None
+
+
+class CopilotNotConfigured(BaseModel):
+    ok: bool = False
+    code: Literal["copilot_not_configured"] = "copilot_not_configured"
+    message: str = (
+        "Intent Copilot is not configured. Set ENABLE_COPILOT=true, "
+        "ROLE_B_LLM_ENABLED=true, and OPENAI_API_KEY."
+    )
+
+
+Intent.model_rebuild()
