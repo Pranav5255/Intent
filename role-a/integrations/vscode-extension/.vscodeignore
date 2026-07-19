@@ -1,4 +1,4 @@
-tests/**
-*.vsix
-dist/**
+.vscode/**
 node_modules/**
+**/*.map
+**/*.ts

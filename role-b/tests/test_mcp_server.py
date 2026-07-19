@@ -29,7 +29,7 @@ def test_adapter_constructs_registry_and_exposes_allowlist(monkeypatch):
         server = mcp_server.create_mcp_server(IntentStore(str(Path(directory) / "intents.db")))
         assert set(server.role_b_tool_names) == {
             "search_intents", "get_intent", "get_resume_payload",
-            "get_current_intent", "get_intent_stats",
+            "get_current_intent", "get_intent_stats", "daily_digest", "get_intent_context",
         }
         assert set(server.functions) == set(server.role_b_tool_names)
         result = asyncio.run(server.functions["get_intent"]("missing"))

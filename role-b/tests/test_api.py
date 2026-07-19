@@ -43,18 +43,18 @@ def test_health_cors_read_routes_and_replay() -> None:
         app = create_app(IntentStore(str(Path(directory) / "intents.db")), FakeRoleAClient(export))
         client = TestClient(app)
         assert client.get("/healthz").json()["ok"] is True
-        for origin in ("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000"):
+        for origin in ("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000", "http://localhost:5173", "http://localhost:9479"):
             cors = client.options(
                 "/healthz", headers={"Origin": origin, "Access-Control-Request-Method": "GET"}
             )
             assert cors.headers["access-control-allow-origin"] == origin
             assert cors.headers["access-control-allow-credentials"] == "true"
         rejected = client.options(
-            "/healthz", headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"}
+            "/healthz", headers={"Origin": "https://example.com", "Access-Control-Request-Method": "GET"}
         )
         assert "access-control-allow-origin" not in rejected.headers
         external = client.options(
-            "/healthz", headers={"Origin": "https://example.com", "Access-Control-Request-Method": "GET"}
+            "/healthz", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
         )
         assert "access-control-allow-origin" not in external.headers
         assert client.get("/intents", params={"date": "2026-02-30"}).status_code == 400

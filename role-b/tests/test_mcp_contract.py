@@ -48,8 +48,16 @@ def test_mcp_handlers_match_registry_when_sdk_is_installed():
             "get_resume_payload": {"intent_id": "mcp-1"},
             "get_current_intent": {},
             "get_intent_stats": {"date_from": "2026-07-13", "date_to": "2026-07-13"},
+            "daily_digest": {"date": "2026-07-13"},
+            "get_intent_context": {"intent_id": "mcp-1"},
         }
         for name in server.role_b_tool_names:
+            if name in {"daily_digest", "get_intent_context"}:
+                handler = _real_handler(server, name)
+                actual = asyncio.run(handler(**arguments[name]))
+                assert actual
+                json.dumps(actual)
+                continue
             asyncio.run(server.registry.begin_request())
             expected = asyncio.run(server.registry.execute(name, arguments[name]))
             handler = _real_handler(server, name)

@@ -75,9 +75,9 @@ def main() -> int:
 
     checks = [
         ("At least 2 clusters", len(clusters) >= 2),
-        ("Total events == 26", len(export.events) == 26),
-        ("Project tag present", "project:infra" in project_tags or bool(project_tags)),
-        ("Resume contains iam.tf", any(path.endswith("iam.tf") for path in all_files)),
+        ("Total events == 28", len(export.events) == 28),
+        ("Project tag present", "project:taskflow-app" in project_tags or bool(project_tags)),
+        ("Resume contains auth.tsx", any(path.endswith("auth.tsx") for path in all_files)),
         ("Resume contains URLs", bool(all_urls)),
     ]
     for label, passed in checks:

@@ -1,185 +1,187 @@
-const http = require("http");
 const vscode = require("vscode");
-const {
-  documentChangePayload,
-  documentPayload,
-  event,
-  isExcludedPath,
-  localDocument,
-  normaliseContentChange,
-  splitDocumentChanges,
-  workspaceForPath
-} = require("./events");
 
-const EDIT_DEBOUNCE_MS = 500;
-const MAX_PENDING_EVENTS = 100;
+const EVENT_ENDPOINT = process.env.INTENT_OS_EVENT_ENDPOINT || "http://127.0.0.1:9477/v1/event";
+const CONFIG_ENDPOINT = process.env.INTENT_OS_CONFIG_ENDPOINT || "http://127.0.0.1:9477/v1/detailed-capture/config";
 const CONFIG_CACHE_MS = 30_000;
 
-function endpoint() {
-  return vscode.workspace.getConfiguration("intentOS").get("endpoint");
+let configCache = null;
+let configFetchedAt = 0;
+let configRequest = null;
+const editTimers = new Map();
+const openedWorkspaces = new Set();
+
+function boundedText(value, maximum) {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, maximum) : "";
 }
 
-function enabled() {
-  return vscode.workspace.getConfiguration("intentOS").get("enabled");
+async function fetchConfig() {
+  const now = Date.now();
+  if (configCache && now - configFetchedAt < CONFIG_CACHE_MS) {
+    return configCache;
+  }
+  if (configRequest) {
+    return configRequest;
+  }
+  configRequest = fetch(CONFIG_ENDPOINT, { method: "GET" })
+    .then((response) => response.json())
+    .then((payload) => {
+      configCache = payload;
+      configFetchedAt = Date.now();
+      configRequest = null;
+      return payload;
+    })
+    .catch(() => {
+      configRequest = null;
+      return configCache || { editor: { enabled: false }, approved_workspaces: [] };
+    });
+  return configRequest;
 }
 
-function detailedCaptureRequested() {
-  return vscode.workspace.getConfiguration("intentOS").get("detailedCapture");
+function workspaceFolderPath(document) {
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  return folder ? folder.uri.fsPath : "";
 }
 
-function post(url, payload) {
-  return new Promise((resolve, reject) => {
-    const target = new URL(url);
-    const body = JSON.stringify(payload);
-    const request = http.request(
-      {
-        protocol: target.protocol,
-        hostname: target.hostname,
-        port: target.port,
-        path: target.pathname + target.search,
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
-        timeout: 1000
+function isApprovedWorkspace(document, config) {
+  const workspacePath = workspaceFolderPath(document);
+  if (!workspacePath) {
+    return false;
+  }
+  const approved = Array.isArray(config.approved_workspaces) ? config.approved_workspaces : [];
+  return approved.some((item) => {
+    const normalized = String(item);
+    return workspacePath === normalized || workspacePath.startsWith(`${normalized}/`);
+  });
+}
+
+async function postEvent(type, payload) {
+  const event = {
+    id: crypto.randomUUID(),
+    schema_version: 1,
+    ts: Math.floor(Date.now() / 1000),
+    source: "vscode",
+    type,
+    payload,
+  };
+  try {
+    await fetch(EVENT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    });
+  } catch {
+    // Capture must never interrupt editing.
+  }
+}
+
+function emitWorkspaceOpen(folderPath) {
+  if (!folderPath || openedWorkspaces.has(folderPath)) {
+    return;
+  }
+  openedWorkspaces.add(folderPath);
+  void postEvent("workspace_open", { folder: folderPath });
+}
+
+function scheduleFileEdit(pathValue) {
+  const existing = editTimers.get(pathValue);
+  if (existing) {
+    clearTimeout(existing);
+  }
+  editTimers.set(
+    pathValue,
+    setTimeout(() => {
+      editTimers.delete(pathValue);
+      void postEvent("file_edit", { path: pathValue });
+    }, 5000)
+  );
+}
+
+function documentChanges(event) {
+  const changes = [];
+  for (const change of event.contentChanges) {
+    const kind = change.rangeLength > 0 ? (change.text ? "replace" : "delete") : "insert";
+    const item = {
+      kind,
+      range: {
+        start: {
+          line: change.range.start.line,
+          character: change.range.start.character,
+        },
+        end: {
+          line: change.range.end.line,
+          character: change.range.end.character,
+        },
       },
-      (response) => {
-        response.resume();
-        response.statusCode >= 200 && response.statusCode < 300 ? resolve() : reject(new Error("HTTP " + response.statusCode));
-      }
-    );
-    request.on("timeout", () => request.destroy(new Error("Intent OS request timed out")));
-    request.on("error", reject);
-    request.end(body);
-  });
-}
-
-function getJson(url) {
-  return new Promise((resolve, reject) => {
-    const target = new URL(url);
-    const request = http.request(
-      { protocol: target.protocol, hostname: target.hostname, port: target.port, path: target.pathname + target.search, method: "GET", timeout: 1000 },
-      (response) => {
-        let body = "";
-        response.setEncoding("utf8");
-        response.on("data", (chunk) => { body += chunk; });
-        response.on("end", () => {
-          if (response.statusCode < 200 || response.statusCode >= 300) {
-            reject(new Error("HTTP " + response.statusCode));
-            return;
-          }
-          try {
-            resolve(JSON.parse(body));
-          } catch (error) {
-            reject(error);
-          }
-        });
-      }
-    );
-    request.on("timeout", () => request.destroy(new Error("Intent OS config request timed out")));
-    request.on("error", reject);
-    request.end();
-  });
-}
-
-function detailedConfigEndpoint(url) {
-  const target = new URL(url);
-  target.pathname = target.pathname.replace(/\/event$/, "/detailed-capture/config");
-  return target.toString();
+      removed_characters: change.rangeLength,
+    };
+    if (kind !== "delete") {
+      item.text = change.text;
+    }
+    changes.push(item);
+    if (changes.length >= 25) {
+      break;
+    }
+  }
+  return changes;
 }
 
 function activate(context) {
-  const pending = [];
-  const edits = new Map();
-  let configCache = null;
-  let configFetchedAt = 0;
-  let configRequest = null;
-
-  async function getDetailedConfig() {
-    if (configCache && Date.now() - configFetchedAt < CONFIG_CACHE_MS) return configCache;
-    if (configRequest) return configRequest;
-    configRequest = getJson(detailedConfigEndpoint(endpoint()))
-      .then((value) => {
-        configCache = value;
-        configFetchedAt = Date.now();
-        return value;
-      })
-      .catch(() => null)
-      .finally(() => { configRequest = null; });
-    return configRequest;
+  for (const folder of vscode.workspace.workspaceFolders || []) {
+    emitWorkspaceOpen(folder.uri.fsPath);
   }
-
-  async function flush() {
-    while (pending.length) {
-      try {
-        await post(endpoint(), pending[0]);
-        pending.shift();
-      } catch {
-        return;
-      }
-    }
-  }
-
-  function emit(type, payload) {
-    if (!enabled()) return;
-    if (pending.length === MAX_PENDING_EVENTS) pending.shift();
-    pending.push(event(type, payload));
-    void flush();
-  }
-
-  function emitWorkspace(folder) {
-    if (folder && folder.uri.scheme === "file") emit("workspace_open", { folder: folder.uri.fsPath });
-  }
-
-  async function flushEdit(key) {
-    const state = edits.get(key);
-    if (!state) return;
-    edits.delete(key);
-    emit("file_edit", documentPayload(state.document));
-    if (!detailedCaptureRequested() || !state.changes.length) return;
-
-    const config = await getDetailedConfig();
-    if (!config || !config.editor || !config.editor.enabled) return;
-    const workspace = workspaceForPath(state.document.uri.fsPath, config.approved_workspaces);
-    if (!workspace || isExcludedPath(state.document.uri.fsPath, config.editor.excluded_patterns)) return;
-    for (const changes of splitDocumentChanges(state.changes)) {
-      emit("document_change", documentChangePayload(state.document, workspace, changes));
-    }
-  }
-
-  function queueEdit(document, contentChanges) {
-    const key = document.uri.fsPath;
-    let state = edits.get(key);
-    if (!state) {
-      state = { document, changes: [], timer: null };
-      edits.set(key, state);
-    }
-    state.document = document;
-    if (detailedCaptureRequested()) {
-      state.changes.push(...contentChanges.map(normaliseContentChange));
-    }
-    clearTimeout(state.timer);
-    state.timer = setTimeout(() => { void flushEdit(key); }, EDIT_DEBOUNCE_MS);
-  }
-
-  for (const folder of vscode.workspace.workspaceFolders || []) emitWorkspace(folder);
 
   context.subscriptions.push(
-    vscode.workspace.onDidChangeWorkspaceFolders((change) => change.added.forEach(emitWorkspace)),
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-      const document = localDocument(editor && editor.document);
-      if (document) emit("file_open", documentPayload(document));
+    vscode.workspace.onDidChangeWorkspaceFolders((event) => {
+      for (const folder of event.added) {
+        emitWorkspaceOpen(folder.uri.fsPath);
+      }
     }),
-    vscode.workspace.onDidChangeTextDocument((change) => {
-      const document = localDocument(change.document);
-      if (!document || !change.contentChanges.length) return;
-      queueEdit(document, change.contentChanges);
+    vscode.workspace.onDidOpenTextDocument((document) => {
+      if (document.uri.scheme !== "file") {
+        return;
+      }
+      void postEvent("file_open", { path: document.uri.fsPath });
     }),
     vscode.workspace.onDidSaveTextDocument((document) => {
-      document = localDocument(document);
-      if (document) emit("file_save", { path: document.uri.fsPath });
+      if (document.uri.scheme !== "file") {
+        return;
+      }
+      void postEvent("file_save", { path: document.uri.fsPath });
+    }),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      const document = event.document;
+      if (document.uri.scheme !== "file") {
+        return;
+      }
+      const pathValue = document.uri.fsPath;
+      scheduleFileEdit(pathValue);
+      void fetchConfig().then((config) => {
+        if (!config.editor?.enabled || !isApprovedWorkspace(document, config)) {
+          return;
+        }
+        const changes = documentChanges(event);
+        if (!changes.length) {
+          return;
+        }
+        void postEvent("document_change", {
+          path: pathValue,
+          workspace: workspaceFolderPath(document),
+          language: boundedText(document.languageId, 64),
+          changes,
+        });
+      });
     })
   );
 }
 
-function deactivate() {}
+function deactivate() {
+  for (const timer of editTimers.values()) {
+    clearTimeout(timer);
+  }
+  editTimers.clear();
+}
 
-module.exports = { activate, deactivate, detailedConfigEndpoint };
+module.exports = {
+  activate,
+  deactivate,
+};

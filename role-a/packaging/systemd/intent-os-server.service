@@ -1,0 +1,15 @@
+[Unit]
+Description=Intent OS local event server
+After=default.target
+PartOf=intent-os.target
+
+[Service]
+Type=simple
+Environment=INTENT_OS_INSTALL_ROOT=@INTENT_OS_INSTALL_ROOT@
+WorkingDirectory=@INTENT_OS_INSTALL_ROOT@
+ExecStart=@INTENT_OS_PYTHON@ -m uvicorn event_server.main:app --host 127.0.0.1 --port 9477
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

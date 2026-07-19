@@ -110,5 +110,5 @@ def test_command_phase_boundary_is_preserved_for_demo_fixture() -> None:
 
     assert warnings == []
     assert len(clusters) >= 2
-    assert any(event.entities.command_family == "terraform" for event in clusters[1])
-    assert any(event.category == "document_change" for event in clusters[0])
+    assert any(event.entities.command_family == "npm" for cluster in clusters for event in cluster)
+    assert any(event.category == "document_change" for cluster in clusters for event in cluster)

@@ -1,0 +1,16 @@
+[Unit]
+Description=Intent OS approved workspace watcher
+After=intent-os-server.service
+PartOf=intent-os.target
+Requires=intent-os-server.service
+
+[Service]
+Type=simple
+Environment=INTENT_OS_INSTALL_ROOT=@INTENT_OS_INSTALL_ROOT@
+WorkingDirectory=@INTENT_OS_INSTALL_ROOT@
+ExecStart=@INTENT_OS_PYTHON@ tools/intent_os_workspace_watch.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

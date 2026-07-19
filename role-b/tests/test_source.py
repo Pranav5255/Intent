@@ -100,7 +100,7 @@ class RoleAClientTests(unittest.TestCase):
     def test_loads_role_a_fixture(self) -> None:
         fixture = Path(__file__).parents[2] / "role-a" / "fixtures" / "demo-day.json"
         export = load_replay_fixture(str(fixture))
-        self.assertEqual(len(export.events), 26)
+        self.assertEqual(len(export.events), 28)
 
 
 if __name__ == "__main__":

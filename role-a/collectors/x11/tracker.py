@@ -92,6 +92,16 @@ def _xprintidle_ms() -> int | None:
         return None
 
 
+def build_idle_event(event_type: str) -> dict[str, object]:
+    return {
+        "id": str(uuid.uuid4()),
+        "ts": int(time.time()),
+        "source": "linux",
+        "type": event_type,
+        "payload": {},
+    }
+
+
 def run_tracker(endpoint: str, interval: float, once: bool = False, activity_feed: ActivityFeed | None = None) -> int:
     logger = configure_jsonl_logger("x11-tracker", "x11-tracker.jsonl")
     missing = [name for name in ("xdotool", "xprop") if not shutil.which(name)]
@@ -104,11 +114,19 @@ def run_tracker(endpoint: str, interval: float, once: bool = False, activity_fee
 
     feed = activity_feed or ActivityFeed()
     previous: tuple[str, str, str] | None = None
+    idle_threshold_ms = int(os.environ.get("INTENT_OS_IDLE_THRESHOLD_MS", str(5 * 60 * 1000)))
+    idle_active = False
     while True:
         try:
             idle_ms = _xprintidle_ms()
             if idle_ms is not None:
                 feed.set_idle_ms(idle_ms)
+                if idle_ms >= idle_threshold_ms and not idle_active:
+                    post_event(endpoint, build_idle_event("idle_start"))
+                    idle_active = True
+                elif idle_ms < idle_threshold_ms and idle_active:
+                    post_event(endpoint, build_idle_event("idle_end"))
+                    idle_active = False
             window = get_active_window()
             if window.signature != previous:
                 post_event(endpoint, build_event(window))

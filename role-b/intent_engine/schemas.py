@@ -199,7 +199,7 @@ class CopilotNotConfigured(BaseModel):
     code: Literal["copilot_not_configured"] = "copilot_not_configured"
     message: str = (
         "Intent Copilot is not configured. Set ENABLE_COPILOT=true, "
-        "ROLE_B_LLM_ENABLED=true, and OPENAI_API_KEY."
+        "ROLE_B_LLM_ENABLED=true, and a provider key (OPENAI_API_KEY or GEMINI_API_KEY)."
     )
 
 

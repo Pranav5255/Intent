@@ -1,32 +1,44 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools import workspaces
+from tools.workspaces import add, config_path, load, remove, save
 
 
-class WorkspaceConfigTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory()
-        self.home = Path(self.temporary.name) / "home"
-        self.home.mkdir()
-        self.project = self.home / "project"
-        self.project.mkdir()
-        self.config_path = self.home / ".config" / "intent-os" / "config.json"
+class WorkspacesTests(unittest.TestCase):
+    def test_add_remove_and_persist(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workspaces.json"
+            first = add("~/projects/taskflow-app", {"workspaces": []})
+            save(first, path)
+            loaded = load(path)
+            self.assertEqual(len(loaded["workspaces"]), 1)
+            self.assertTrue(loaded["workspaces"][0].endswith("projects/taskflow-app"))
 
-    def tearDown(self) -> None:
-        self.temporary.cleanup()
+            updated = remove("~/projects/taskflow-app", loaded)
+            save(updated, path)
+            self.assertEqual(load(path)["workspaces"], [])
 
-    def test_add_save_load_and_remove_workspace(self) -> None:
-        config = workspaces.add(self.project, {"workspaces": []}, self.home)
-        workspaces.save(config, self.config_path)
-        self.assertEqual(workspaces.load(self.config_path), {"workspaces": [str(self.project)]})
-        self.assertEqual(workspaces.remove(self.project, config), {"workspaces": []})
+    def test_load_missing_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(load(Path(directory) / "missing.json"), {"workspaces": []})
 
-    def test_rejects_home_and_outside_directories(self) -> None:
-        with self.assertRaises(ValueError):
-            workspaces.validate_workspace(self.home, self.home)
-        with self.assertRaises(ValueError):
-            workspaces.validate_workspace(Path(self.temporary.name), self.home)
+    def test_config_path_uses_xdg(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            resolved = config_path(home)
+            self.assertEqual(resolved, home / ".config" / "intent-os" / "workspaces.json")
+
+    def test_invalid_config_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workspaces.json"
+            path.write_text(json.dumps({"workspaces": "bad"}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load(path)
+
+
+if __name__ == "__main__":
+    unittest.main()

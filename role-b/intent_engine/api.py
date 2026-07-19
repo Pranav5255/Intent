@@ -11,7 +11,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from intent_engine.context import build_intent_context
 from intent_engine.copilot import IntentCopilot
+from intent_engine.digest import build_digest
 from intent_engine.llm import LLMError
 from intent_engine.pipeline import PIPELINE_VERSION, run_pipeline
 from intent_engine.current import CurrentIntentEngine
@@ -31,7 +33,15 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
     application = FastAPI(title="Intent OS - Role B", version=API_VERSION)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000"],
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:9479",
+            "http://127.0.0.1:9479",
+        ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
@@ -129,6 +139,12 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
         except LLMError as exc:
             raise HTTPException(status_code=502, detail="Copilot provider request failed") from exc
 
+    @application.get("/intents/digest")
+    async def intents_digest(date: str | None = None) -> dict:
+        target_date = _validated_date(date) if date else (calendar_date.today() - timedelta(days=1)).isoformat()
+        intents = await application.state.store.get_intents_by_date(target_date)
+        return build_digest(intents, target_date)
+
     @application.get("/intents/prediction")
     async def prediction():
         if os.environ.get("ENABLE_PREDICTION", "false").lower() != "true":
@@ -141,6 +157,13 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
             return await application.state.prediction_engine.predict(normalized)
         except RoleAUnavailableError:
             return None
+
+    @application.get("/intents/{intent_id}/context")
+    async def intent_context(intent_id: str):
+        intent = await application.state.store.get_intent_by_id(intent_id)
+        if intent is None:
+            raise HTTPException(status_code=404, detail="Intent not found")
+        return {"intent_id": intent_id, "markdown": build_intent_context(intent)}
 
     @application.get("/intents/{intent_id}")
     async def intent_by_id(intent_id: str):

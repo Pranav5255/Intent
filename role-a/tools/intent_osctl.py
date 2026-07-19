@@ -24,12 +24,13 @@ from event_server import detailed_capture
 from tools import filesystem_capture, workspaces
 
 
-AUTOSTART_SOURCE = INSTALL_ROOT / "packaging" / "debian" / "autostart" / "intent-os.desktop"
-VSIX_PATH = INSTALL_ROOT / "integrations" / "vscode-extension" / "dist" / "intent-os-vscode.vsix"
+AUTOSTART_SOURCE = IMPORT_ROOT / "packaging" / "debian" / "autostart" / "intent-os.desktop"
+VSIX_PATH = IMPORT_ROOT / "integrations" / "vscode-extension" / "dist" / "intent-os-vscode.vsix"
 SHELL_SOURCES = {
-    "bash": INSTALL_ROOT / "shell" / "intent-os.bash",
-    "zsh": INSTALL_ROOT / "shell" / "intent-os.zsh",
+    "bash": IMPORT_ROOT / "shell" / "intent-os.bash",
+    "zsh": IMPORT_ROOT / "shell" / "intent-os.zsh",
 }
+SYSTEMD_SOURCE = IMPORT_ROOT / "packaging" / "systemd"
 MARKER_START = "# >>> Intent OS shell integration >>>"
 MARKER_END = "# <<< Intent OS shell integration <<<"
 UNIT_NAMES = ("intent-os-server.service", "intent-os-x11-tracker.service", "intent-os-workspace-watch.service")
@@ -48,8 +49,24 @@ def import_graphical_environment() -> None:
         run_systemctl("import-environment", *present)
 
 
+def install_systemd_units() -> None:
+    destination_dir = Path.home() / ".config" / "systemd" / "user"
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    python_executable = sys.executable
+    install_root = str(IMPORT_ROOT)
+    for unit_name in UNIT_NAMES:
+        source = SYSTEMD_SOURCE / unit_name
+        if not source.is_file():
+            raise RuntimeError(f"systemd unit is unavailable: {source}")
+        contents = source.read_text(encoding="utf-8")
+        contents = contents.replace("@INTENT_OS_INSTALL_ROOT@", install_root)
+        contents = contents.replace("@INTENT_OS_PYTHON@", python_executable)
+        (destination_dir / unit_name).write_text(contents, encoding="utf-8")
+
+
 def enable_services() -> None:
     import_graphical_environment()
+    install_systemd_units()
     run_systemctl("daemon-reload")
     run_systemctl("enable", "--now", *UNIT_NAMES)
     install_autostart()

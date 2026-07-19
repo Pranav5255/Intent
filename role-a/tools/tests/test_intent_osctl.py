@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.intent_osctl import MARKER_END, MARKER_START, remove_shell_block, update_shell_integration
+from tools.intent_osctl import MARKER_END, MARKER_START, SHELL_SOURCES, remove_shell_block, update_shell_integration
 
 
 class IntentOsCtlTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class IntentOsCtlTests(unittest.TestCase):
             update_shell_integration("bash", True, home)
             enabled = rc.read_text(encoding="utf-8")
             self.assertIn(MARKER_START, enabled)
-            self.assertIn("source /opt/intent-os/shell/intent-os.bash", enabled)
+            self.assertIn(f"source {SHELL_SOURCES['bash']}", enabled)
 
             update_shell_integration("bash", False, home)
             self.assertEqual(rc.read_text(encoding="utf-8"), "export PATH=/usr/local/bin:$PATH\n")

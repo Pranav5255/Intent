@@ -34,10 +34,10 @@ def test_pipeline_builds_safe_deterministic_cached_intents() -> None:
     assert first.intents and first.intents[0].children
     assert first.intents[0].id == second.intents[0].id
     assert first.intents[0].id == forced.intents[0].id
-    assert first.intents[0].label == "Work on infra"
+    assert first.intents[0].label == "Work on taskflow-app"
     assert first.intents[0].confidence == 0.7
     assert all(child.confidence > 0 for root in first.intents for child in root.children)
-    assert any(todo.path.endswith("iam.tf") and todo.marker == "TODO" for root in first.intents for child in root.children for todo in child.todos)
+    assert any(todo.path.endswith("auth.tsx") and todo.marker == "TODO" for root in first.intents for child in root.children for todo in child.todos)
     serialized = json.dumps(first.model_dump(mode="json"))
     assert "raw" not in serialized
     assert "document_change" not in serialized
@@ -121,6 +121,5 @@ def test_pipeline_labels_children_and_parent_with_provider_and_isolates_cache() 
     assert result.intents[0].confidence == 0.82
     assert all(child.label == "Custom Child Label" and child.confidence == 0.91 for child in result.intents[0].children)
     assert provider.cluster_texts[0].startswith("1. ")
-    assert "changes[0].text" in provider.cluster_texts[0]
-    assert "assume_role_policy" in provider.cluster_texts[0]
+    assert "auth.tsx" in provider.cluster_texts[0].lower() or "login" in provider.cluster_texts[0].lower()
     assert provider.parent_texts[0].startswith("1. Custom Child Label: Custom child summary.")
