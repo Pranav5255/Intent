@@ -67,3 +67,26 @@ class EventApiTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 422)
+
+    def test_retention_requires_confirmation_after_preview(self) -> None:
+        payload = {
+            "id": "00000000-0000-4000-8000-000000000013",
+            "ts": 1,
+            "source": "linux",
+            "type": "app_focus",
+            "payload": {"app": "code", "title": "main.py"},
+        }
+        self.assertEqual(self.client.post("/v1/event", json=payload).status_code, 201)
+
+        preview = self.client.get("/v1/retention/preview", params={"metadata_days": 1})
+        unconfirmed = self.client.post("/v1/retention/purge", json={"metadata_days": 1})
+        purged = self.client.post(
+            "/v1/retention/purge", json={"metadata_days": 1, "confirm": True}
+        )
+
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview.json()["eligible"]["metadata"], 1)
+        self.assertEqual(unconfirmed.status_code, 409)
+        self.assertEqual(purged.status_code, 200)
+        self.assertEqual(purged.json()["deleted"]["metadata"], 1)
+        self.assertEqual(self.client.get("/v1/events").json(), [])

@@ -31,6 +31,10 @@ class StatusApiTests(unittest.TestCase):
         sources = status.json()["sources"]
         self.assertEqual(sources["shell"]["event_count"], 1)
         self.assertEqual(sources["shell"]["last_event_ts"], 100)
+        self.assertIsNotNone(sources["shell"]["last_ingested_at"])
+        self.assertGreaterEqual(sources["shell"]["last_ingest_lag_seconds"], 0)
         self.assertFalse(sources["shell"]["healthy"])
         self.assertIn("activity", status.json())
+        self.assertEqual(status.json()["ingestion"]["accepted"], 1)
+        self.assertEqual(status.json()["ingestion"]["inserted"], 1)
         self.assertEqual(status.json()["services"]["event_server"], True)

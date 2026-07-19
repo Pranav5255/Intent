@@ -219,3 +219,21 @@ class IngestResult(BaseModel):
 
 class CapturePause(BaseModel):
     paused: bool
+
+
+class RetentionPurge(BaseModel):
+    """Explicit, confirmed raw-event retention request.
+
+    ``None`` leaves a tier untouched.  At least one tier is required so the
+    destructive endpoint cannot accidentally become a blanket purge.
+    """
+
+    detailed_days: int | None = Field(default=None, ge=1, le=36_500)
+    metadata_days: int | None = Field(default=None, ge=1, le=36_500)
+    confirm: bool = False
+
+    @root_validator(skip_on_failure=True)
+    def requires_a_retention_window(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if values.get("detailed_days") is None and values.get("metadata_days") is None:
+            raise ValueError("at least one retention window must be provided")
+        return values
