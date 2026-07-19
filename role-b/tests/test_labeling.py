@@ -3,13 +3,18 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from intent_engine.labeling import FallbackLabelProvider, LabelProvider, OpenAILabelProvider, validate_label_result
+from intent_engine.labeling import (
+    FallbackLabelProvider,
+    LabelProvider,
+    OpenAILabelProvider,
+    TemplateFallbackLabelProvider,
+    validate_label_result,
+)
 
 
 def run(coroutine):
@@ -17,29 +22,34 @@ def run(coroutine):
 
 
 @pytest.mark.parametrize(
-    ("text", "label", "confidence"),
+    ("hints", "expected_label"),
     [
-        ("Ran terraform apply", "Run Terraform Apply", 0.9),
-        ("Edited iam.tf\nEdited IAM policy", "Edit IAM Trust Policy", 0.85),
-        ("Viewed docs\nRead documentation\nViewed docs", "Research Documentation", 0.8),
-        ("Ran git push origin main", "Run Git Push", 0.85),
-        ("Ran python test.py\nRan pytest", "Execute Commands", 0.7),
-        ("Focused on editor", "Work Session", 0.5),
+        ({"command_family": "npm", "dominant_family": "command"}, "Run Npm"),
+        ({"top_file": "auth.tsx", "dominant_family": "editor"}, "Edit auth.tsx"),
+        ({"top_domain": "docs.aws.amazon.com", "dominant_family": "browser"}, "Research amazon.com"),
+        ({"dominant_family": "focus"}, "Work Session"),
+        ({}, "Work Task"),
     ],
 )
-def test_fallback_cluster_heuristics(text, label, confidence) -> None:
-    result = run(FallbackLabelProvider().label_cluster(text))
-    assert result["label"] == label
-    assert result["confidence"] == confidence
+def test_template_cluster_labels(hints, expected_label) -> None:
+    result = run(TemplateFallbackLabelProvider().label_cluster("1. Edited auth.tsx", hints=hints))
+    assert result["label"] == expected_label
     assert result["summary"].endswith(".")
+
+
+def test_template_parent_labels() -> None:
+    provider = TemplateFallbackLabelProvider()
+    assert run(provider.label_parent("1. child", project_tag="project:demo", hints={"command_families": []}))["label"] == "Work on demo"
+    assert run(provider.label_parent("1. child", hints={"command_families": ["npm", "git"]}))["label"] == "Npm and Git Work"
+    assert run(provider.label_parent("1. child", hints={"command_families": ["npm", "git", "pytest"]}))["label"] == "Multi-Task Session"
 
 
 def test_parent_label_and_abstract_contract() -> None:
     with pytest.raises(TypeError):
         LabelProvider()
     provider = FallbackLabelProvider()
-    assert run(provider.label_parent("Edited app\nEdited test", "project:demo"))["label"] == "Work in project:demo"
-    assert run(provider.label_parent("Edited app\nEdited test"))["label"] == "Implementing Features"
+    assert run(provider.label_parent("Edited app\nEdited test", "project:demo", {"command_families": []}))["label"] == "Work on demo"
+    assert run(provider.label_parent("Edited app\nEdited test", hints={"command_families": []}))["label"] == "Work Session"
 
 
 def test_validation_rejects_invalid_provider_output() -> None:
@@ -55,14 +65,19 @@ class FakeResponsesClient:
     def __init__(self, content: str) -> None:
         self.content = content
         self.calls: list[dict] = []
+        self.model = "fake-model"
 
     async def respond_json(self, **kwargs):
         self.calls.append(kwargs)
         import json
+
         return json.loads(self.content)
 
+    async def respond_with_tools(self, **kwargs):
+        raise NotImplementedError
 
-def test_openai_provider_validates_response_and_only_sends_safe_text() -> None:
+
+def test_llm_provider_validates_response_and_only_sends_safe_text() -> None:
     provider = OpenAILabelProvider(api_key="test-key")
     fake_client = FakeResponsesClient('{"label":"Review IAM Policy","summary":"Reviewed IAM configuration.","confidence":0.8}')
     provider._client = fake_client
@@ -76,13 +91,13 @@ def test_openai_provider_validates_response_and_only_sends_safe_text() -> None:
     assert fake_client.calls[0]["schema_name"] == "intent_label"
 
 
-def test_openai_provider_falls_back_for_bad_json_and_missing_key(monkeypatch) -> None:
+def test_llm_provider_falls_back_for_bad_json_and_missing_key(monkeypatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(ValueError, match="OPENAI_API_KEY"):
         OpenAILabelProvider(api_key="")
     provider = OpenAILabelProvider(api_key="test-key")
     provider._client = FakeResponsesClient("not json")
-    assert run(provider.label_cluster("Ran terraform apply"))["label"] == "Run Terraform Apply"
+    assert run(provider.label_cluster("1. Ran npm", hints={"command_family": "npm", "dominant_family": "command"}))["label"] == "Run Npm"
 
 
 def test_openai_provider_model_resolution(monkeypatch) -> None:

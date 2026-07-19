@@ -24,9 +24,37 @@ python -m venv .venv
 copy .env.example .env   # then edit secrets locally — never commit .env
 ```
 
-The deterministic service works without `.env`, an OpenAI key, or the optional packages. Keep the real `.env` local; `.env.example` is the shareable template.
+The deterministic service works without `.env`, an LLM key, or the optional packages. Keep the real `.env` local; `.env.example` is the shareable template.
 
-## 4. Run the API
+Optional provider packages:
+
+```powershell
+.\.venv\Scripts\pip install -r requirements-openai.txt
+.\.venv\Scripts\pip install -r requirements-gemini.txt
+```
+
+## 4. LLM providers (optional)
+
+Role B supports two LLM backends selected with `LLM_PROVIDER`:
+
+| Provider | Env key | Default model | Install |
+|---|---|---|---|
+| `openai` (default) | `OPENAI_API_KEY` | `gpt-4o-mini` | `requirements-openai.txt` |
+| `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` | `requirements-gemini.txt` |
+
+Example Gemini `.env`:
+
+```dotenv
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here
+ROLE_B_LLM_ENABLED=true
+ENABLE_COPILOT=true
+INTENT_OS_LLM_MODEL=gemini-2.5-flash
+```
+
+When `ROLE_B_LLM_ENABLED=false` or the selected provider key is blank, labeling uses deterministic template labels derived from cluster signals (command family, file, domain, project tag) — not keyword heuristics tied to a demo scenario.
+
+## 5. Run the API
 
 From `role-b`:
 
@@ -42,7 +70,7 @@ Invoke-RestMethod http://127.0.0.1:9478/healthz
 
 Expected response includes `ok: true` and `pipeline_version: "1.0.0"`.
 
-## 5. Run without Role A (replay demo)
+## 6. Run without Role A (replay demo)
 
 The bundled fixture can be replayed without a live Role A process:
 
@@ -65,7 +93,7 @@ For a complete diagnostic progression, run:
 
 The diagnostic loads, normalizes, sessionizes, clusters, enriches, and validates the fixture.
 
-## 6. Run with Role A
+## 7. Run with Role A
 
 Start Role A on `127.0.0.1:9477` first. Then run a day export through Role B:
 
@@ -82,11 +110,12 @@ Invoke-RestMethod http://127.0.0.1:9478/intents/current
 
 Role A unavailability is reported as HTTP 503 by the pipeline endpoint. The current-intent endpoint returns `null` when Role A is unavailable, no recent work exists, or confidence is below the F11 threshold.
 
-## 7. Enable Intent Copilot (optional)
+## 8. Enable Intent Copilot (optional)
 
-Edit the local `.env` with:
+Edit the local `.env` with OpenAI or Gemini credentials:
 
 ```dotenv
+LLM_PROVIDER=openai
 OPENAI_API_KEY=your-key-here
 ROLE_B_LLM_ENABLED=true
 ENABLE_COPILOT=true
@@ -119,7 +148,7 @@ Invoke-RestMethod http://127.0.0.1:9478/copilot/briefing/YOUR_INTENT_ID
 
 Copilot answers are tool-grounded. A missing or insufficient evidence set produces an explicit insufficient-evidence response rather than invented context.
 
-## 8. Tests
+## 9. Tests
 
 Run the suite from `role-b` with Copilot disabled (no key, or `ROLE_B_LLM_ENABLED=false` and `ENABLE_COPILOT=false`):
 
@@ -129,7 +158,7 @@ Run the suite from `role-b` with Copilot disabled (no key, or `ROLE_B_LLM_ENABLE
 
 The deterministic regression lock requires all tests to pass, including source, normalization, sessionization, clustering, enrichment, resume, store, pipeline, labeling, API, current-intent, prediction, Copilot fallback, and MCP-optional tests. `tests/demo_pipeline.py` must remain runnable against `tests/fixtures/demo-day.json`.
 
-## 9. Key HTTP surface
+## 10. Key HTTP surface
 
 | Method and path | Purpose | Gate/notes |
 |---|---|---|
@@ -164,7 +193,7 @@ The adapter exposes `search_intents`, `get_intent`, `get_resume_payload`, `get_c
 
 Role B retains durable intent summaries until explicitly deleted. The two `/v1/memory/...` endpoints purge Role B intent rows, cache metadata, and FTS entries. Role A's separate 30-day raw-event deletion remains a separate responsibility and is not implemented here.
 
-## 10. Privacy and safety reminders
+## 11. Privacy and safety reminders
 
 - Raw events and document-change content are never sent to the LLM.
 - Resume payloads are deterministic, bounded, and store-derived; generated prose cannot change their files, URLs, or shell values.

@@ -6,7 +6,7 @@ import json
 from collections import OrderedDict
 from uuid import uuid4
 
-from intent_engine.llm import OpenAIResponsesClient
+from intent_engine.llm_base import LLMClient
 from intent_engine.llm import redact_for_prompt
 from intent_engine.schemas import (
     CitedIntent,
@@ -49,7 +49,7 @@ NARRATIVE_PROMPT = (
 
 
 class IntentCopilot:
-    def __init__(self, llm: OpenAIResponsesClient, tools: ToolRegistry) -> None:
+    def __init__(self, llm: LLMClient, tools: ToolRegistry) -> None:
         self.llm = llm
         self.tools = tools
         self._memory: OrderedDict[str, dict] = OrderedDict()

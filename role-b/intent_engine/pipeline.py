@@ -9,7 +9,13 @@ from uuid import NAMESPACE_URL, uuid5
 from intent_engine.cluster import cluster_session
 from intent_engine.enrich import aggregate_stats, compute_insight_browser, compute_insight_editor, compute_insight_shell, compute_stats, derive_project_tag, detect_todos, validate_intent_tree
 from intent_engine.logging import DiagnosticsLogger
-from intent_engine.labeling import LabelProvider, FallbackLabelProvider, validate_label_result
+from intent_engine.labeling import (
+    LabelProvider,
+    TemplateFallbackLabelProvider,
+    build_cluster_hints,
+    build_parent_hints,
+    validate_label_result,
+)
 from intent_engine.providers import create_label_provider
 from intent_engine.normalize import compute_source_hash, normalize_events
 from intent_engine.resume import build_resume_payload, merge_resume_payloads
@@ -55,15 +61,29 @@ async def run_pipeline(
         intents: list[Intent] = []
         for session_index, session in enumerate(await sessionize(normalized)):
             children: list[Intent] = []
+            child_command_families: list[str] = []
             for cluster_index, cluster in enumerate(await cluster_session(session)):
                 child = _cluster_intent(export.date, source_hash, session_index, cluster_index, cluster)
-                label = await _label_cluster(label_provider, cluster, child.tags[0] if child.tags else None)
+                cluster_hints = build_cluster_hints(cluster)
+                command_family = cluster_hints.get("command_family")
+                if isinstance(command_family, str) and command_family:
+                    child_command_families.append(command_family)
+                label = await _label_cluster(
+                    label_provider,
+                    cluster,
+                    child.tags[0] if child.tags else None,
+                    cluster_hints,
+                )
                 children.append(child.model_copy(update=label))
             if len(children) == 1:
                 intents.append(children[0].model_copy(update={"parent_id": None, "depth": 0}))
             elif children:
                 parent = _session_intent(export.date, source_hash, session_index, session, children)
-                label = await _label_parent(label_provider, children, parent.tags[0] if parent.tags else None)
+                parent_hints = build_parent_hints(
+                    child_command_families,
+                    parent.tags[0] if parent.tags else None,
+                )
+                label = await _label_parent(label_provider, children, parent.tags[0] if parent.tags else None, parent_hints)
                 intents.append(parent.model_copy(update=label))
 
         result = PipelineResult(intents=intents, warnings=warnings, source_hash=source_hash, pipeline_version=PIPELINE_VERSION)
@@ -127,22 +147,28 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
     return parent
 
 
-async def _label_cluster(provider: LabelProvider, cluster, project_tag: str | None) -> dict:
+async def _label_cluster(provider: LabelProvider, cluster, project_tag: str | None, hints: dict) -> dict:
     text = "\n".join(f"{index}. {event.text}" for index, event in enumerate(cluster, start=1))
-    return await _safe_label(provider, "label_cluster", text, project_tag)
+    return await _safe_label(provider, "label_cluster", text, project_tag, hints)
 
 
-async def _label_parent(provider: LabelProvider, children: list[Intent], project_tag: str | None) -> dict:
+async def _label_parent(provider: LabelProvider, children: list[Intent], project_tag: str | None, hints: dict) -> dict:
     text = "\n".join(f"{index}. {child.label}: {child.summary}" for index, child in enumerate(children, start=1))
-    return await _safe_label(provider, "label_parent", text, project_tag)
+    return await _safe_label(provider, "label_parent", text, project_tag, hints)
 
 
-async def _safe_label(provider: LabelProvider, method: str, text: str, project_tag: str | None) -> dict:
-    fallback = FallbackLabelProvider()
+async def _safe_label(
+    provider: LabelProvider,
+    method: str,
+    text: str,
+    project_tag: str | None,
+    hints: dict | None = None,
+) -> dict:
+    fallback = TemplateFallbackLabelProvider()
     try:
-        return validate_label_result(await getattr(provider, method)(text, project_tag))
+        return validate_label_result(await getattr(provider, method)(text, project_tag, hints))
     except Exception:
-        return validate_label_result(await getattr(fallback, method)(text, project_tag))
+        return validate_label_result(await getattr(fallback, method)(text, project_tag, hints))
 
 
 def _intent_id(date: str, source_hash: str, scope: str) -> str:

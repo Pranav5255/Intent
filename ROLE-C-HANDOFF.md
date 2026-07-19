@@ -131,7 +131,10 @@ Role C must only send the payload returned by Role B or another explicitly appro
 - If Copilot returns 502 with `detail: "Copilot provider request failed"`, preserve the Copilot panel and show a retryable “Copilot is temporarily unavailable” state. Continue showing deterministic intent, timeline, and search data.
 - If Copilot returns HTTP 200 with `evidence_status: "insufficient"`, show an empty-evidence message rather than an error state; users can refine the question or seed more activity data.
 - Prediction may return `null` unless Role B is started with `ENABLE_PREDICTION=true` and sufficient history exists.
-- Copilot requires `ENABLE_COPILOT=true`, `ROLE_B_LLM_ENABLED=true`, and `OPENAI_API_KEY`.
+- Copilot requires `ENABLE_COPILOT=true`, `ROLE_B_LLM_ENABLED=true`, and a provider key:
+  - `LLM_PROVIDER=openai` + `OPENAI_API_KEY`, or
+  - `LLM_PROVIDER=gemini` + `GEMINI_API_KEY`
+- Optional model override: `INTENT_OS_LLM_MODEL` (defaults: `gpt-4o-mini` / `gemini-2.5-flash`).
 
 ## 8. Fixture and demo date
 

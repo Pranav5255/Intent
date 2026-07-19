@@ -34,7 +34,7 @@ def test_pipeline_builds_safe_deterministic_cached_intents() -> None:
     assert first.intents and first.intents[0].children
     assert first.intents[0].id == second.intents[0].id
     assert first.intents[0].id == forced.intents[0].id
-    assert first.intents[0].label == "Work in project:infra"
+    assert first.intents[0].label == "Work on infra"
     assert first.intents[0].confidence == 0.7
     assert all(child.confidence > 0 for root in first.intents for child in root.children)
     assert any(todo.path.endswith("iam.tf") and todo.marker == "TODO" for root in first.intents for child in root.children for todo in child.todos)
@@ -98,11 +98,11 @@ def test_pipeline_labels_children_and_parent_with_provider_and_isolates_cache() 
             self.cluster_texts: list[str] = []
             self.parent_texts: list[str] = []
 
-        async def label_cluster(self, cluster_events_text: str, project_tag: str | None = None) -> dict:
+        async def label_cluster(self, cluster_events_text: str, project_tag: str | None = None, hints: dict | None = None) -> dict:
             self.cluster_texts.append(cluster_events_text)
             return {"label": "Custom Child Label", "summary": "Custom child summary.", "confidence": 0.91}
 
-        async def label_parent(self, parent_events_text: str, project_tag: str | None = None) -> dict:
+        async def label_parent(self, parent_events_text: str, project_tag: str | None = None, hints: dict | None = None) -> dict:
             self.parent_texts.append(parent_events_text)
             return {"label": "Custom Parent Label", "summary": "Custom parent summary.", "confidence": 0.82}
 

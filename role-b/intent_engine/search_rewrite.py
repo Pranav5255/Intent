@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import re
 
-from intent_engine.llm import OpenAIResponsesClient, redact_for_prompt
+from intent_engine.llm_base import LLMClient
+from intent_engine.llm import redact_for_prompt
 
 
 MAX_REWRITE_QUERIES = 5
 MAX_QUERY_LENGTH = 100
 
 
-async def rewrite_search_queries(question: str, llm: OpenAIResponsesClient) -> list[str]:
+async def rewrite_search_queries(question: str, llm: LLMClient) -> list[str]:
     original = _sanitize(question)
     if not original:
         return [question.strip() or ""]

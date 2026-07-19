@@ -46,7 +46,9 @@ This layer needs no OpenAI key and is the source of truth for intent data.
 |---|---|---|---|
 | Enrichment | `intent_engine/enrich.py` | Cluster -> `IntentStats`, editor/browser/shell insights, project tag, TODO observations; also aggregates child stats and validates trees. | Uses normalized metadata only. Shell insights contain failed command family/exit code counts, never stderr. TODOs come only from editor `document_change` signals and store path/timestamp/marker, not code. |
 | Resume | `intent_engine/resume.py` | Cluster -> `ResumePayload`; child payloads -> merged parent payload. | Most-recent editor files are capped at 5; sanitized HTTP(S) browser URLs are deduplicated by domain and capped at 8; shell keeps recent `cwd`/`last_cmd`. No restore action is performed. |
-| Fallback labels | `intent_engine/labeling.py` | `FallbackLabelProvider` labels safe event-description lines with deterministic heuristics. | Works without an API key; labels and summaries never require raw document text. |
+| Fallback labels | `intent_engine/labeling.py` | `TemplateFallbackLabelProvider` builds labels from cluster signals (`command_family`, file basename, domain, project tag). | Works without an API key; no Terraform/IAM keyword branches; summaries use safe normalized text only. |
+
+When LLM labeling is disabled or fails, labels are generated from structured hints computed in `pipeline.py` (`command_family`, `top_file`, `top_domain`, `dominant_family`, `project_tag`). Examples: `Run Npm`, `Edit auth.tsx`, `Research aws.amazon.com`, `Work on infra`. Parent intents aggregate child command families or project tags into `Work on {project}` or `{fam1} and {fam2} Work`.
 | Store | `intent_engine/store.py` | Persists `Intent` trees and `PipelineResult` in SQLite; provides cache, FTS search/highlighting, date/project stats, and deletion. | Writes replace a date atomically, FTS indexes only safe label/summary/insight/tag text, reads rebuild children, and `delete_date`/`delete_project` purge related rows and search entries. |
 | Orchestration | `intent_engine/pipeline.py` | Runs normalization through persistence and returns `PipelineResult`. | Cache checks use normalized data plus provider identity; IDs are deterministic; parents aggregate children; `PIPELINE_VERSION` is `1.0.0`; diagnostics contain only safe aggregate fields. |
 
@@ -71,18 +73,19 @@ This layer needs no OpenAI key and is the source of truth for intent data.
 
 ### Deterministic privacy rules
 
-- No `OPENAI_API_KEY` is required.
+- No LLM provider API key is required for the deterministic pipeline.
 - Clustering and resume construction do not require raw document text.
 - Only bounded `ResumePayload` fields are restore context: files, URLs, and shell values.
 - Raw event objects are internal pipeline context and are not API intent output or diagnostics content.
 
 ## 4. LLM / Copilot layer (optional)
 
-This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and `OPENAI_API_KEY` is present. Otherwise factories select deterministic fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
+This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and the selected provider key is present (`OPENAI_API_KEY` or `GEMINI_API_KEY` with matching `LLM_PROVIDER`). Otherwise factories select template fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
 
-- `intent_engine/providers.py` — evaluates flags dynamically; creates `FallbackLabelProvider` or `OpenAILabelProvider`, and optionally an `OpenAIResponsesClient`.
-- `intent_engine/llm.py` — guarded OpenAI Responses API client with structured JSON/tool calling, timeouts, typed failures, and prompt redaction. It does not use Chat Completions or `gpt-3.5-turbo`.
-- `intent_engine/labeling.py` — optional Responses-based labeling; any SDK, timeout, validation, or network failure falls back deterministically.
+- `intent_engine/providers.py` — evaluates flags dynamically; creates `TemplateFallbackLabelProvider` or `LLMLabelProvider`, and optionally an OpenAI or Gemini client via `create_llm_client()`.
+- `intent_engine/llm.py` — OpenAI Responses API adapter implementing the shared `LLMClient` protocol.
+- `intent_engine/llm_gemini.py` — Gemini adapter implementing the same protocol for labeling and Copilot tool loops.
+- `intent_engine/labeling.py` — optional LLM labeling through `LLMLabelProvider`; any SDK, timeout, validation, or network failure falls back to template labels.
 - `intent_engine/tools.py` — safe read-only allowlist: `search_intents`, `get_intent`, `get_resume_payload`, `get_current_intent`, and `get_intent_stats`. Calls are capped and validated before reaching `IntentStore`/`CurrentIntentEngine`.
 - `intent_engine/copilot.py` — bounded tool-calling loop with search rewriting, QA, briefing, and narrative modes; derives citations from tool results, tracks `evidence_status`, keeps compact conversation summaries, and enforces resume-proposal integrity.
 - `api.py` — `POST /copilot/query` and `GET /copilot/briefing/{intent_id}`. Both are gated and return `CopilotNotConfigured` with 503 when unavailable.
@@ -114,13 +117,15 @@ This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`,
 | `intent_engine/cluster.py` | deterministic | Topic/command-phase clustering with a four-cluster cap. |
 | `intent_engine/enrich.py` | deterministic | Stats, insights, tags, TODOs, and tree invariants. |
 | `intent_engine/resume.py` | deterministic | Bounded restore-context payload construction and merging. |
-| `intent_engine/labeling.py` | both | Deterministic fallback labels and optional OpenAI labels. |
+| `intent_engine/labeling.py` | both | Template fallback labels and optional LLM labels (OpenAI or Gemini). |
 | `intent_engine/store.py` | deterministic | SQLite persistence, cache, FTS, aggregation, and forgetting. |
 | `intent_engine/pipeline.py` | both | End-to-end intent construction, caching, labeling, and persistence. |
 | `intent_engine/current.py` | deterministic | F11 current-work inference. |
 | `intent_engine/prediction.py` | deterministic | F10 historical prefix prediction. |
 | `intent_engine/providers.py` | optional LLM | Environment-driven provider selection. |
-| `intent_engine/llm.py` | optional LLM | Optional OpenAI Responses transport. |
+| `intent_engine/llm_base.py` | optional LLM | Shared `LLMClient` protocol for provider adapters. |
+| `intent_engine/llm.py` | optional LLM | OpenAI Responses adapter. |
+| `intent_engine/llm_gemini.py` | optional LLM | Gemini adapter with tool-call continuation. |
 | `intent_engine/tools.py` | optional LLM | Validated, privacy-safe Copilot tool registry. |
 | `intent_engine/copilot.py` | optional LLM | Grounded Copilot tool loop and answer modes. |
 | `intent_engine/api.py` | both | FastAPI routes for deterministic services and gated Copilot features. |
