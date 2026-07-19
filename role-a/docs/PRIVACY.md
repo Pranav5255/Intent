@@ -10,7 +10,9 @@ receive the recorded code changes and browser actions.
 
 - X11 foreground application and window title.
 - Firefox **active** tab URL and title. URL credentials, query strings and
-  fragments are removed before transmission to the loopback service.
+  fragments are removed before transmission to the loopback service. Domains in
+  `~/.config/intent-os/blocked-domains.yaml` are stored as `[blocked]`; detailed
+  action context and target labels are removed for those domains.
 - VS Code/Cursor workspace path, active local file path, language ID, edit/save
   signals.
 - Shell command, working directory, exit code and duration. Commands matching

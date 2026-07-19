@@ -27,6 +27,7 @@ class ClusterEngine:
         commands = [event.entities.command_family for event in events if event.entities.command_family]
         files = [event.entities.file_name for event in events if event.entities.file_name]
         domains = [event.entities.domain for event in events if event.entities.domain]
+        context_terms = [term for event in events for term in event.entities.context_terms]
         project, project_score = _most_common(projects)
         command_family, command_score = _most_common(commands)
         top_file, file_score = _most_common(files)
@@ -42,6 +43,7 @@ class ClusterEngine:
             "domains": _unique(domains),
             "top_domain": top_domain,
             "domain_score": domain_score,
+            "context_terms": _unique(context_terms),
         }
 
     def _time_adjacent(
@@ -152,6 +154,9 @@ class ClusterEngine:
         domain_comparable = bool(topic1.get("domains") and topic2.get("domains"))
         domain_matches = bool(set(topic1.get("domains", [])) & set(topic2.get("domains", [])))
         comparisons.append((0.1, domain_matches if domain_comparable else None))
+        context_comparable = bool(topic1.get("context_terms") and topic2.get("context_terms"))
+        context_matches = bool(set(topic1.get("context_terms", [])) & set(topic2.get("context_terms", [])))
+        comparisons.append((0.15, context_matches if context_comparable else None))
 
         available = [(weight, matched) for weight, matched in comparisons if matched is not None]
         if not available:

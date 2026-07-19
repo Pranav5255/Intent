@@ -8,10 +8,11 @@ values or document snapshots.
 
 ## Demo data and desktop flow
 
-`fixtures/demo-day.json` is a 26-event, schema-versioned infrastructure
-scenario (VS Code, Firefox, shell, and focus events) recorded for the locked
-demo date **2026-07-13**. Replay it locally with `scripts/emit_fixture.py`,
-then run the intent pipeline supplied by Role B.
+`fixtures/demo-day.json` is a 28-event, schema-versioned **Building Login
+Feature** scenario (VS Code, Firefox, shell, focus, and idle events) recorded
+for the locked demo date **2026-07-13**. It follows `src/auth.tsx`, failed
+`npm test` runs, and MDN/Stack Overflow JWT research. Replay it locally with
+`scripts/emit_fixture.py`, then run the intent pipeline supplied by Role B.
 
 After installation, the autostart entry starts local capture and calls
 `intent-osctl notify-yesterday`. The command waits for the local event and
@@ -38,3 +39,12 @@ Run the complete test suite with:
 ```bash
 make test
 ```
+
+## Local privacy and health
+
+Copy `config/blocked-domains.yaml.example` to
+`~/.config/intent-os/blocked-domains.yaml` to exclude a browser domain and all
+of its subdomains from capture. Blocked events remain visible only as
+`[blocked]` audit records. `GET /v1/status` reports recent connector health,
+activity timing, and service availability; source events become stale after 30
+minutes by default (`INTENT_OS_SOURCE_STALE_AFTER_SECONDS` overrides it).

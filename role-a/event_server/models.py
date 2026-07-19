@@ -92,7 +92,7 @@ def _validate_document_change(payload: dict[str, Any]) -> None:
 
 
 def _validate_user_action(payload: dict[str, Any]) -> None:
-    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page", "context"}
+    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page", "context", "blocked"}
     if set(payload) - allowed_payload_fields:
         raise ValueError("user_action payload contains unsupported fields")
     _bounded_string(payload["url"], "url", 4096)
@@ -104,6 +104,8 @@ def _validate_user_action(payload: dict[str, Any]) -> None:
         raise ValueError("payload action is invalid")
     if not isinstance(payload["sensitive_page"], bool):
         raise ValueError("payload sensitive_page must be a boolean")
+    if "blocked" in payload and not isinstance(payload["blocked"], bool):
+        raise ValueError("payload blocked must be a boolean")
     target = payload["target"]
     if not isinstance(target, dict) or not {"tag", "role"}.issubset(target):
         raise ValueError("payload target must contain tag and role")

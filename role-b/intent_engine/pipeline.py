@@ -17,7 +17,7 @@ from intent_engine.labeling import (
     validate_label_result,
 )
 from intent_engine.providers import create_label_provider
-from intent_engine.normalize import compute_source_hash, normalize_events
+from intent_engine.normalize import compute_source_hash, intelligence_text, normalize_events
 from intent_engine.resume import build_resume_payload, merge_resume_payloads
 from intent_engine.schemas import DayExport, Intent, IntentInsights, PipelineResult, PipelineWarning
 from intent_engine.sessionize import sessionize
@@ -123,6 +123,7 @@ def _cluster_intent(date: str, source_hash: str, session_index: int, cluster_ind
         ),
         resume_payload=build_resume_payload(cluster),
         todos=detect_todos(cluster),
+        evidence=[item for event in cluster for item in event.evidence],
         prefix=_cluster_prefix(cluster),
     )
 
@@ -141,6 +142,7 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
         stats=stats,
         insights=IntentInsights(),
         resume_payload=merge_resume_payloads([child.resume_payload for child in children]),
+        evidence=[item for child in children for item in child.evidence],
         children=children,
     )
     validate_intent_tree(parent)
@@ -148,12 +150,16 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
 
 
 async def _label_cluster(provider: LabelProvider, cluster, project_tag: str | None, hints: dict) -> dict:
-    text = "\n".join(f"{index}. {event.text}" for index, event in enumerate(cluster, start=1))
+    text = "\n".join(intelligence_text(event, index) for index, event in enumerate(cluster, start=1))
     return await _safe_label(provider, "label_cluster", text, project_tag, hints)
 
 
 async def _label_parent(provider: LabelProvider, children: list[Intent], project_tag: str | None, hints: dict) -> dict:
-    text = "\n".join(f"{index}. {child.label}: {child.summary}" for index, child in enumerate(children, start=1))
+    sections: list[str] = []
+    for index, child in enumerate(children, start=1):
+        sections.append(f"{index}. {child.label}: {child.summary}")
+        sections.extend(f"  {item.field}: {item.value}" for item in child.evidence)
+    text = "\n".join(sections)
     return await _safe_label(provider, "label_parent", text, project_tag, hints)
 
 

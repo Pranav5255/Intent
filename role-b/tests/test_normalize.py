@@ -55,6 +55,34 @@ def test_normalizes_editor_and_command_without_document_text() -> None:
     assert normalized_command.text == "Ran terraform (exit code 1)"
 
 
+def test_retains_all_role_a_payload_values_as_intelligence_evidence() -> None:
+    browser = raw_event(
+        "browser", 4, "firefox", "user_action",
+        {
+            "url": "https://docs.example.com/guide",
+            "action": "click",
+            "target": {"tag": "button", "role": "button", "label": "Deploy"},
+            "context": {"kind": "article", "author": "Ada", "text_excerpt": "Use a canary deployment."},
+        },
+    )
+    file_content = raw_event(
+        "file", 5, "filesystem", "file_content",
+        {"path": "/work/plan.md", "kind": "text", "mime": "text/markdown", "excerpt": "Deploy after approval."},
+    )
+
+    normalized_browser, browser_warning = normalize_event(browser, 0)
+    normalized_file, file_warning = normalize_event(file_content, 1)
+
+    assert browser_warning is None and normalized_browser is not None
+    assert file_warning is None and normalized_file is not None
+    browser_evidence = {item.field: item.value for item in normalized_browser.evidence}
+    file_evidence = {item.field: item.value for item in normalized_file.evidence}
+    assert browser_evidence["target.label"] == "Deploy"
+    assert browser_evidence["context.author"] == "Ada"
+    assert browser_evidence["context.text_excerpt"] == "Use a canary deployment."
+    assert file_evidence["excerpt"] == "Deploy after approval."
+
+
 def test_batch_sorting_deduplication_and_hashing() -> None:
     late = raw_event("late", 20, "linux", "app_focus", {"title": "Code"})
     early = raw_event("early", 10, "filesystem", "file_modify", {"path": "/work/image.png", "workspace": "/work"})

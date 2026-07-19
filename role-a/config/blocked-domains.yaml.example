@@ -1,0 +1,6 @@
+# Copy to ~/.config/intent-os/blocked-domains.yaml to keep these domains out of
+# local browser capture.  Rules match the exact domain and all its subdomains.
+blocked_domains:
+  - chase.com
+  - wellsfargo.com
+  - internal.company.com

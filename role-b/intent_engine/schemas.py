@@ -48,6 +48,7 @@ class EventEntities(BaseModel):
     command_family: str | None = None
     cwd: str | None = None
     exit_code: int | None = None
+    context_terms: list[str] = Field(default_factory=list)
 
 
 class EventSignals(BaseModel):
@@ -58,8 +59,15 @@ class EventSignals(BaseModel):
     todo_added: bool = False
 
 
+class ContextEvidence(BaseModel):
+    """One consent-approved Role A payload value available to intelligence."""
+
+    field: str
+    value: str
+
+
 class NormalizedEvent(BaseModel):
-    """Role B's privacy-safe, pipeline-ready representation of a raw event."""
+    """Role B's pipeline representation, including approved Role A context."""
 
     id: str
     ts: int
@@ -70,6 +78,7 @@ class NormalizedEvent(BaseModel):
     text: str
     entities: EventEntities = Field(default_factory=EventEntities)
     signals: EventSignals = Field(default_factory=EventSignals)
+    evidence: list[ContextEvidence] = Field(default_factory=list)
     raw: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -116,6 +125,7 @@ class Intent(BaseModel):
     stats: IntentStats
     insights: IntentInsights
     todos: list[TodoObservation] = Field(default_factory=list)
+    evidence: list[ContextEvidence] = Field(default_factory=list)
     resume_payload: ResumePayload
     prefix: tuple[str, str, str] | None = None
     children: list[Intent] = Field(default_factory=list)

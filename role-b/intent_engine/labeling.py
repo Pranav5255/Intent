@@ -61,7 +61,9 @@ class TemplateFallbackLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        lines = _safe_lines(cluster_events_text)
+        # The deterministic fallback deliberately uses only activity headlines.
+        # It must not copy consent-approved excerpts into a public summary.
+        lines = _activity_lines(cluster_events_text)
         hint_values = hints or {}
         normalized = "\n".join(lines).lower()
         command_family = _string_hint(hint_values, "command_family")
@@ -96,7 +98,7 @@ class TemplateFallbackLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        lines = _safe_lines(parent_events_text)
+        lines = _activity_lines(parent_events_text)
         hint_values = hints or {}
         project_name = _project_display_name(project_tag)
         command_families = hint_values.get("command_families") or []
@@ -142,7 +144,11 @@ class LLMLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        safe_text = "\n".join(_safe_lines(cluster_events_text))[:1200]
+        # Role A has already applied consent, field bounds, redaction and domain
+        # blocking.  Keep the complete resulting context for the intelligence
+        # provider; the old 1,200-character, URL/content-stripping path made
+        # detailed capture unavailable to Role B.
+        safe_text = _intelligence_lines(cluster_events_text)
         try:
             response = await asyncio.wait_for(
                 self._completion("cluster", safe_text, project_tag),
@@ -158,7 +164,7 @@ class LLMLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        safe_text = "\n".join(_safe_lines(parent_events_text))[:1200]
+        safe_text = _intelligence_lines(parent_events_text)
         try:
             response = await asyncio.wait_for(
                 self._completion("parent", safe_text, project_tag),
@@ -177,7 +183,7 @@ class LLMLabelProvider(LabelProvider):
             )
         else:
             user = (
-                "Given these privacy-safe activity descriptions, provide a 2-5 word label, "
+                "Given these consent-approved activity descriptions and context, provide a 2-5 word label, "
                 "a one-sentence summary, and confidence from 0 to 1.\n"
                 f"Project tag: {project_tag or 'none'}\nEvents:\n{safe_text}"
             )
@@ -239,11 +245,20 @@ def build_parent_hints(command_families: list[str], project_tag: str | None) -> 
     return {"command_families": unique, "project_tag": project_tag}
 
 
-def _safe_lines(cluster_events_text: str) -> list[str]:
+def _activity_lines(cluster_events_text: str) -> list[str]:
+    """Return only rendered event headlines for the no-LLM fallback."""
+
     if not isinstance(cluster_events_text, str):
         return []
-    banned = re.compile(r"://|\[redacted\]|\b(?:raw|payload|document|content|url)\b", re.IGNORECASE)
-    return [line.strip() for line in cluster_events_text.splitlines() if line.strip() and not banned.search(line)]
+    return [line.strip() for line in cluster_events_text.splitlines() if re.match(r"^\d+\.\s+", line.strip())]
+
+
+def _intelligence_lines(cluster_events_text: str) -> str:
+    """Preserve complete Role-A-approved context while removing blank lines."""
+
+    if not isinstance(cluster_events_text, str):
+        return ""
+    return "\n".join(line.rstrip() for line in cluster_events_text.splitlines() if line.strip())
 
 
 def _summary(lines: list[str]) -> str:

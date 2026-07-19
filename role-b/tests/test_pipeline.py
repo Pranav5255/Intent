@@ -121,5 +121,6 @@ def test_pipeline_labels_children_and_parent_with_provider_and_isolates_cache() 
     assert result.intents[0].confidence == 0.82
     assert all(child.label == "Custom Child Label" and child.confidence == 0.91 for child in result.intents[0].children)
     assert provider.cluster_texts[0].startswith("1. ")
-    assert "raw" not in provider.cluster_texts[0].lower()
+    assert "changes[0].text" in provider.cluster_texts[0]
+    assert "assume_role_policy" in provider.cluster_texts[0]
     assert provider.parent_texts[0].startswith("1. Custom Child Label: Custom child summary.")

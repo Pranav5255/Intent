@@ -200,7 +200,7 @@ class IntentStore:
                                 stored_node.id,
                                 stored_node.label,
                                 stored_node.summary,
-                                json.dumps(stored_node.insights.model_dump(mode="json"), separators=(",", ":")),
+                                self._searchable_evidence(stored_node),
                                 json.dumps(stored_node.tags, separators=(",", ":")),
                             ),
                         )
@@ -463,3 +463,15 @@ class IntentStore:
                 )
                 return f"{'...' if start else ''}{highlighted}{'...' if end < len(text) else ''}"
         return f"{summary[:80]}{'...' if len(summary) > 80 else ''}"
+
+    @staticmethod
+    def _searchable_evidence(intent: Intent) -> str:
+        """Index Role-A-approved evidence alongside derived insights.
+
+        The full structured evidence remains in ``intent_json``; this compact
+        text makes it discoverable by the FTS path used by Copilot search.
+        """
+
+        insights = json.dumps(intent.insights.model_dump(mode="json"), separators=(",", ":"))
+        evidence = " ".join(f"{item.field} {item.value}" for item in intent.evidence)
+        return f"{insights} {evidence}".strip()

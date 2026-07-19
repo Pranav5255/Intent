@@ -69,24 +69,9 @@ class EventStore:
             )
             if cursor.rowcount:
                 persisted = EventOut(**record, ingested_at=ingested_at)
-                self._append_event_log(persisted)
                 return True, persisted
             row = connection.execute("SELECT * FROM events WHERE id = ?", (record["id"],)).fetchone()
         return False, self._event_from_row(row)
-
-    @staticmethod
-    def _append_event_log(event: EventOut) -> None:
-        """Best-effort JSONL for demo-day diagnosis; storage remains SQLite-first."""
-        data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-        log_dir = data_home / "intent-os" / "logs"
-        try:
-            log_dir.mkdir(parents=True, exist_ok=True)
-            with (log_dir / "events.jsonl").open("a", encoding="utf-8") as log:
-                serializer = getattr(event, "model_dump_json", event.json)
-                log.write(serializer() + "\n")
-        except OSError:
-            # A non-writable log directory must never stop local capture.
-            pass
 
     @staticmethod
     def _event_from_row(row: sqlite3.Row) -> EventOut:
@@ -138,12 +123,28 @@ class EventStore:
         )
 
 
-    def source_status(self) -> dict[str, dict[str, int]]:
+    def source_status(
+        self, *, now: int | None = None, stale_after_seconds: int = 30 * 60
+    ) -> dict[str, dict[str, int | bool | None]]:
+        if stale_after_seconds <= 0:
+            raise ValueError("stale_after_seconds must be positive")
+        now = int(time.time()) if now is None else now
         with self._connection() as connection:
             rows = connection.execute(
                 "SELECT source, COUNT(*) AS event_count, MAX(ts) AS last_event_ts FROM events GROUP BY source ORDER BY source"
             ).fetchall()
-        return {row["source"]: {"event_count": row["event_count"], "last_event_ts": row["last_event_ts"]} for row in rows}
+        result: dict[str, dict[str, int | bool | None]] = {
+            source: {"event_count": 0, "last_event_ts": None, "healthy": False}
+            for source in ("vscode", "firefox", "shell", "linux", "filesystem")
+        }
+        for row in rows:
+            last_event_ts = row["last_event_ts"]
+            result[row["source"]] = {
+                "event_count": row["event_count"],
+                "last_event_ts": last_event_ts,
+                "healthy": last_event_ts is not None and now - last_event_ts <= stale_after_seconds,
+            }
+        return result
 
 
 

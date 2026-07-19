@@ -28,4 +28,9 @@ class StatusApiTests(unittest.TestCase):
 
         self.assertEqual(status.status_code, 200)
         self.assertTrue(status.json()["ok"])
-        self.assertEqual(status.json()["sources"], {"shell": {"event_count": 1, "last_event_ts": 100}})
+        sources = status.json()["sources"]
+        self.assertEqual(sources["shell"]["event_count"], 1)
+        self.assertEqual(sources["shell"]["last_event_ts"], 100)
+        self.assertFalse(sources["shell"]["healthy"])
+        self.assertIn("activity", status.json())
+        self.assertEqual(status.json()["services"]["event_server"], True)

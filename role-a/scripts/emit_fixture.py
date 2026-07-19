@@ -16,7 +16,9 @@ def post(url: str, payload: dict) -> None:
         request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST"),
         timeout=3,
     )
-    if response.status not in {200, 201}:
+    # Detailed-capture events may be intentionally disabled on a fresh install.
+    # A 204 still proves the fixture was accepted by the local ingest boundary.
+    if response.status not in {200, 201, 204}:
         raise RuntimeError(f"server returned HTTP {response.status}")
 
 

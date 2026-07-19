@@ -2,10 +2,11 @@
 
 Recording date: **2026-07-13** (local Ubuntu demo scenario).
 
-`demo-day.json` contains 26 schema-versioned events for the infrastructure
-story: 5 Linux focus events, 8 VS Code events, 7 Firefox events, and 5 shell
-commands. It includes `iam.tf`, AWS IAM/Terraform research, repeated
-AccessDenied investigation, and two failed `terraform apply` commands.
+`demo-day.json` contains 28 schema-versioned events for the **Building Login
+Feature** story: Linux focus and idle events, VS Code work in `src/auth.tsx`,
+Firefox research, and shell commands. It includes MDN Fetch API and Stack
+Overflow JWT research, two failed `npm test -- auth` commands, and `npm run
+dev` in `~/projects/taskflow-app`.
 
 Replay it against a running Role A service:
 

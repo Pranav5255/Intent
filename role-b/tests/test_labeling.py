@@ -77,7 +77,7 @@ class FakeResponsesClient:
         raise NotImplementedError
 
 
-def test_llm_provider_validates_response_and_only_sends_safe_text() -> None:
+def test_llm_provider_validates_response_and_receives_role_a_approved_context() -> None:
     provider = OpenAILabelProvider(api_key="test-key")
     fake_client = FakeResponsesClient('{"label":"Review IAM Policy","summary":"Reviewed IAM configuration.","confidence":0.8}')
     provider._client = fake_client
@@ -86,8 +86,8 @@ def test_llm_provider_validates_response_and_only_sends_safe_text() -> None:
     assert result["label"] == "Review IAM Policy"
     prompt = fake_client.calls[0]["user"]
     assert "Edited iam.tf" in prompt
-    assert "https://" not in prompt
-    assert "raw payload" not in prompt
+    assert "https://secret.example/path" in prompt
+    assert "raw payload here" in prompt
     assert fake_client.calls[0]["schema_name"] == "intent_label"
 
 

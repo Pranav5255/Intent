@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from intent_engine.cluster import cluster_session
-from intent_engine.normalize import normalize_events
+from intent_engine.normalize import intelligence_text, normalize_events
 from intent_engine.providers import create_label_provider
 from intent_engine.schemas import CurrentIntent
 from intent_engine.sessionize import sessionize
@@ -46,7 +46,7 @@ class CurrentIntentEngine:
         if confidence < 0.5:
             return None
 
-        cluster_text = "\n".join(f"{index}. {event.text}" for index, event in enumerate(cluster, start=1))
+        cluster_text = "\n".join(intelligence_text(event, index) for index, event in enumerate(cluster, start=1))
         label_result = await self._label_provider.label_cluster(cluster_text)
         intent = CurrentIntent(
             label=label_result["label"],

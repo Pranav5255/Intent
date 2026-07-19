@@ -79,3 +79,14 @@ class EventStoreTests(unittest.TestCase):
         migrated.insert(event)
 
         self.assertEqual(migrated.list_events()[0].schema_version, 1)
+
+    def test_source_status_marks_sources_stale_after_configured_threshold(self) -> None:
+        event = self.event("00000000-0000-4000-8000-000000000007", 1_000)
+        self.store.insert(event)
+
+        stale = self.store.source_status(now=2_801, stale_after_seconds=1_800)
+        fresh = self.store.source_status(now=2_800, stale_after_seconds=1_800)
+
+        self.assertFalse(stale["linux"]["healthy"])
+        self.assertTrue(fresh["linux"]["healthy"])
+        self.assertEqual(fresh["firefox"], {"event_count": 0, "last_event_ts": None, "healthy": False})

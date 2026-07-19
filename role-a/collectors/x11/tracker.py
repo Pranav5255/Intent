@@ -15,6 +15,9 @@ from dataclasses import dataclass
 from typing import Callable
 from urllib import request
 
+from collectors.activity.feed import ActivityFeed
+from event_server.logging_setup import configure_jsonl_logger
+
 
 class X11Unavailable(RuntimeError):
     """Raised when a foreground window cannot be inspected."""
@@ -80,29 +83,44 @@ def post_event(endpoint: str, event: dict[str, object]) -> None:
         pass
 
 
-def run_tracker(endpoint: str, interval: float, once: bool = False) -> int:
+def _xprintidle_ms() -> int | None:
+    if not shutil.which("xprintidle"):
+        return None
+    try:
+        return max(0, int(_run(["xprintidle"])))
+    except (ValueError, X11Unavailable):
+        return None
+
+
+def run_tracker(endpoint: str, interval: float, once: bool = False, activity_feed: ActivityFeed | None = None) -> int:
+    logger = configure_jsonl_logger("x11-tracker", "x11-tracker.jsonl")
     missing = [name for name in ("xdotool", "xprop") if not shutil.which(name)]
     if missing:
-        print("Intent OS X11 tracker disabled: missing " + ", ".join(missing), flush=True)
+        logger.error("tracker_disabled", extra={"event": "tracker_disabled", "detail": "missing " + ", ".join(missing)})
         return 2
     if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":
-        print("Intent OS X11 tracker disabled: Wayland session detected", flush=True)
+        logger.error("tracker_disabled", extra={"event": "tracker_disabled", "detail": "Wayland session detected"})
         return 2
 
+    feed = activity_feed or ActivityFeed()
     previous: tuple[str, str, str] | None = None
     while True:
         try:
+            idle_ms = _xprintidle_ms()
+            if idle_ms is not None:
+                feed.set_idle_ms(idle_ms)
             window = get_active_window()
             if window.signature != previous:
                 post_event(endpoint, build_event(window))
                 previous = window.signature
+                feed.record("focus")
         except X11Unavailable as exc:
-            print(f"Intent OS X11 tracker: {exc}", flush=True)
+            logger.error("window_inspection_failed", extra={"event": "window_inspection_failed", "error_type": type(exc).__name__})
         except OSError as exc:
-            print(f"Intent OS X11 tracker cannot post event: {exc}", flush=True)
+            logger.error("event_post_failed", extra={"event": "event_post_failed", "error_type": type(exc).__name__})
         if once:
             return 0
-        time.sleep(interval)
+        time.sleep(max(interval, feed.recommended_poll_interval_sec()))
 
 
 def main() -> None:
