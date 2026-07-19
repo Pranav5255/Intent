@@ -1,5 +1,12 @@
 .env
 *.db
 .venv/
-**pycache**/
+**/__pycache__/
 .pytest_cache/
+
+# Google Cloud / Gemini service account keys — never commit
+kube-orch*.json
+*service-account*.json
+*-credentials.json
+google-credentials.json
+secrets/

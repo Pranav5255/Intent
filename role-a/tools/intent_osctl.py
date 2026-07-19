@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 from urllib import error, request
+from urllib.parse import urlencode
 
 INSTALL_ROOT = Path(os.environ.get("INTENT_OS_INSTALL_ROOT", "/opt/intent-os"))
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +48,7 @@ UNIT_NAMES = (
 )
 INTENT_API = "http://127.0.0.1:9478"
 EVENT_API = "http://127.0.0.1:9477"
+ROLE_C_PREVIEW_URL = "http://127.0.0.1:9479/preview"
 
 
 def run_systemctl(*arguments: str) -> None:
@@ -220,6 +223,47 @@ def wait_for_json(url: str, timeout: float = 30) -> Any:
     raise RuntimeError(f"service did not become ready: {url} ({last_error})")
 
 
+def preview_url(intent_id: str) -> str:
+    """Return the Role C preview link for one stored intent without restoring it."""
+
+    return f"{ROLE_C_PREVIEW_URL}?{urlencode({'intent_id': intent_id, 'restore_scope': 'same_project'})}"
+
+
+def notification_subject(intent: dict[str, object]) -> str:
+    """Choose a short project-first notification subject from safe stored fields."""
+
+    tags = intent.get("tags")
+    if isinstance(tags, list):
+        for tag in tags:
+            if isinstance(tag, str) and tag.casefold().startswith("project:"):
+                project = tag.split(":", 1)[1].strip()
+                if project:
+                    return project.replace("-", " ").replace("_", " ").title()
+    label = intent.get("label")
+    return str(label).strip() or "your work"
+
+
+def launch_preview(url: str) -> bool:
+    """Invoke only an explicitly configured Intent OS preview client."""
+
+    raw_command = os.environ.get("INTENT_OS_PREVIEW_COMMAND", "").strip()
+    if not raw_command:
+        return False
+    try:
+        command = shlex.split(raw_command)
+    except ValueError:
+        return False
+    if not command or not shutil.which(command[0]):
+        return False
+    subprocess.Popen(
+        [*command, url],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return True
+
+
 def command_notify_yesterday() -> int:
     try:
         wait_for_json(f"{EVENT_API}/healthz")
@@ -232,24 +276,26 @@ def command_notify_yesterday() -> int:
     top = intents[0]
     if not isinstance(top, dict):
         return 0
-    label = str(top.get("label", "your work"))
     summary = str(top.get("summary", "Open Intent OS to continue."))
-    message = f"Good morning. Yesterday you were {label.lower()}.\n{summary}"
+    intent_id = top.get("id")
+    if not isinstance(intent_id, str) or not intent_id.strip():
+        return 0
+    subject = notification_subject(top)
+    message = summary
     notify = shutil.which("notify-send")
     if not notify:
         print("Intent OS notification skipped: notify-send is unavailable", file=sys.stderr)
         return 0
     try:
         result = subprocess.run(
-            [notify, "--app-name=Intent OS", "--icon=dialog-information", "--action=default=Open", "Intent OS", message],
+            [notify, "--app-name=Intent OS", "--icon=dialog-information", "--action=default=Preview", f"Continue {subject}?", message],
             check=False,
             capture_output=True,
             text=True,
         )
         if result.returncode == 0 and result.stdout.strip() == "default":
-            opener = shutil.which("xdg-open")
-            if opener:
-                subprocess.Popen([opener, "http://127.0.0.1:9479"], start_new_session=True)
+            if not launch_preview(preview_url(intent_id)):
+                print("Intent OS preview launcher unavailable", file=sys.stderr)
     except OSError as exc:
         print(f"Intent OS notification skipped: {exc}", file=sys.stderr)
     return 0

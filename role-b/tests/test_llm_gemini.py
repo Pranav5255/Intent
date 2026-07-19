@@ -135,3 +135,20 @@ def test_missing_sdk_raises_llm_error(monkeypatch):
     client._get_client = lambda: (_ for _ in ()).throw(LLMError("Optional Gemini SDK is unavailable; install requirements-gemini.txt"))
     with pytest.raises(LLMError):
         run(client.respond_json(system="s", user="u", schema_name="x", schema={"type": "object"}))
+
+
+def test_service_account_path_is_accepted(tmp_path):
+    credentials = tmp_path / "sa.json"
+    credentials.write_text(
+        '{"type":"service_account","project_id":"kube-orch","private_key":"x"}',
+        encoding="utf-8",
+    )
+    client = GeminiClient(credentials_path=str(credentials), project="kube-orch", location="us-central1")
+    assert client.api_key is None
+    assert client.credentials_path == str(credentials)
+    assert client.project == "kube-orch"
+
+
+def test_missing_credentials_raises():
+    with pytest.raises(ValueError, match="GEMINI_API_KEY or GOOGLE_APPLICATION_CREDENTIALS"):
+        GeminiClient(api_key="", credentials_path="")

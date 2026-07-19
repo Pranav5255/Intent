@@ -215,6 +215,16 @@ class IntentStore:
             rows = await self._fetch_rows(connection, date)
         return self._rebuild_roots(rows)
 
+    async def get_root_intents(self) -> list[Intent]:
+        """Return every persisted top-level intent for local selection flows."""
+
+        async with self._connection() as connection:
+            cursor = await connection.execute(
+                "SELECT intent_json FROM intents WHERE parent_id IS NULL ORDER BY end_ts DESC, id"
+            )
+            rows = await cursor.fetchall()
+        return [Intent.model_validate_json(row["intent_json"]) for row in rows]
+
     async def get_intent_stats(
         self,
         date_from: str,

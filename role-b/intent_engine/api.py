@@ -20,7 +20,8 @@ from intent_engine.current import CurrentIntentEngine
 from intent_engine.normalize import normalize_events
 from intent_engine.prediction import PredictionEngine
 from intent_engine.providers import copilot_enabled, create_copilot_llm, create_label_provider
-from intent_engine.schemas import CopilotNotConfigured, CopilotQueryRequest, DayExport, PipelineResult
+from intent_engine.resume_select import select_resume_preview
+from intent_engine.schemas import CopilotNotConfigured, CopilotQueryRequest, DayExport, PipelineResult, ResumeSelectRequest
 from intent_engine.source import RoleAClient, RoleAUnavailableError
 from intent_engine.store import IntentStore
 from intent_engine.tools import ToolContext, ToolRegistry
@@ -171,6 +172,13 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
         if intent is None:
             raise HTTPException(status_code=404, detail="Intent not found")
         return intent
+
+    @application.post("/resume/select")
+    async def resume_select(request: ResumeSelectRequest):
+        response = await select_resume_preview(application.state.store, request)
+        if response is None:
+            raise HTTPException(status_code=404, detail="No stored intent matched the selection")
+        return response
 
     @application.post("/pipeline/run")
     async def pipeline_run(date: Annotated[str, Query(...)]) -> PipelineResult:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EventPayload(BaseModel):
@@ -109,6 +109,16 @@ class TodoObservation(BaseModel):
     marker: Literal["TODO", "FIXME", "XXX"]
 
 
+class SemanticIntentMetadata(BaseModel):
+    """Safe provenance for an intent produced by semantic refinement."""
+
+    refined: bool = True
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    event_roles: dict[str, int] = Field(default_factory=dict)
+    workspace_root: str | None = None
+    provider_identity: str | None = None
+
+
 class Intent(BaseModel):
     """A user-facing work intent, optionally containing sub-intents."""
 
@@ -128,6 +138,7 @@ class Intent(BaseModel):
     evidence: list[ContextEvidence] = Field(default_factory=list)
     resume_payload: ResumePayload
     prefix: tuple[str, str, str] | None = None
+    semantic: SemanticIntentMetadata | None = None
     children: list[Intent] = Field(default_factory=list)
 
 
@@ -143,6 +154,21 @@ class PipelineResult(BaseModel):
     source_hash: str
     pipeline_version: str
     cached: bool = False
+
+
+class SemanticEventProposal(BaseModel):
+    """One future LLM proposal for the role of an observed event."""
+
+    event_id: str
+    role: Literal["task", "supporting_context", "background", "unrelated"]
+    confidence: float = Field(ge=0.0, le=1.0)
+    linked_event_ids: list[str] | None = None
+
+
+class SemanticProposalResponse(BaseModel):
+    """Structured semantic proposals returned by a future provider call."""
+
+    proposals: list[SemanticEventProposal] = Field(default_factory=list)
 
 
 class CurrentIntent(BaseModel):
@@ -174,6 +200,40 @@ class ResumeProposal(BaseModel):
     briefing: str | None = None
 
 
+class ResumeSelectRequest(BaseModel):
+    """Stored-intent selection request; this never performs restoration."""
+
+    intent_id: str | None = Field(default=None, min_length=1, max_length=128)
+    project_tag: str | None = Field(default=None, min_length=1, max_length=128)
+    query: str | None = Field(default=None, min_length=1, max_length=2000)
+    restore_scope: Literal["same_project"] | None = None
+
+    @model_validator(mode="after")
+    def requires_selector(self) -> "ResumeSelectRequest":
+        if not any(value and value.strip() for value in (self.intent_id, self.project_tag, self.query)):
+            raise ValueError("one of intent_id, project_tag, or query is required")
+        return self
+
+
+class ResumeSelectCandidate(BaseModel):
+    intent_id: str
+    label: str
+    summary: str
+    project_tag: str | None = None
+    workspace_root: str | None = None
+    score: float = Field(ge=0.0)
+
+
+class ResumeSelectPreview(ResumeSelectCandidate):
+    resume_payload: ResumePayload
+
+
+class ResumeSelectResponse(BaseModel):
+    needs_picker: bool
+    candidates: list[ResumeSelectCandidate] = Field(default_factory=list)
+    selected: ResumeSelectPreview | None = None
+
+
 class CopilotQueryRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     date_from: str | None = None
@@ -199,7 +259,8 @@ class CopilotNotConfigured(BaseModel):
     code: Literal["copilot_not_configured"] = "copilot_not_configured"
     message: str = (
         "Intent Copilot is not configured. Set ENABLE_COPILOT=true, "
-        "ROLE_B_LLM_ENABLED=true, and a provider key (OPENAI_API_KEY or GEMINI_API_KEY)."
+        "ROLE_B_LLM_ENABLED=true, and provider credentials "
+        "(OPENAI_API_KEY, GEMINI_API_KEY, or GOOGLE_APPLICATION_CREDENTIALS)."
     )
 
 
