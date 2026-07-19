@@ -8,6 +8,7 @@ const OMITTED_TEXT = "[omitted: size-limit]";
 function event(type, payload) {
   return {
     id: randomUUID(),
+    schema_version: 1,
     ts: Math.floor(Date.now() / 1000),
     source: "vscode",
     type,

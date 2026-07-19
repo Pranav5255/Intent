@@ -1,5 +1,8 @@
 .PHONY: test test-python test-firefox test-vscode package-dev package-check
 
+PACKAGE_VERSION := 0.1.1
+PACKAGE_ARCH := $(shell dpkg --print-architecture)
+
 test: test-python test-firefox test-vscode
 
 test-python:
@@ -18,4 +21,4 @@ package-dev:
 	bash packaging/build-deb.sh --dev
 
 package-check:
-	bash packaging/tests/check_deb.sh dist/intent-os_0.1.0_all.deb
+	bash packaging/tests/check_deb.sh dist/intent-os_$(PACKAGE_VERSION)_$(PACKAGE_ARCH).deb

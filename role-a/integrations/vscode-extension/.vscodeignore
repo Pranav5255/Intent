@@ -1,4 +1,6 @@
 .vscode/**
 node_modules/**
+tests/**
+build-vsix.sh
 **/*.map
 **/*.ts

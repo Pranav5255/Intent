@@ -2,7 +2,7 @@
   "name": "intent-os-vscode",
   "displayName": "Intent OS Capture",
   "description": "Emit local Intent OS editor events to the Role A event server.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "intent-os",
   "engines": {
     "vscode": "^1.85.0"
@@ -12,7 +12,18 @@
     "onStartupFinished"
   ],
   "main": "./extension.js",
-  "contributes": {},
+  "contributes": {
+    "configuration": {
+      "title": "Intent OS",
+      "properties": {
+        "intentOS.detailedCapture": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow bounded editor change capture after Intent OS server consent and workspace approval."
+        }
+      }
+    }
+  },
   "scripts": {
     "package": "vsce package --out dist/intent-os-vscode.vsix"
   },

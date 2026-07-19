@@ -29,6 +29,7 @@ test("maps a local editor document to metadata only", () => {
 test("produces canonical VS Code event envelopes", () => {
   const result = event("file_save", { path: "/tmp/a.py" });
   assert.equal(result.source, "vscode");
+  assert.equal(result.schema_version, 1);
   assert.equal(result.type, "file_save");
   assert.deepEqual(result.payload, { path: "/tmp/a.py" });
   assert.match(result.id, /^[0-9a-f-]{36}$/);

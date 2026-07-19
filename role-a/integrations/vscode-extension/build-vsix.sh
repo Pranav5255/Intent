@@ -6,15 +6,18 @@ DIST="$EXT_DIR/dist/intent-os-vscode.vsix"
 
 mkdir -p "$EXT_DIR/dist"
 cd "$EXT_DIR"
+rm -f "$DIST"
 
-if command -v npx >/dev/null 2>&1; then
-  npm install --no-save @vscode/vsce@3.2.1 >/dev/null 2>&1 || true
-  npx --yes @vscode/vsce@3.2.1 package --out "$DIST"
+if test -x "$EXT_DIR/node_modules/.bin/vsce" && "$EXT_DIR/node_modules/.bin/vsce" --version >/dev/null 2>&1; then
+  "$EXT_DIR/node_modules/.bin/vsce" package --out "$DIST"
 else
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "npm is required to build the Intent OS VSIX" >&2
+    exit 1
+  fi
   tmp="$(mktemp -d)"
-  mkdir -p "$tmp/extension"
-  cp package.json extension.js .vscodeignore "$tmp/extension/"
-  (cd "$tmp" && zip -qr "$DIST" extension)
+  npm install --prefix "$tmp" @vscode/vsce@3.2.1
+  "$tmp/node_modules/.bin/vsce" package --out "$DIST"
   rm -rf "$tmp"
 fi
 

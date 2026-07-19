@@ -20,6 +20,11 @@ IMPORT_ROOT = SOURCE_ROOT if (SOURCE_ROOT / "event_server").is_dir() else INSTAL
 if str(IMPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(IMPORT_ROOT))
 
+ROLE_B_ROOT = IMPORT_ROOT / "role-b"
+if not ROLE_B_ROOT.is_dir():
+    ROLE_B_ROOT = SOURCE_ROOT.parent / "role-b"
+ROLE_B_PYTHON = ROLE_B_ROOT / ".venv" / "bin" / "python"
+
 from event_server import detailed_capture
 from tools import filesystem_capture, workspaces
 
@@ -33,7 +38,12 @@ SHELL_SOURCES = {
 SYSTEMD_SOURCE = IMPORT_ROOT / "packaging" / "systemd"
 MARKER_START = "# >>> Intent OS shell integration >>>"
 MARKER_END = "# <<< Intent OS shell integration <<<"
-UNIT_NAMES = ("intent-os-server.service", "intent-os-x11-tracker.service", "intent-os-workspace-watch.service")
+UNIT_NAMES = (
+    "intent-os-server.service",
+    "intent-os-role-b.service",
+    "intent-os-x11-tracker.service",
+    "intent-os-workspace-watch.service",
+)
 INTENT_API = "http://127.0.0.1:9478"
 EVENT_API = "http://127.0.0.1:9477"
 
@@ -61,6 +71,8 @@ def install_systemd_units() -> None:
         contents = source.read_text(encoding="utf-8")
         contents = contents.replace("@INTENT_OS_INSTALL_ROOT@", install_root)
         contents = contents.replace("@INTENT_OS_PYTHON@", python_executable)
+        contents = contents.replace("@INTENT_OS_ROLE_B_ROOT@", str(ROLE_B_ROOT))
+        contents = contents.replace("@INTENT_OS_ROLE_B_PYTHON@", str(ROLE_B_PYTHON))
         (destination_dir / unit_name).write_text(contents, encoding="utf-8")
 
 
@@ -103,7 +115,7 @@ def install_editor_extension(command: str, label: str) -> None:
         raise RuntimeError(f"{label} CLI {command} is unavailable")
     if not VSIX_PATH.is_file():
         raise RuntimeError(f"bundled VSIX is unavailable: {VSIX_PATH}")
-    subprocess.run([editor, "--install-extension", str(VSIX_PATH)], check=True)
+    subprocess.run([editor, "--install-extension", str(VSIX_PATH), "--force"], check=True)
 
 
 def uninstall_editor_extension(command: str, label: str) -> None:

@@ -2,12 +2,14 @@
 
 ## Prerequisites
 
-- Ubuntu 22.04+ with a GNOME **X11** session for foreground-window tracking.
+- Ubuntu 24.04+ on the same architecture/Python ABI as the package build, with
+  a GNOME **X11** session for foreground-window tracking.
 - Firefox for browser metadata capture.
 - VS Code is optional but recommended for editor-specific file context.
 
-The package declares the Python runtime, X11 and workspace-watcher dependencies.
-It never installs VS Code itself.
+The unified package includes Role A, Role B, the Firefox companion, and the
+VS Code/Cursor companion. Role B runs as a local user service on port `9478`
+with bundled Python dependencies; the package never installs VS Code or Cursor.
 
 ## Build artifacts
 
@@ -35,12 +37,13 @@ unset AMO_JWT_ISSUER AMO_JWT_SECRET  # ensures .env is used
 bash scripts/sign_firefox.sh
 INTENT_OS_FIREFOX_XPI="$(pwd)/integrations/firefox-extension/dist/intent-os-firefox-signed.xpi" \
   bash packaging/build-deb.sh
-sudo apt install ./dist/intent-os_0.1.0_all.deb
+sudo apt install ./dist/intent-os_0.1.1_amd64.deb
 ```
 
 ## Per-user enablement
 
-After installation, each user explicitly enables local collection:
+After installation, each user explicitly enables the local Role A capture
+services and the Role B deterministic engine:
 
 ```bash
 intent-osctl enable
@@ -51,9 +54,10 @@ intent-osctl shell enable --shell bash
 intent-osctl status
 ```
 
-`intent-osctl disable` stops and disables all user services. `intent-osctl
-shell disable --shell bash` removes only the marked Intent OS block from the
-shell rc file.
+`intent-osctl enable` starts the event API on `9477` and the Role B API on
+`9478`, alongside the X11 tracker and workspace watcher. `intent-osctl disable`
+stops and disables all user services. `intent-osctl shell disable --shell bash`
+removes only the marked Intent OS block from the shell rc file.
 
 
 ## Detailed capture (opt-in)
