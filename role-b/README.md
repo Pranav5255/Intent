@@ -8,7 +8,7 @@ Role B is the local Intent OS service that converts Role A activity exports into
 
 - Windows PowerShell and Python 3.11 or newer.
 - Optional: Role A running on port `9477` for live exports and current-intent inference.
-- Optional: an OpenAI API key for Intent Copilot.
+- Optional: a Gemini or OpenAI API key for Intent Copilot and future semantic clustering.
 
 ## 3. Setup
 
@@ -37,22 +37,44 @@ Optional provider packages:
 
 Role B supports two LLM backends selected with `LLM_PROVIDER`:
 
-| Provider | Env key | Default model | Install |
+| Provider | Credentials | Default model | Install |
 |---|---|---|---|
 | `openai` (default) | `OPENAI_API_KEY` | `gpt-4o-mini` | `requirements-openai.txt` |
-| `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` | `requirements-gemini.txt` |
+| `gemini` | Service-account JSON via `GOOGLE_APPLICATION_CREDENTIALS` (preferred) or `GEMINI_API_KEY` | `gemini-2.5-flash` | `requirements-gemini.txt` |
 
-Example Gemini `.env`:
+Example Gemini `.env` using a local service-account JSON (Vertex AI):
 
 ```dotenv
 LLM_PROVIDER=gemini
-GEMINI_API_KEY=your-key-here
+GOOGLE_APPLICATION_CREDENTIALS=./kube-orch-afd05706a10f.json
+GOOGLE_CLOUD_PROJECT=kube-orch
+GOOGLE_CLOUD_LOCATION=us-central1
 ROLE_B_LLM_ENABLED=true
 ENABLE_COPILOT=true
 INTENT_OS_LLM_MODEL=gemini-2.5-flash
 ```
 
-When `ROLE_B_LLM_ENABLED=false` or the selected provider key is blank, labeling uses deterministic template labels derived from cluster signals (command family, file, domain, project tag) — not keyword heuristics tied to a demo scenario.
+Keep the JSON file local — `role-b/.gitignore` ignores `kube-orch*.json` and other credential filename patterns. Never commit `.env` or service-account keys.
+
+When `ROLE_B_LLM_ENABLED=false` or the selected provider credentials are missing, labeling uses deterministic template labels derived from cluster signals (command family, file, domain, project tag) — not keyword heuristics tied to a demo scenario.
+
+## 4.1 Semantic correlation (optional)
+
+Semantic refinement is disabled by default and reuses the existing cloud-provider factory. Gemini is the preferred configuration: set `LLM_PROVIDER=gemini` with a service-account JSON (or `GEMINI_API_KEY`); OpenAI remains supported through `LLM_PROVIDER=openai` and `OPENAI_API_KEY`.
+
+```dotenv
+LLM_PROVIDER=gemini
+GOOGLE_APPLICATION_CREDENTIALS=./kube-orch-afd05706a10f.json
+GOOGLE_CLOUD_PROJECT=kube-orch
+ROLE_B_LLM_ENABLED=true
+ROLE_B_SEMANTIC_CLUSTER=true
+ROLE_B_SEMANTIC_TIMEOUT_MS=8000
+ROLE_B_SEMANTIC_CONTENT_CONSENT=true
+```
+
+`ROLE_B_SEMANTIC_CONTENT_CONSENT=true` is mandatory. When enabled, the semantic stage sends only bounded candidate packets to the selected cloud provider: WhatsApp/messaging activity is excluded, media remains background-only, and opt-in snippets are limited to non-redacted editor changes and safe browser excerpts. The timeout defaults to `8000` milliseconds when missing or invalid.
+
+Semantic output is advisory. Invalid proposals, low-confidence links, timeouts, provider errors, and cross-workspace merge attempts fall back to deterministic clusters. Packets, prompts, raw events, and private/redacted content are never persisted. Only the existing `openai` and `gemini` cloud factories are supported; Ollama, LM Studio, and other local LLM runtimes are out of scope.
 
 ## 5. Run the API
 
@@ -112,17 +134,19 @@ Role A unavailability is reported as HTTP 503 by the pipeline endpoint. The curr
 
 ## 8. Enable Intent Copilot (optional)
 
-Edit the local `.env` with OpenAI or Gemini credentials:
+Edit the local `.env` with OpenAI or Gemini credentials. For Gemini, prefer a gitignored service-account JSON:
 
 ```dotenv
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your-key-here
+LLM_PROVIDER=gemini
+GOOGLE_APPLICATION_CREDENTIALS=./kube-orch-afd05706a10f.json
+GOOGLE_CLOUD_PROJECT=kube-orch
+GOOGLE_CLOUD_LOCATION=us-central1
 ROLE_B_LLM_ENABLED=true
 ENABLE_COPILOT=true
-INTENT_OS_LLM_MODEL=gpt-4o-mini
+INTENT_OS_LLM_MODEL=gemini-2.5-flash
 ```
 
-Restart the API after changing environment variables. Copilot is disabled unless both feature flags and a non-empty key are present. When disabled, `POST /copilot/query` and the briefing helper return HTTP 503 with `code: "copilot_not_configured"`.
+Restart the API after changing environment variables. Copilot is disabled unless both feature flags and provider credentials are present. When disabled, `POST /copilot/query` and the briefing helper return HTTP 503 with `code: "copilot_not_configured"`.
 
 Example requests:
 
@@ -170,6 +194,7 @@ The deterministic regression lock requires all tests to pass, including source, 
 | `GET /intents/current` | Infer recent work from Role A's last 30 minutes. | F11; may return `null`. |
 | `GET /intents/prediction` | Predict from historical prefixes. | Only active when `ENABLE_PREDICTION=true`. |
 | `GET /intents/{intent_id}` | Read one intent tree/node. | 404 when absent. |
+| `POST /resume/select` | Resolve stored intents and return a bounded preview. | Never restores; accepts `intent_id`, `project_tag`, or `query`, plus optional `restore_scope: "same_project"`. |
 | `POST /pipeline/run?date=...` | Fetch Role A export and process it. | Role A required; 503 if unavailable. |
 | `POST /pipeline/run-replay` | Process a `DayExport` request body. | No Role A required. |
 | `POST /pipeline/recompute?date=...` | Delete and force-recompute a date. | Role A required. |
@@ -195,7 +220,7 @@ Role B retains durable intent summaries until explicitly deleted. The two `/v1/m
 
 ## 11. Privacy and safety reminders
 
-- Raw events and document-change content are never sent to the LLM.
+- Semantic refinement sends only the explicitly consented, bounded packet snippets described above; raw event objects, messaging content, titles, URLs, commands, and redacted content are never sent.
 - Resume payloads are deterministic, bounded, and store-derived; generated prose cannot change their files, URLs, or shell values.
 - Copilot tools are read-only and cannot call Role A restore endpoints.
 - Forgetting endpoints purge Role B's durable intents and search index only; they do not delete Role A raw events.

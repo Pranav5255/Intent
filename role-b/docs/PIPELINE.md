@@ -22,7 +22,7 @@ Role A :9477                    demo-day.json
        store.py  --->  intents.db (cache, FTS, persisted intent trees)
                   |
                   v
-       api.py :9478 (/intents/*, /pipeline/*, /copilot/*)
+       api.py :9478 (/intents/*, /pipeline/*, /resume/select, /copilot/*)
              /             |               \
        Role C/tray     Copilot          optional MCP
 ```
@@ -39,6 +39,7 @@ This layer needs no OpenAI key and is the source of truth for intent data.
 | Normalize | `intent_engine/normalize.py` | `RawEvent` -> `NormalizedEvent`; extracts family, category, safe text, entities, and signals. | Events are timestamp ordered, duplicate IDs are discarded, failures become `PipelineWarning`s, and `compute_source_hash()` returns a stable 16-character SHA-256 prefix. Raw data remains internal context only. |
 | Sessions | `intent_engine/sessionize.py` | Ordered normalized events -> sessions. | A gap strictly greater than 15 minutes starts a session; `idle_start` and `idle_end` close boundaries and idle markers are not retained as activity. |
 | Clusters | `intent_engine/cluster.py` | One session -> chronological topic clusters. | Five-minute adjacency, project/file/command topic shifts, and command-phase transitions form boundaries. Similar pure-gap runs may merge; output is capped at four clusters while preserving event order and uniqueness. |
+| Semantic refine (optional) | `intent_engine/semantic_pack.py` + `intent_engine/semantic_cluster.py` | One session -> validated semantic clusters. | Requires `ROLE_B_SEMANTIC_CLUSTER`, `ROLE_B_LLM_ENABLED`, a selected OpenAI/Gemini key, and explicit content consent. The model receives only bounded S1 packets; invalid output, provider failures, and timeouts fall back to deterministic clusters. |
 
 ### Enrichment and persistence
 
@@ -73,14 +74,18 @@ When LLM labeling is disabled or fails, labels are generated from structured hin
 
 ### Deterministic privacy rules
 
+- `POST /resume/select` resolves only stored intents into ranked candidates or one scoped preview; it never restores applications.
+
 - No LLM provider API key is required for the deterministic pipeline.
 - Clustering and resume construction do not require raw document text.
 - Only bounded `ResumePayload` fields are restore context: files, URLs, and shell values.
 - Raw event objects are internal pipeline context and are not API intent output or diagnostics content.
+- Semantic packets exclude messaging entirely, keep Spotify/media as background-only, and include text only with explicit consent: non-redacted editor changes and non-sensitive browser excerpts are bounded before cloud transmission. Prompts, packets, raw events, titles, URLs, commands, and private/redacted content are never persisted.
+- Semantic metadata contains only refinement confidence, role counts, one workspace root, and provider identity. It never contains prompts, snippets, raw events, URLs, commands, or private/redacted content.
 
 ## 4. LLM / Copilot layer (optional)
 
-This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and the selected provider key is present (`OPENAI_API_KEY` or `GEMINI_API_KEY` with matching `LLM_PROVIDER`). Otherwise factories select template fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
+This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and the selected provider credentials are present (`OPENAI_API_KEY`, or for Gemini either `GEMINI_API_KEY` or a service-account JSON via `GOOGLE_APPLICATION_CREDENTIALS` / `GEMINI_CREDENTIALS_PATH`, with matching `LLM_PROVIDER`). Otherwise factories select template fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
 
 - `intent_engine/providers.py` — evaluates flags dynamically; creates `TemplateFallbackLabelProvider` or `LLMLabelProvider`, and optionally an OpenAI or Gemini client via `create_llm_client()`.
 - `intent_engine/llm.py` — OpenAI Responses API adapter implementing the shared `LLMClient` protocol.
@@ -98,13 +103,19 @@ This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`,
 - `resume_proposal.resume_payload` must be copied from a successful `get_resume_payload`/store result; generated prose can supply only the briefing text.
 - `GET /intents/search` remains deterministic. Natural-language query rewriting is Copilot-only.
 - All Copilot/MCP tools are read-only. They cannot fetch raw events, touch files/Git, or call Role A `POST /v1/restore`.
+- Semantic cache variants include provider/model plus content and clustering policy versions, preventing stale deterministic or cross-provider cache reuse.
+- Semantic refinement uses only the existing OpenAI/Gemini cloud-client factory. Ollama, LM Studio, and other local runtimes are not supported.
+
+### Resume selection and restore boundary
+
+`POST /resume/select` ranks existing stored root intents by ID, project tag, or query and returns either candidates requiring a picker or one bounded preview. With `restore_scope="same_project"`, files and shell context outside the preview's unique workspace root are removed. Role B does not contact Role A or restore anything. Role C displays this preview, then only after a separate explicit user confirmation calls Role A `POST /v1/restore` with the unchanged preview payload and selected mode.
 
 ## 5. What Role B deliberately does not do
 
 - Provide the Role C UI or tray experience.
 - Restore applications or windows (Role A owns restore operations).
 - Define or execute Role A's raw-event retention policy; coordinate with Role A's separate 30-day deletion process.
-- Perform deferred post-MVP behavior such as LLM-driven cluster refinement, five-minute pipes, or proactive auto-tasks.
+- Perform deferred post-MVP behavior such as idle-return notifications, five-minute pipes, or proactive auto-tasks.
 
 ## 6. Module map
 

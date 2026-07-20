@@ -16,8 +16,11 @@ for the locked demo date **2026-07-13**. It follows `src/auth.tsx`, failed
 
 After installation, the autostart entry starts local capture and calls
 `intent-osctl notify-yesterday`. The command waits for the local event and
-intent APIs, shows a native notification for the top inferred intent, and opens
-the local app if its **Open** action is chosen. `intent-osctl tray` starts the
+intent APIs, then shows `Continue {project}?` for the top inferred intent. Its
+**Preview** action starts only the explicitly configured
+`INTENT_OS_PREVIEW_COMMAND`, passing a Role C preview URL; it never restores
+applications. Role C must show the Role B preview and wait for a separate user
+confirmation before it calls `POST /v1/restore`. `intent-osctl tray` starts the
 GNOME/Ayatana indicator with Yesterday's intents, Pause capture, Open app, and
 Quit actions. The indicator degrades harmlessly when an AppIndicator host is
 not installed.

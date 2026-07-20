@@ -12,6 +12,7 @@ from typing import Any
 _SAFE_KEYS = {
     "timestamp", "type", "event_id", "error", "severity", "date", "source_hash",
     "status", "event_count", "duration_ms", "warning_count",
+    "semantic_provider_identity", "semantic_fallback_reason",
 }
 _SENSITIVE_ERROR = re.compile(
     r"(?:"
@@ -59,6 +60,8 @@ class DiagnosticsLogger:
         event_count: int,
         duration_ms: int,
         warning_count: int = 0,
+        semantic_provider_identity: str | None = None,
+        semantic_fallback_reason: str | None = None,
     ) -> None:
         self._append({
             "timestamp": self._timestamp(),
@@ -69,6 +72,8 @@ class DiagnosticsLogger:
             "event_count": event_count,
             "duration_ms": duration_ms,
             "warning_count": warning_count,
+            "semantic_provider_identity": semantic_provider_identity,
+            "semantic_fallback_reason": semantic_fallback_reason,
         })
 
     def log_cache_hit(self, date: str, source_hash: str) -> None:

@@ -7,21 +7,59 @@ import importlib
 import json
 import os
 import uuid
+from pathlib import Path
 from typing import Any
 
 from intent_engine.llm import LLMError, redact_for_prompt
+
+_VERTEX_SCOPES = ("https://www.googleapis.com/auth/cloud-platform",)
+
+
+def _resolve_credentials_path(
+    credentials_path: str | None = None,
+) -> str | None:
+    raw = (
+        credentials_path
+        or os.environ.get("GEMINI_CREDENTIALS_PATH", "").strip()
+        or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+        or ""
+    )
+    return raw or None
+
+
+def _project_id_from_credentials(credentials_path: str) -> str | None:
+    try:
+        payload = json.loads(Path(credentials_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    project_id = payload.get("project_id")
+    return project_id.strip() if isinstance(project_id, str) and project_id.strip() else None
 
 
 class GeminiClient:
     def __init__(
         self,
         api_key: str | None = None,
+        credentials_path: str | None = None,
+        project: str | None = None,
+        location: str | None = None,
         model: str | None = None,
         timeout_seconds: float = 20.0,
     ) -> None:
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is required for live Gemini use")
+        self.api_key = (api_key if api_key is not None else os.environ.get("GEMINI_API_KEY", "")).strip() or None
+        self.credentials_path = _resolve_credentials_path(credentials_path)
+        self.project = (
+            (project if project is not None else os.environ.get("GOOGLE_CLOUD_PROJECT", "")).strip() or None
+        )
+        self.location = (
+            (location if location is not None else os.environ.get("GOOGLE_CLOUD_LOCATION", "")).strip()
+            or "us-central1"
+        )
+        if not self.api_key and not self.credentials_path:
+            raise ValueError(
+                "GEMINI_API_KEY or GOOGLE_APPLICATION_CREDENTIALS / GEMINI_CREDENTIALS_PATH "
+                "is required for live Gemini use"
+            )
         self.model = model or os.environ.get("INTENT_OS_LLM_MODEL") or "gemini-2.5-flash"
         self.timeout_seconds = timeout_seconds
         self._client: Any | None = None
@@ -32,11 +70,37 @@ class GeminiClient:
             return self._client, self._types
         try:
             genai = importlib.import_module("google.genai")
-            self._client = genai.Client(api_key=self.api_key)
+            if self.api_key:
+                self._client = genai.Client(api_key=self.api_key)
+            else:
+                assert self.credentials_path is not None
+                credentials_file = Path(self.credentials_path)
+                if not credentials_file.is_file():
+                    raise LLMError(f"Gemini credentials file not found: {self.credentials_path}")
+                service_account = importlib.import_module("google.oauth2.service_account")
+                credentials = service_account.Credentials.from_service_account_file(
+                    str(credentials_file),
+                    scopes=list(_VERTEX_SCOPES),
+                )
+                project = self.project or _project_id_from_credentials(str(credentials_file))
+                if not project:
+                    raise LLMError(
+                        "GOOGLE_CLOUD_PROJECT is required when using a Gemini service account JSON"
+                    )
+                # Ensure ADC-style discovery works for any nested Google client usage.
+                os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(credentials_file))
+                self._client = genai.Client(
+                    vertexai=True,
+                    project=project,
+                    location=self.location,
+                    credentials=credentials,
+                )
             self._types = genai.types
             return self._client, self._types
         except ImportError as exc:
             raise LLMError("Optional Gemini SDK is unavailable; install requirements-gemini.txt") from exc
+        except LLMError:
+            raise
         except Exception as exc:
             raise LLMError("Unable to initialize the Gemini client") from exc
 

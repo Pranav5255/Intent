@@ -111,19 +111,22 @@ an error: Role B found no adequate stored evidence for the question.
 | Now | `GET /intents/current` | Poll approximately every 60 seconds; handle `null`. |
 | Copilot chat | `POST /copilot/query` | Optional; disable gracefully on 503. On 502, keep the panel available and offer a retry. |
 | Briefing | `GET /copilot/briefing/{id}` | Show generative briefing separately from deterministic payload; offer retry on 502. |
+| Resume selection | `POST /resume/select` | Resolve stored intents and return a preview only; it never restores applications. |
 | Resume CTA | Use `resume_proposal.resume_payload` or `intent.resume_payload`, then call Role A | Require user confirmation and choose `resume` or `continue` mode. |
 
 ## 6. Resume flow (critical)
 
 ```text
-Role C displays optional generative briefing
-Role C displays deterministic files / URLs / shell payload
-User clicks Resume and confirms the mode
-Role C -> Role A POST /v1/restore with that payload + mode
-Role B is NOT called for restore execution
+Notification click -> Role C /preview?intent_id=...&restore_scope=same_project
+Role C -> Role B POST /resume/select with the deep-link intent_id and scope
+Role C displays project, summary, files, URLs, and terminal context
+User clicks Open this task and explicitly selects/accepts a mode
+Role C -> Role A POST /v1/restore with the unchanged preview resume_payload + mode
 ```
 
-Role C must only send the payload returned by Role B or another explicitly approved deterministic source. Role A owns validation and restore execution.
+`POST /resume/select` accepts at least one of `intent_id`, `project_tag`, or `query`, plus optional `restore_scope: "same_project"`. It returns ranked candidates and `needs_picker`; when that flag is true, Role C must require a user choice before displaying any selected payload. The selected preview includes the stored intent ID, label, summary, project/workspace root, and bounded `resume_payload`.
+
+The notification only opens this preview flow through a configured Intent-OS-owned launcher. It never restores applications. The manual path is also required to remain available: search -> select -> review -> explicit confirmation -> restore. Role C must only send the unmodified `resume_payload` returned by Role B or another explicitly approved deterministic source. Every Role A restore requires an explicit user confirmation click; Role A owns validation and restore execution.
 
 ## 7. Environment and feature flags
 
