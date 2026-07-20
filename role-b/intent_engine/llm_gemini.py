@@ -44,7 +44,7 @@ class GeminiClient:
         project: str | None = None,
         location: str | None = None,
         model: str | None = None,
-        timeout_seconds: float = 20.0,
+        timeout_seconds: float = 60.0,
     ) -> None:
         self.api_key = (api_key if api_key is not None else os.environ.get("GEMINI_API_KEY", "")).strip() or None
         self.credentials_path = _resolve_credentials_path(credentials_path)
@@ -111,8 +111,10 @@ class GeminiClient:
         user: str,
         schema_name: str,
         schema: dict,
+        max_input_chars: int | None = 4_000,
+        prefer_json_object: bool = False,
     ) -> dict:
-        del schema_name  # Gemini uses schema body only.
+        del schema_name, prefer_json_object  # Gemini uses schema body only.
 
         async def request() -> Any:
             client, types = self._get_client()
@@ -124,7 +126,7 @@ class GeminiClient:
             return await asyncio.to_thread(
                 client.models.generate_content,
                 model=self.model,
-                contents=redact_for_prompt(user),
+                contents=redact_for_prompt(user, max_input_chars),
                 config=config,
             )
 

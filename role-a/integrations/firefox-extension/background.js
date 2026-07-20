@@ -3,7 +3,7 @@ const CONFIG_ENDPOINT = "http://127.0.0.1:9477/v1/detailed-capture/config";
 const MAX_PENDING_EVENTS = 100;
 const DEBOUNCE_MS = 300;
 const CONFIG_CACHE_MS = 30_000;
-const USER_ACTIONS = new Set(["click", "link_activation", "form_submit", "toggle", "select_change", "like", "reply", "repost", "share", "follow", "unfollow"]);
+const USER_ACTIONS = new Set(["click", "link_activation", "form_submit", "toggle", "select_change", "scroll", "like", "reply", "repost", "share", "follow", "unfollow"]);
 
 const pendingEvents = [];
 const lastTabFingerprint = new Map();
@@ -55,6 +55,7 @@ export function makeUserActionEvent(tab, actionPayload) {
   if (!url || !tag) return null;
 
   const sensitivePage = Boolean(actionPayload.sensitive_page);
+  if (sensitivePage && actionPayload.action === "scroll") return null;
   const action = sensitivePage ? (actionPayload.action === "form_submit" ? "form_submit" : "click") : actionPayload.action;
   const target = { tag, role };
   if (!sensitivePage) {
@@ -75,6 +76,14 @@ export function makeUserActionEvent(tab, actionPayload) {
     if (kind && text_excerpt) context = { kind, text_excerpt, ...(author ? { author } : {}) };
   }
 
+  let scroll;
+  if (action === "scroll") {
+    const rawScroll = actionPayload.scroll || {};
+    if (tag !== "document" || role !== "document") return null;
+    if (!["up", "down"].includes(rawScroll.direction) || !Number.isInteger(rawScroll.position_bucket) || rawScroll.position_bucket < 0 || rawScroll.position_bucket > 10) return null;
+    scroll = { direction: rawScroll.direction, position_bucket: rawScroll.position_bucket };
+  }
+
   return {
     id: crypto.randomUUID(),
     ts: Math.floor(Date.now() / 1000),
@@ -87,6 +96,7 @@ export function makeUserActionEvent(tab, actionPayload) {
       action,
       target,
       sensitive_page: sensitivePage,
+      ...(scroll ? { scroll } : {}),
       ...(context ? { context } : {})
     }
   };

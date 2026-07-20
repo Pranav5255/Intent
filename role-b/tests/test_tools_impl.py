@@ -27,9 +27,9 @@ def test_all_store_backed_tools_and_not_found():
     directory, registry = setup_registry()
     try:
         search = run(registry.execute("search_intents", {"query": "Implementation", "date_from": "2026-07-13", "date_to": "2026-07-13", "limit": 1}))
-        assert set(search["results"][0]) == {"id", "label", "summary", "date", "highlight_snippet"}
+        assert set(search["results"][0]) == {"id", "label", "summary", "date"}
         assert run(registry.execute("get_intent", {"intent_id": "impl-intent"}))["intent"]["id"] == "impl-intent"
-        assert run(registry.execute("get_resume_payload", {"intent_id": "impl-intent"}))["resume_payload"]["files"] == ["/repo/iam.tf"]
+        assert run(registry.execute("get_resume_payload", {"intent_id": "impl-intent"}))["resume_context"]["file_count"] == 1
         assert run(registry.execute("get_intent_stats", {"date_from": "2026-07-13", "date_to": "2026-07-13"}))["stats"]["event_count"] == 4
         assert run(registry.execute("get_intent", {"intent_id": "missing"})) == {"error": "not_found"}
         assert run(registry.execute("get_resume_payload", {"intent_id": "missing"})) == {"error": "not_found"}

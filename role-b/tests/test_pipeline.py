@@ -36,6 +36,11 @@ def test_pipeline_builds_safe_deterministic_cached_intents() -> None:
     assert first.intents[0].id == forced.intents[0].id
     assert first.intents[0].label == "Work on taskflow-app"
     assert first.intents[0].confidence == 0.7
+    assert all(
+        intent.privacy_policy_version == "safe-intent-features-v1"
+        for root in first.intents
+        for intent in [root, *root.children]
+    )
     assert all(child.confidence > 0 for root in first.intents for child in root.children)
     assert any(todo.path.endswith("auth.tsx") and todo.marker == "TODO" for root in first.intents for child in root.children for todo in child.todos)
     serialized = json.dumps(first.model_dump(mode="json"))
@@ -97,13 +102,21 @@ def test_pipeline_labels_children_and_parent_with_provider_and_isolates_cache() 
         def __init__(self) -> None:
             self.cluster_texts: list[str] = []
             self.parent_texts: list[str] = []
+            self.cluster_hints: list[dict | None] = []
+            self.parent_hints: list[dict | None] = []
+            self.cluster_project_tags: list[str | None] = []
+            self.parent_project_tags: list[str | None] = []
 
         async def label_cluster(self, cluster_events_text: str, project_tag: str | None = None, hints: dict | None = None) -> dict:
             self.cluster_texts.append(cluster_events_text)
+            self.cluster_hints.append(hints)
+            self.cluster_project_tags.append(project_tag)
             return {"label": "Custom Child Label", "summary": "Custom child summary.", "confidence": 0.91}
 
         async def label_parent(self, parent_events_text: str, project_tag: str | None = None, hints: dict | None = None) -> dict:
             self.parent_texts.append(parent_events_text)
+            self.parent_hints.append(hints)
+            self.parent_project_tags.append(project_tag)
             return {"label": "Custom Parent Label", "summary": "Custom parent summary.", "confidence": 0.82}
 
     export = load_replay_fixture(str(Path(__file__).parent / "fixtures" / "demo-day.json"))
@@ -120,6 +133,15 @@ def test_pipeline_labels_children_and_parent_with_provider_and_isolates_cache() 
     assert result.intents[0].label == "Custom Parent Label"
     assert result.intents[0].confidence == 0.82
     assert all(child.label == "Custom Child Label" and child.confidence == 0.91 for child in result.intents[0].children)
-    assert provider.cluster_texts[0].startswith("1. ")
-    assert "auth.tsx" in provider.cluster_texts[0].lower() or "login" in provider.cluster_texts[0].lower()
-    assert provider.parent_texts[0].startswith("1. Custom Child Label: Custom child summary.")
+    cluster_packet = json.loads(provider.cluster_texts[0])
+    parent_packet = json.loads(provider.parent_texts[0])
+    assert cluster_packet["policy_version"] == "safe-intent-features-v1"
+    assert parent_packet["policy_version"] == "safe-intent-features-v1"
+    captured = "\n".join(provider.cluster_texts + provider.parent_texts)
+    assert "auth.tsx" not in captured.lower()
+    assert "login" not in captured.lower()
+    assert "custom child label" not in captured.lower()
+    assert provider.cluster_project_tags == [None] * len(provider.cluster_texts)
+    assert provider.parent_project_tags == [None]
+    assert all("top_file" not in (hints or {}) and "top_domain" not in (hints or {}) for hints in provider.cluster_hints)
+    assert all("project_tag" not in (hints or {}) for hints in provider.parent_hints)

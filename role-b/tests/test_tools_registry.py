@@ -36,7 +36,7 @@ def test_allowlisted_schemas_and_json_safe_store_tools():
         assert {schema["name"] for schema in registry.openai_tool_schemas()} == set(ToolRegistry.ALLOWED_TOOLS)
         assert run(registry.execute("search_intents", {"query": "Tool"}))["results"][0]["id"] == "tool-intent"
         assert run(registry.execute("get_intent", {"intent_id": "tool-intent"}))["intent"]["id"] == "tool-intent"
-        assert run(registry.execute("get_resume_payload", {"intent_id": "tool-intent"}))["resume_payload"]["files"] == ["/repo/a.py"]
+        assert run(registry.execute("get_resume_payload", {"intent_id": "tool-intent"}))["resume_context"]["file_count"] == 1
         assert run(registry.execute("get_current_intent", {})) == {"current_intent": None}
         stats = run(registry.execute("get_intent_stats", {"date_from": "2026-07-13", "date_to": "2026-07-13"}))
         assert stats["stats"]["intent_count"] == 1

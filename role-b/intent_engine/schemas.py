@@ -7,6 +7,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+SAFE_INTENT_PRIVACY_POLICY_VERSION = "safe-intent-features-v1"
+
+
 class EventPayload(BaseModel):
     """Forward-compatible Role A event payload."""
 
@@ -97,6 +100,27 @@ class IntentStats(BaseModel):
     unique_apps: list[str] = Field(default_factory=list)
 
 
+class SafeIntentFeatures(BaseModel):
+    """The only aggregate activity packet allowed to reach a label provider.
+
+    This intentionally excludes evidence, event text, paths, URLs, titles, and
+    project identifiers.  Those values can remain available to explicitly
+    local flows, but must not cross an optional cloud-provider boundary.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    policy_version: Literal["safe-intent-features-v1"] = "safe-intent-features-v1"
+    project_key: str | None = None
+    command_families: list[str] = Field(default_factory=list, max_length=8)
+    file_kinds: list[Literal["code", "pdf", "image", "other"]] = Field(default_factory=list, max_length=4)
+    domains: list[str] = Field(default_factory=list, max_length=0)
+    event_counts: dict[str, int] = Field(default_factory=dict)
+    duration_seconds: int = Field(default=0, ge=0, le=86_400)
+    child_count: int = Field(default=0, ge=0, le=1_000)
+    boundary_reasons: list[str] = Field(default_factory=list, max_length=4)
+
+
 class IntentInsights(BaseModel):
     editor: list[dict[str, Any]] = Field(default_factory=list)
     browser: list[dict[str, Any]] = Field(default_factory=list)
@@ -115,6 +139,7 @@ class SemanticIntentMetadata(BaseModel):
     refined: bool = True
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     event_roles: dict[str, int] = Field(default_factory=dict)
+    topic: str | None = Field(default=None, max_length=240)
     workspace_root: str | None = None
     provider_identity: str | None = None
 
@@ -139,6 +164,7 @@ class Intent(BaseModel):
     resume_payload: ResumePayload
     prefix: tuple[str, str, str] | None = None
     semantic: SemanticIntentMetadata | None = None
+    privacy_policy_version: str = "legacy"
     children: list[Intent] = Field(default_factory=list)
 
 
@@ -159,16 +185,24 @@ class PipelineResult(BaseModel):
 class SemanticEventProposal(BaseModel):
     """One future LLM proposal for the role of an observed event."""
 
+    model_config = ConfigDict(extra="forbid")
+
     event_id: str
     role: Literal["task", "supporting_context", "background", "unrelated"]
     confidence: float = Field(ge=0.0, le=1.0)
-    linked_event_ids: list[str] | None = None
+    topic: str = Field(min_length=1, max_length=240)
+    # Groq's strict response schemas require every object property to be
+    # listed in `required`.  An empty list represents no links, which is also
+    # clearer than a nullable field for all callers.
+    linked_event_ids: list[str]
 
 
 class SemanticProposalResponse(BaseModel):
     """Structured semantic proposals returned by a future provider call."""
 
-    proposals: list[SemanticEventProposal] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    proposals: list[SemanticEventProposal]
 
 
 class CurrentIntent(BaseModel):

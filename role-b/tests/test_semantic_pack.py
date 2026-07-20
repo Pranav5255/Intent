@@ -12,6 +12,7 @@ from intent_engine.semantic_pack import (
 @pytest.fixture(autouse=True)
 def clear_semantic_consent(monkeypatch):
     monkeypatch.delenv("ROLE_B_SEMANTIC_CONTENT_CONSENT", raising=False)
+    monkeypatch.delenv("ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT", raising=False)
 
 
 def event(event_id, ts, *, family="editor", category="file_edit", raw_payload=None, **entities):
@@ -72,6 +73,24 @@ def test_whatsapp_is_excluded_from_packets_and_content():
 
     assert [item.event_id for item in packet_events(packets)] == ["work"]
     assert "Private message" not in str(packets)
+
+
+def test_full_capture_consent_includes_otherwise_excluded_events_and_raw_payload(monkeypatch):
+    monkeypatch.setenv("ROLE_B_SEMANTIC_CONTENT_CONSENT", "true")
+    monkeypatch.setenv("ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT", "true")
+    whatsapp = event(
+        "whatsapp",
+        10,
+        family="focus",
+        category="app_focus",
+        raw_payload={"app": "WhatsApp", "title": "Private message"},
+    )
+
+    packed = packet_events(build_semantic_candidate_packets([whatsapp]))
+
+    assert packed[0].event_id == "whatsapp"
+    assert packed[0].captured_event == {"payload": {"app": "WhatsApp", "title": "Private message"}}
+    assert packed[0].content_snippet is None
 
 
 def test_consent_disabled_keeps_packets_metadata_only():
@@ -153,3 +172,17 @@ def test_private_or_unapproved_content_never_enters_packet(monkeypatch):
     rendered = str(packed)
     for private_value in ("private title", "private browser", "private file content", "private.example"):
         assert private_value not in rendered
+
+
+def test_browser_scroll_action_is_allowlisted_as_safe_packet_metadata():
+    scroll = event(
+        "scroll",
+        0,
+        family="browser",
+        category="user_action",
+        raw_payload={"action": "scroll", "scroll": {"direction": "down", "position_bucket": 6}},
+    )
+
+    packed = packet_events(build_semantic_candidate_packets([scroll]))
+
+    assert packed[0].safe_metadata["action"] == "scroll"

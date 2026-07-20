@@ -102,6 +102,30 @@ class DetailedCaptureApiTests(unittest.TestCase):
         event["payload"]["sensitive_page"] = True
         self.assertEqual(self.client.post("/v1/event", json=event).status_code, 422)
 
+    def test_scroll_actions_are_coarse_and_require_browser_consent(self) -> None:
+        event = {
+            "id": "00000000-0000-4000-8000-000000000033",
+            "ts": 1783911700,
+            "source": "firefox",
+            "type": "user_action",
+            "payload": {
+                "url": "https://example.com/guide?token=secret",
+                "tab_id": 1,
+                "window_id": 2,
+                "action": "scroll",
+                "target": {"tag": "document", "role": "document"},
+                "sensitive_page": False,
+                "scroll": {"direction": "down", "position_bucket": 6},
+            },
+        }
+        self.assertEqual(self.client.post("/v1/event", json=event).status_code, 204)
+        self.enable(browser=True)
+        response = self.client.post("/v1/event", json=event)
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()["event"]["payload"]
+        self.assertEqual(payload["url"], "https://example.com/guide")
+        self.assertEqual(payload["scroll"], {"direction": "down", "position_bucket": 6})
+
     def test_purge_deletes_only_detailed_events(self) -> None:
         self.enable(editor=True)
         self.assertEqual(self.client.post("/v1/event", json=self.document_event()).status_code, 201)

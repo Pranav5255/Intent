@@ -58,3 +58,28 @@ test("strips sensitive-page target details and rejects private tabs", () => {
   assert.equal(event.payload.action, "click");
   assert.equal(makeUserActionEvent({ id: 7, windowId: 3, incognito: true, url: "https://example.com" }, { action: "click", target: { tag: "button", role: "button" } }), null);
 });
+
+test("emits a coarse scroll action without page content or exact offsets", () => {
+  const event = makeUserActionEvent(
+    { id: 7, windowId: 3, url: "https://example.com/guide?token=secret" },
+    {
+      action: "scroll",
+      sensitive_page: false,
+      target: { tag: "document", role: "document" },
+      scroll: { direction: "down", position_bucket: 6 }
+    }
+  );
+  assert.deepEqual(event.payload, {
+    url: "https://example.com/guide",
+    tab_id: 7,
+    window_id: 3,
+    action: "scroll",
+    target: { tag: "document", role: "document" },
+    sensitive_page: false,
+    scroll: { direction: "down", position_bucket: 6 }
+  });
+  assert.equal(makeUserActionEvent(
+    { id: 7, windowId: 3, url: "https://example.com" },
+    { action: "scroll", sensitive_page: true, target: { tag: "document", role: "document" }, scroll: { direction: "down", position_bucket: 1 } }
+  ), null);
+});

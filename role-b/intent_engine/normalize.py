@@ -148,7 +148,7 @@ def compute_source_hash(normalized_events: list[NormalizedEvent]) -> str:
 
 
 def intelligence_text(event: NormalizedEvent, ordinal: int | None = None) -> str:
-    """Render an event's complete consent-approved context for Role B reasoning."""
+    """Render local diagnostic context; never use this as a provider prompt."""
 
     prefix = f"{ordinal}. " if ordinal is not None else ""
     lines = [f"{prefix}[{event.source}/{event.category}] {event.text}"]
@@ -242,12 +242,12 @@ def _document_change_has_todo(payload: dict[str, Any]) -> bool:
 
 
 def extract_evidence(payload: dict[str, Any]) -> list[ContextEvidence]:
-    """Flatten every Role A payload value into deterministic LLM-ready evidence.
+    """Flatten every Role A payload value into deterministic local evidence.
 
-    Role A is the consent and redaction boundary.  Role B must therefore retain
-    every value Role A exports rather than silently selecting a small subset of
-    fields during normalization.  List indexes and nested field names preserve
-    the source of editor changes, browser context, and file excerpts.
+    This supports explicitly local user-visible and deterministic flows only.
+    List indexes and nested field names preserve the source of editor changes,
+    browser context, and file excerpts, but this data must not cross an
+    optional provider boundary.
     """
 
     evidence: list[ContextEvidence] = []

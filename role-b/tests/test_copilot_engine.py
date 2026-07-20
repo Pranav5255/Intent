@@ -3,7 +3,17 @@ import tempfile
 from pathlib import Path
 
 from intent_engine.copilot import IntentCopilot, not_configured_response
-from intent_engine.schemas import CopilotNotConfigured, CopilotQueryRequest, Intent, IntentInsights, IntentStats, PipelineResult, ResumePayload
+from intent_engine.schemas import (
+    SAFE_INTENT_PRIVACY_POLICY_VERSION,
+    ContextEvidence,
+    CopilotNotConfigured,
+    CopilotQueryRequest,
+    Intent,
+    IntentInsights,
+    IntentStats,
+    PipelineResult,
+    ResumePayload,
+)
 from intent_engine.store import IntentStore
 from intent_engine.tools import ToolContext, ToolRegistry
 
@@ -25,7 +35,22 @@ class FakeLLM:
 def seeded():
     directory = tempfile.TemporaryDirectory()
     store = IntentStore(str(Path(directory.name) / "intents.db"))
-    intent = Intent(id="i1", date="2026-07-13", label="IAM Work", summary="Reviewed IAM policy.", start_ts=1, end_ts=2, depth=0, tags=["project:infra"], stats=IntentStats(event_count=2, duration_seconds=1), insights=IntentInsights(), resume_payload=ResumePayload(files=["/repo/iam.tf"]))
+    intent = Intent(
+        id="i1", date="2026-07-13", label="IAM Work", summary="Reviewed IAM policy.",
+        start_ts=1, end_ts=2, depth=0, tags=["project:infra"],
+        stats=IntentStats(event_count=2, duration_seconds=1),
+        insights=IntentInsights(
+            editor=[{"file": "private-module.py", "typed_chars": 12, "saves": 1}],
+            browser=[{"domain": "private.example.test", "visits": 1}],
+            shell=[{"command_family": "terraform", "exit_code": 1, "count": 1}],
+        ),
+        evidence=[ContextEvidence(field="document_change.text", value="SECRET_COPILOT_EVIDENCE")],
+        resume_payload=ResumePayload(
+            files=["/repo/iam.tf"], urls=["https://private.example.test/restore"],
+            shell={"cwd": "/repo/private", "last_cmd": "SECRET_COPILOT_COMMAND"},
+        ),
+        privacy_policy_version=SAFE_INTENT_PRIVACY_POLICY_VERSION,
+    )
     run(store.save_pipeline_run("2026-07-13", PipelineResult(intents=[intent], source_hash="i1", pipeline_version="v1")))
     return directory, ToolRegistry(ToolContext(store))
 
@@ -55,6 +80,29 @@ def test_search_then_get_intent_cites_id_date_and_summary():
         assert result.citations[0].intent_id == "i1"
         assert result.citations[0].date == "2026-07-13"
         assert result.citations[0].summary == "Reviewed IAM policy."
+    finally:
+        directory.cleanup()
+
+
+def test_model_tool_messages_exclude_evidence_and_resume_details():
+    directory, tools = seeded()
+    try:
+        llm = FakeLLM([
+            {"output_text": None, "tool_calls": [{"name": "get_intent", "arguments": {"intent_id": "i1"}, "call_id": "intent-1"}]},
+            {"output_text": None, "tool_calls": [{"name": "get_resume_payload", "arguments": {"intent_id": "i1"}, "call_id": "resume-1"}]},
+            {"output_text": "The stored IAM work is ready to resume.", "tool_calls": []},
+        ])
+        result = run(IntentCopilot(llm, tools).query(CopilotQueryRequest(question="Resume IAM work")))
+
+        assert result.resume_proposal is not None
+        assert result.resume_proposal.resume_payload.files == ["/repo/iam.tf"]
+        captured = str(llm.calls)
+        for marker in (
+            "SECRET_COPILOT_EVIDENCE", "private-module.py", "private.example.test",
+            "/repo/iam.tf", "/repo/private", "SECRET_COPILOT_COMMAND",
+        ):
+            assert marker not in captured
+        assert "resume_payload_available" in captured
     finally:
         directory.cleanup()
 

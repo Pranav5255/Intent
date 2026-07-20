@@ -11,13 +11,18 @@ from intent_engine.enrich import aggregate_stats, compute_insight_browser, compu
 from intent_engine.logging import DiagnosticsLogger
 from intent_engine.labeling import (
     LabelProvider,
+    SAFE_FEATURE_POLICY_VERSION,
     TemplateFallbackLabelProvider,
     build_cluster_hints,
     build_parent_hints,
+    build_safe_cluster_features,
+    build_safe_parent_features,
+    safe_provider_hints,
+    serialize_safe_features,
     validate_label_result,
 )
 from intent_engine.providers import create_label_provider, create_llm_client, semantic_clustering_enabled
-from intent_engine.normalize import compute_source_hash, intelligence_text, normalize_events
+from intent_engine.normalize import compute_source_hash, normalize_events
 from intent_engine.resume import build_resume_payload, merge_resume_payloads
 from intent_engine.schemas import DayExport, Intent, IntentInsights, PipelineResult, PipelineWarning, SemanticIntentMetadata
 from intent_engine.semantic_cluster import SemanticRefinementResult, refine_semantic_clusters_detailed, semantic_cache_identity
@@ -25,7 +30,7 @@ from intent_engine.llm_base import LLMClient
 from intent_engine.sessionize import sessionize
 from intent_engine.store import IntentStore
 
-PIPELINE_VERSION = "1.0.0"
+PIPELINE_VERSION = "1.1.0"
 
 
 async def run_pipeline(
@@ -85,6 +90,10 @@ async def run_pipeline(
                 semantic_result = await refine_semantic_clusters_detailed(session, semantic_client)
                 if semantic_result.clusters is None:
                     semantic_fallback_reason = semantic_result.fallback_reason or "invalid_response"
+                    warnings.append(PipelineWarning(
+                        level="warning",
+                        message=f"Semantic refinement fallback: {semantic_fallback_reason}",
+                    ))
                 else:
                     clusters = semantic_result.clusters
                     semantic_identity = semantic_result.provider_identity or semantic_identity
@@ -170,6 +179,7 @@ def _cluster_intent(
         evidence=[item for event in cluster for item in event.evidence],
         prefix=_cluster_prefix(cluster),
         semantic=semantic,
+        privacy_policy_version=SAFE_FEATURE_POLICY_VERSION,
     )
 
 
@@ -190,22 +200,19 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
         evidence=[item for child in children for item in child.evidence],
         children=children,
         semantic=_aggregate_semantic_metadata(children),
+        privacy_policy_version=SAFE_FEATURE_POLICY_VERSION,
     )
     validate_intent_tree(parent)
     return parent
 
 
 async def _label_cluster(provider: LabelProvider, cluster, project_tag: str | None, hints: dict) -> dict:
-    text = "\n".join(intelligence_text(event, index) for index, event in enumerate(cluster, start=1))
+    text = serialize_safe_features(build_safe_cluster_features(cluster))
     return await _safe_label(provider, "label_cluster", text, project_tag, hints)
 
 
 async def _label_parent(provider: LabelProvider, children: list[Intent], project_tag: str | None, hints: dict) -> dict:
-    sections: list[str] = []
-    for index, child in enumerate(children, start=1):
-        sections.append(f"{index}. {child.label}: {child.summary}")
-        sections.extend(f"  {item.field}: {item.value}" for item in child.evidence)
-    text = "\n".join(sections)
+    text = serialize_safe_features(build_safe_parent_features(children))
     return await _safe_label(provider, "label_parent", text, project_tag, hints)
 
 
@@ -217,8 +224,11 @@ async def _safe_label(
     hints: dict | None = None,
 ) -> dict:
     fallback = TemplateFallbackLabelProvider()
+    is_local_template = isinstance(provider, TemplateFallbackLabelProvider)
+    provider_project_tag = project_tag if is_local_template else None
+    provider_hints = hints if is_local_template else safe_provider_hints(hints)
     try:
-        return validate_label_result(await getattr(provider, method)(text, project_tag, hints))
+        return validate_label_result(await getattr(provider, method)(text, provider_project_tag, provider_hints))
     except Exception:
         return validate_label_result(await getattr(fallback, method)(text, project_tag, hints))
 
@@ -237,16 +247,19 @@ def _cluster_prefix(cluster) -> tuple[str, str, str] | None:
 
 
 def _provider_cache_hash(input_hash: str, provider_identity: str) -> str:
-    return hashlib.sha256(f"{input_hash}:{provider_identity}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(
+        f"{input_hash}:{provider_identity}:{SAFE_FEATURE_POLICY_VERSION}".encode("utf-8")
+    ).hexdigest()[:16]
 
 
 def _semantic_unavailable_identity() -> str:
     from intent_engine.providers import SEMANTIC_CONTENT_POLICY_VERSION
+    from intent_engine.semantic_cluster import SEMANTIC_CLUSTER_POLICY_VERSION
     import os
 
     provider = os.environ.get("LLM_PROVIDER", "openai").strip().lower() or "openai"
     model = os.environ.get("INTENT_OS_LLM_MODEL", "").strip() or "configured-default"
-    return f"semantic:{provider}:{model}:content-policy-{SEMANTIC_CONTENT_POLICY_VERSION}:cluster-policy-1"
+    return f"semantic:{provider}:{model}:content-policy-{SEMANTIC_CONTENT_POLICY_VERSION}:cluster-policy-{SEMANTIC_CLUSTER_POLICY_VERSION}"
 
 
 def _cluster_semantic_metadata(cluster, result: SemanticRefinementResult | None) -> SemanticIntentMetadata | None:
@@ -256,12 +269,17 @@ def _cluster_semantic_metadata(cluster, result: SemanticRefinementResult | None)
     if not proposals:
         return None
     roles: dict[str, int] = {}
+    topics: dict[str, int] = {}
     for proposal in proposals:
         roles[proposal.role] = roles.get(proposal.role, 0) + 1
+        topic = proposal.topic.strip()
+        if topic and topic.casefold() != "unknown":
+            topics[topic] = topics.get(topic, 0) + 1
     roots = {path for event in cluster for path in event.entities.project_paths}
     return SemanticIntentMetadata(
         confidence=sum(proposal.confidence for proposal in proposals) / len(proposals),
         event_roles=roles,
+        topic=max(topics, key=topics.get) if topics else None,
         workspace_root=next(iter(roots)) if len(roots) == 1 else None,
         provider_identity=result.provider_identity,
     )
@@ -278,9 +296,11 @@ def _aggregate_semantic_metadata(children: list[Intent]) -> SemanticIntentMetada
     confidences = [item.confidence for item in metadata if item.confidence is not None]
     roots = {item.workspace_root for item in metadata if item.workspace_root}
     providers = {item.provider_identity for item in metadata if item.provider_identity}
+    topics = {item.topic for item in metadata if item.topic}
     return SemanticIntentMetadata(
         confidence=sum(confidences) / len(confidences) if confidences else None,
         event_roles=roles,
+        topic=next(iter(topics)) if len(topics) == 1 else None,
         workspace_root=next(iter(roots)) if len(roots) == 1 else None,
         provider_identity=next(iter(providers)) if len(providers) == 1 else None,
     )

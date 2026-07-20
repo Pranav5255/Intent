@@ -15,6 +15,9 @@ import aiosqlite
 from intent_engine.schemas import Intent, PipelineResult
 
 
+SEARCH_PROJECTION_VERSION = "safe-search-v2"
+
+
 class IntentStore:
     """Local Role B store; every intent node is persisted as an independent row."""
 
@@ -57,6 +60,10 @@ class IntentStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_intents_date ON intents(date);
                 CREATE INDEX IF NOT EXISTS idx_intents_parent_id ON intents(parent_id);
+                CREATE TABLE IF NOT EXISTS store_metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
                 """
             )
             try:
@@ -69,6 +76,9 @@ class IntentStore:
                 )
             except sqlite3.OperationalError:
                 self._fts_available = False
+            if self._fts_available:
+                self._ensure_safe_search_projection(connection)
+            connection.commit()
         finally:
             connection.close()
 
@@ -200,7 +210,7 @@ class IntentStore:
                                 stored_node.id,
                                 stored_node.label,
                                 stored_node.summary,
-                                self._searchable_evidence(stored_node),
+                                self._searchable_projection(stored_node),
                                 json.dumps(stored_node.tags, separators=(",", ":")),
                             ),
                         )
@@ -358,10 +368,10 @@ class IntentStore:
 
             pattern = f"%{normalized_query}%"
             conditions = [
-                "(label LIKE ? OR summary LIKE ? OR intent_json LIKE ? OR label LIKE ?)",
+                "(label LIKE ? OR summary LIKE ?)",
                 "depth = 0",
             ]
-            params = [pattern, pattern, pattern, pattern]
+            params = [pattern, pattern]
             if date_from:
                 conditions.append("date >= ?")
                 params.append(date_from)
@@ -474,14 +484,57 @@ class IntentStore:
                 return f"{'...' if start else ''}{highlighted}{'...' if end < len(text) else ''}"
         return f"{summary[:80]}{'...' if len(summary) > 80 else ''}"
 
+    def _ensure_safe_search_projection(self, connection: sqlite3.Connection) -> None:
+        """Rebuild legacy FTS rows once so raw evidence cannot remain indexed."""
+
+        row = connection.execute(
+            "SELECT value FROM store_metadata WHERE key = ?", ("search_projection_version",)
+        ).fetchone()
+        if row is not None and row[0] == SEARCH_PROJECTION_VERSION:
+            return
+        connection.execute("DELETE FROM intent_search")
+        rows = connection.execute("SELECT id, label, summary, intent_json FROM intents").fetchall()
+        for intent_id, label, summary, intent_json in rows:
+            try:
+                intent = Intent.model_validate_json(intent_json)
+                insights = self._searchable_projection(intent)
+                tags = json.dumps(intent.tags, separators=(",", ":"))
+            except Exception:
+                insights, tags = "", "[]"
+            connection.execute(
+                "INSERT INTO intent_search(id, label, summary, insights, tags) VALUES (?, ?, ?, ?, ?)",
+                (intent_id, label, summary, insights, tags),
+            )
+        connection.execute(
+            "INSERT INTO store_metadata(key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ("search_projection_version", SEARCH_PROJECTION_VERSION),
+        )
+
     @staticmethod
-    def _searchable_evidence(intent: Intent) -> str:
-        """Index Role-A-approved evidence alongside derived insights.
+    def _searchable_projection(intent: Intent) -> str:
+        """Index only derived aggregate metadata, never evidence or event text."""
 
-        The full structured evidence remains in ``intent_json``; this compact
-        text makes it discoverable by the FTS path used by Copilot search.
-        """
-
-        insights = json.dumps(intent.insights.model_dump(mode="json"), separators=(",", ":"))
-        evidence = " ".join(f"{item.field} {item.value}" for item in intent.evidence)
-        return f"{insights} {evidence}".strip()
+        editor = [
+            {
+                "typed_chars": item.get("typed_chars", 0),
+                "saves": item.get("saves", 0),
+            }
+            for item in intent.insights.editor
+            if isinstance(item, dict)
+        ]
+        browser = [
+            {"visits": item.get("visits", 0)}
+            for item in intent.insights.browser
+            if isinstance(item, dict)
+        ]
+        shell = [
+            {
+                "command_family": item.get("command_family", "unknown"),
+                "exit_code": item.get("exit_code"),
+                "count": item.get("count", 0),
+            }
+            for item in intent.insights.shell
+            if isinstance(item, dict)
+        ]
+        return json.dumps({"editor": editor, "browser": browser, "shell": shell}, separators=(",", ":"))

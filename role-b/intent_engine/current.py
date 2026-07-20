@@ -5,8 +5,14 @@ from __future__ import annotations
 import time
 
 from intent_engine.cluster import cluster_session
-from intent_engine.labeling import build_cluster_hints
-from intent_engine.normalize import intelligence_text, normalize_events
+from intent_engine.labeling import (
+    TemplateFallbackLabelProvider,
+    build_cluster_hints,
+    build_safe_cluster_features,
+    safe_provider_hints,
+    serialize_safe_features,
+)
+from intent_engine.normalize import normalize_events
 from intent_engine.providers import create_label_provider
 from intent_engine.schemas import CurrentIntent
 from intent_engine.sessionize import sessionize
@@ -47,9 +53,10 @@ class CurrentIntentEngine:
         if confidence < 0.5:
             return None
 
-        cluster_text = "\n".join(intelligence_text(event, index) for index, event in enumerate(cluster, start=1))
+        cluster_text = serialize_safe_features(build_safe_cluster_features(cluster))
         hints = build_cluster_hints(cluster)
-        label_result = await self._label_provider.label_cluster(cluster_text, hints=hints)
+        provider_hints = hints if isinstance(self._label_provider, TemplateFallbackLabelProvider) else safe_provider_hints(hints)
+        label_result = await self._label_provider.label_cluster(cluster_text, hints=provider_hints)
         intent = CurrentIntent(
             label=label_result["label"],
             summary=label_result["summary"],

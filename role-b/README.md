@@ -8,7 +8,7 @@ Role B is the local Intent OS service that converts Role A activity exports into
 
 - Windows PowerShell and Python 3.11 or newer.
 - Optional: Role A running on port `9477` for live exports and current-intent inference.
-- Optional: a Gemini or OpenAI API key for Intent Copilot and future semantic clustering.
+- Optional: a Gemini, Groq, or OpenAI API key for Intent Copilot and future semantic clustering.
 
 ## 3. Setup
 
@@ -31,16 +31,19 @@ Optional provider packages:
 ```powershell
 .\.venv\Scripts\pip install -r requirements-openai.txt
 .\.venv\Scripts\pip install -r requirements-gemini.txt
+.\.venv\Scripts\pip install -r requirements-bedrock.txt
 ```
 
 ## 4. LLM providers (optional)
 
-Role B supports two LLM backends selected with `LLM_PROVIDER`:
+Role B supports four LLM backends selected with `LLM_PROVIDER`:
 
 | Provider | Credentials | Default model | Install |
 |---|---|---|---|
 | `openai` (default) | `OPENAI_API_KEY` | `gpt-4o-mini` | `requirements-openai.txt` |
+| `groq` | `GROQ_API_KEY` | `openai/gpt-oss-20b` | `requirements-openai.txt` |
 | `gemini` | Service-account JSON via `GOOGLE_APPLICATION_CREDENTIALS` (preferred) or `GEMINI_API_KEY` | `gemini-2.5-flash` | `requirements-gemini.txt` |
+| `bedrock` | AWS credential chain; set `BEDROCK_REGION` | `amazon.nova-pro-v1:0` | `requirements-bedrock.txt` |
 
 Example Gemini `.env` using a local service-account JSON (Vertex AI):
 
@@ -56,11 +59,45 @@ INTENT_OS_LLM_MODEL=gemini-2.5-flash
 
 Keep the JSON file local — `role-b/.gitignore` ignores `kube-orch*.json` and other credential filename patterns. Never commit `.env` or service-account keys.
 
+Example Groq `.env` for the GPT-OSS 20B model:
+
+```dotenv
+LLM_PROVIDER=groq
+GROQ_API_KEY=your-local-key
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+ROLE_B_LLM_ENABLED=true
+ENABLE_COPILOT=true
+INTENT_OS_LLM_MODEL=openai/gpt-oss-20b
+ROLE_B_SEMANTIC_CLUSTER=false
+```
+
+Example Bedrock `.env` using Nova Pro and an Amazon Bedrock API key:
+
+```dotenv
+LLM_PROVIDER=bedrock
+BEDROCK_REGION=us-east-1
+AWS_BEARER_TOKEN_BEDROCK=your-bedrock-api-key
+ROLE_B_LLM_ENABLED=true
+ENABLE_COPILOT=true
+INTENT_OS_LLM_MODEL=amazon.nova-pro-v1:0
+BEDROCK_STRUCTURED_OUTPUT=auto
+```
+
+Use exactly one Bedrock authentication method. Instead of
+`AWS_BEARER_TOKEN_BEDROCK`, you can set `BEDROCK_AWS_PROFILE` for a local
+AWS profile, use standard temporary IAM environment credentials, or run with
+an attached IAM role. The identity needs permission to invoke the selected
+model. Nova Pro supports Converse and tool use, but does not support Bedrock
+structured outputs; `BEDROCK_STRUCTURED_OUTPUT=auto` uses the bounded
+JSON-prompt path for labeling.
+
+The Groq adapter uses the installed OpenAI SDK against Groq's compatible Responses endpoint; no separate Groq SDK is required. Start with semantic clustering disabled and enable it only after the Copilot path has been verified. Optional LLM labeling receives only a fixed safe aggregate packet (event counts, generic file kinds, and allowlisted command families), never Role A evidence, document text, paths, URLs, titles, or project identifiers.
+
 When `ROLE_B_LLM_ENABLED=false` or the selected provider credentials are missing, labeling uses deterministic template labels derived from cluster signals (command family, file, domain, project tag) — not keyword heuristics tied to a demo scenario.
 
 ## 4.1 Semantic correlation (optional)
 
-Semantic refinement is disabled by default and reuses the existing cloud-provider factory. Gemini is the preferred configuration: set `LLM_PROVIDER=gemini` with a service-account JSON (or `GEMINI_API_KEY`); OpenAI remains supported through `LLM_PROVIDER=openai` and `OPENAI_API_KEY`.
+Semantic refinement is disabled by default and reuses the existing cloud-provider factory. Gemini is the preferred configuration: set `LLM_PROVIDER=gemini` with a service-account JSON (or `GEMINI_API_KEY`); Groq (`LLM_PROVIDER=groq` + `GROQ_API_KEY`), OpenAI, and Bedrock remain supported.
 
 ```dotenv
 LLM_PROVIDER=gemini
@@ -68,20 +105,24 @@ GOOGLE_APPLICATION_CREDENTIALS=./kube-orch-afd05706a10f.json
 GOOGLE_CLOUD_PROJECT=kube-orch
 ROLE_B_LLM_ENABLED=true
 ROLE_B_SEMANTIC_CLUSTER=true
-ROLE_B_SEMANTIC_TIMEOUT_MS=8000
+ROLE_B_SEMANTIC_TIMEOUT_MS=60000
 ROLE_B_SEMANTIC_CONTENT_CONSENT=true
+# Separate, explicit approval for lossless Role A event forwarding.
+ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT=false
 ```
 
-`ROLE_B_SEMANTIC_CONTENT_CONSENT=true` is mandatory. When enabled, the semantic stage sends only bounded candidate packets to the selected cloud provider: WhatsApp/messaging activity is excluded, media remains background-only, and opt-in snippets are limited to non-redacted editor changes and safe browser excerpts. The timeout defaults to `8000` milliseconds when missing or invalid.
+`ROLE_B_SEMANTIC_CONTENT_CONSENT=true` is mandatory. In normal consent mode, the semantic stage sends compact chronological candidate-packet summaries to the selected cloud provider, then maps each accepted decision back to local events. WhatsApp/messaging activity is excluded from that provider request but retained locally as deterministic activity; media remains background-only, and opt-in snippets are limited to non-redacted editor changes and safe browser excerpts.
 
-Semantic output is advisory. Invalid proposals, low-confidence links, timeouts, provider errors, and cross-workspace merge attempts fall back to deterministic clusters. Packets, prompts, raw events, and private/redacted content are never persisted. Only the existing `openai` and `gemini` cloud factories are supported; Ollama, LM Studio, and other local LLM runtimes are out of scope.
+Set `ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT=true` only after separately approving full cloud forwarding. This lossless mode sends every captured Role A event field—including IDs, timestamps, envelope metadata, page/file content, messaging, and normally sensitive-page payloads—to the selected provider. A compact codec preserves all values while sharing repeated strings/keys, source/type legends, and timestamp deltas. Credential-like values are still redacted immediately before network submission. Groq raw packets are capped at 12,000 characters because its request gateway can reject a larger body; every raw event is sent exactly once, then a small topic-only linker correlates packet boundaries without resending capture. To avoid strict-schema resend overhead, Groq full-capture calls use JSON-object mode and Role B validates the response locally before accepting it. Other providers can use the 36,000-character full-capture cap. The timeout defaults to `60000` milliseconds when missing or invalid.
+
+Semantic output is advisory. Large sessions are sent as prompt-bounded chronological batches; adjacent candidate batches overlap by one event, and only validated workspace-safe links are merged locally. Invalid proposals, low-confidence links, timeouts, provider errors, and cross-workspace merge attempts fall back to deterministic clusters. Provider packets and prompts are never persisted. Only the existing `openai`, `groq`, `gemini`, and `bedrock` cloud factories are supported; Ollama, LM Studio, and other local LLM runtimes are out of scope.
 
 ## 5. Run the API
 
 From `role-b`:
 
 ```powershell
-.\.venv\Scripts\python -m uvicorn intent_engine.api:app --host 127.0.0.1 --port 9478
+.\.venv\Scripts\python -m uvicorn intent_engine.api:app --env-file .env --host 127.0.0.1 --port 9478
 ```
 
 In another PowerShell window, check health:
@@ -90,7 +131,7 @@ In another PowerShell window, check health:
 Invoke-RestMethod http://127.0.0.1:9478/healthz
 ```
 
-Expected response includes `ok: true` and `pipeline_version: "1.0.0"`.
+Expected response includes `ok: true` and `pipeline_version: "1.1.0"`.
 
 ## 6. Run without Role A (replay demo)
 
@@ -134,7 +175,7 @@ Role A unavailability is reported as HTTP 503 by the pipeline endpoint. The curr
 
 ## 8. Enable Intent Copilot (optional)
 
-Edit the local `.env` with OpenAI or Gemini credentials. For Gemini, prefer a gitignored service-account JSON:
+Edit the local `.env` with Groq, OpenAI, or Gemini credentials. For Groq testing, use `LLM_PROVIDER=groq`, `GROQ_API_KEY`, and `INTENT_OS_LLM_MODEL=openai/gpt-oss-20b`. For Gemini, prefer a gitignored service-account JSON:
 
 ```dotenv
 LLM_PROVIDER=gemini
@@ -212,7 +253,7 @@ MCP is not needed for the API. To expose the same read-only tools over stdio:
 .\.venv\Scripts\python mcp_server.py
 ```
 
-The adapter exposes `search_intents`, `get_intent`, `get_resume_payload`, `get_current_intent`, and `get_intent_stats` through `ToolRegistry`. It cannot restore apps, fetch raw events, access files/Git, or issue direct SQLite queries.
+The adapter exposes `search_intents`, `get_intent`, `get_resume_payload`, `get_current_intent`, and `get_intent_stats` through `ToolRegistry`. Its model-facing intent projection excludes evidence and restore details; `get_resume_payload` returns availability/count metadata while Role B keeps exact restore context local. It cannot restore apps, fetch raw events, access files/Git, or issue direct SQLite queries.
 
 ## Retention and forgetting
 

@@ -13,7 +13,6 @@ from intent_engine.schemas import (
     CopilotNotConfigured,
     CopilotQueryRequest,
     CopilotQueryResponse,
-    ResumePayload,
     ResumeProposal,
 )
 from intent_engine.search_rewrite import rewrite_search_queries
@@ -23,8 +22,8 @@ from intent_engine.tools import ToolRegistry
 SYSTEM_PROMPT = (
     "Answer only using tool results. If evidence is insufficient, say so clearly and set "
     "evidence_status to insufficient. Never invent files, URLs, commands, or dates. "
-    "For resume requests, propose only an intent_id returned by a tool and copy its "
-    "resume_payload exactly from get_resume_payload; never invent restore context."
+    "For resume requests, propose only an intent_id returned by a tool. The application "
+    "attaches verified restore context locally; never list or invent restore fields."
 )
 
 QA_PROMPT = (
@@ -36,8 +35,8 @@ QA_PROMPT = (
 
 BRIEFING_PROMPT = (
     " For briefing mode, retrieve the intent and its resume payload before answering. "
-    "Write a concise 2-3 sentence briefing using only returned intent, insight, and "
-    "resume evidence, cite the intent ID, and never invent or modify restore fields."
+    "Write a concise 2-3 sentence briefing using only returned safe intent and insight "
+    "evidence, cite the intent ID, and never invent or modify restore fields."
 )
 
 NARRATIVE_PROMPT = (
@@ -111,18 +110,13 @@ class IntentCopilot:
                 intent_result = await self.tools.execute("get_intent", {"intent_id": selected_id})
                 tool_names.append("get_intent")
                 self._collect_citations(intent_result, citations)
-                messages.append({"role": "user", "content": json.dumps({"verified_tool_result": {"get_intent": intent_result}}, separators=(",", ":"))})
+                messages.append({"role": "user", "content": json.dumps({"verified_tool_result": {"get_intent": self._model_tool_result("get_intent", intent_result)}}, separators=(",", ":"))})
                 payload_result = await self.tools.execute("get_resume_payload", {"intent_id": selected_id})
                 tool_names.append("get_resume_payload")
-                if "resume_payload" in payload_result:
-                    try:
-                        resume_payload = ResumeProposal(
-                            intent_id=selected_id,
-                            resume_payload=ResumePayload.model_validate(payload_result["resume_payload"]),
-                        )
-                    except Exception:
-                        resume_payload = None
-                messages.append({"role": "user", "content": json.dumps({"verified_tool_result": {"get_resume_payload": payload_result}}, separators=(",", ":"))})
+                payload = await self.tools.get_resume_payload_for_response(selected_id)
+                if payload is not None:
+                    resume_payload = ResumeProposal(intent_id=selected_id, resume_payload=payload)
+                messages.append({"role": "user", "content": json.dumps({"verified_tool_result": {"get_resume_payload": self._model_tool_result("get_resume_payload", payload_result)}}, separators=(",", ":"))})
 
         if narrative_mode:
             if request.date_from and request.date_to:
@@ -141,7 +135,7 @@ class IntentCopilot:
                 )
                 messages.append({
                     "role": "user",
-                    "content": json.dumps({"verified_tool_result": {"get_intent_stats": stats_result}}, separators=(",", ":")),
+                    "content": json.dumps({"verified_tool_result": {"get_intent_stats": self._model_tool_result("get_intent_stats", stats_result)}}, separators=(",", ":")),
                 })
 
         if not briefing_mode and request.mode in {"search", "auto"} and len(request.question.split()) > 3 and hasattr(self.llm, "respond_json"):
@@ -160,7 +154,7 @@ class IntentCopilot:
                 self._collect_citations(result, citations)
                 for record in result.get("results", []) if isinstance(result, dict) else []:
                     if isinstance(record, dict) and record.get("id"):
-                        merged_results.setdefault(record["id"], {key: record.get(key) for key in ("id", "label", "summary", "date", "highlight_snippet")})
+                        merged_results.setdefault(record["id"], {key: record.get(key) for key in ("id", "label", "summary", "date")})
             if merged_results:
                 messages.append({"role": "user", "content": json.dumps({"verified_tool_result": {"search_intents": {"results": list(merged_results.values())}}}, separators=(",", ":"))})
 
@@ -193,22 +187,20 @@ class IntentCopilot:
                         resume_candidate = requested_id or resume_candidate
                 result = await self.tools.execute(name, self._with_request_filters(name, arguments, request))
                 self._collect_citations(result, citations)
-                if name == "get_resume_payload" and "resume_payload" in result and resume_candidate and (
+                if name == "get_resume_payload" and result.get("resume_payload_available") and resume_candidate and (
                     not briefing_mode or (
                         briefing_target
                         and isinstance(arguments, dict)
                         and arguments.get("intent_id") == briefing_target
                     )
                 ):
-                    try:
-                        payload = ResumePayload.model_validate(result["resume_payload"])
+                    payload = await self.tools.get_resume_payload_for_response(resume_candidate)
+                    if payload is not None:
                         resume_payload = ResumeProposal(intent_id=resume_candidate, resume_payload=payload)
-                    except Exception:
-                        resume_payload = None
                 messages.append({
                     "type": "function_call_output",
                     "call_id": call_id,
-                    "output": json.dumps(result, separators=(",", ":")),
+                    "output": json.dumps(self._model_tool_result(name, result), separators=(",", ":")),
                 })
 
         sufficient = (bool(citations) or evidence_found) and (not briefing_mode or resume_payload is not None)
@@ -288,6 +280,48 @@ class IntentCopilot:
                 label=str(record.get("label", "")),
                 summary=str(record.get("summary", "")),
             ))
+
+    @staticmethod
+    def _model_tool_result(name: str, result: object) -> dict:
+        """Apply a second boundary before a tool result joins an LLM request."""
+
+        if not isinstance(result, dict):
+            return {"error": "invalid_tool_result"}
+        if name == "get_resume_payload":
+            context = result.get("resume_context")
+            context = context if isinstance(context, dict) else {}
+            return {
+                "intent_id": result.get("intent_id") if isinstance(result.get("intent_id"), str) else None,
+                "resume_payload_available": bool(result.get("resume_payload_available")),
+                "resume_context": {
+                    "file_count": IntentCopilot._non_negative_int(context.get("file_count")),
+                    "url_count": IntentCopilot._non_negative_int(context.get("url_count")),
+                    "has_shell_context": bool(context.get("has_shell_context")),
+                },
+            }
+        return IntentCopilot._strip_model_private_fields(result)
+
+    @staticmethod
+    def _strip_model_private_fields(value: object) -> object:
+        blocked = {
+            "raw", "evidence", "payload", "content", "document", "changes", "text",
+            "resume_payload", "files", "file", "path", "urls", "url", "shell", "cwd",
+            "command", "title", "domain", "tags", "todos", "prefix", "workspace_root",
+            "provider_identity", "highlight_snippet",
+        }
+        if isinstance(value, dict):
+            return {
+                key: IntentCopilot._strip_model_private_fields(item)
+                for key, item in value.items()
+                if str(key).lower() not in blocked
+            }
+        if isinstance(value, list):
+            return [IntentCopilot._strip_model_private_fields(item) for item in value]
+        return value
+
+    @staticmethod
+    def _non_negative_int(value: object) -> int:
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
 
 
 async def not_configured_response() -> CopilotNotConfigured | CopilotQueryResponse:

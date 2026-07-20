@@ -39,7 +39,7 @@ This layer needs no OpenAI key and is the source of truth for intent data.
 | Normalize | `intent_engine/normalize.py` | `RawEvent` -> `NormalizedEvent`; extracts family, category, safe text, entities, and signals. | Events are timestamp ordered, duplicate IDs are discarded, failures become `PipelineWarning`s, and `compute_source_hash()` returns a stable 16-character SHA-256 prefix. Raw data remains internal context only. |
 | Sessions | `intent_engine/sessionize.py` | Ordered normalized events -> sessions. | A gap strictly greater than 15 minutes starts a session; `idle_start` and `idle_end` close boundaries and idle markers are not retained as activity. |
 | Clusters | `intent_engine/cluster.py` | One session -> chronological topic clusters. | Five-minute adjacency, project/file/command topic shifts, and command-phase transitions form boundaries. Similar pure-gap runs may merge; output is capped at four clusters while preserving event order and uniqueness. |
-| Semantic refine (optional) | `intent_engine/semantic_pack.py` + `intent_engine/semantic_cluster.py` | One session -> validated semantic clusters. | Requires `ROLE_B_SEMANTIC_CLUSTER`, `ROLE_B_LLM_ENABLED`, a selected OpenAI/Gemini key, and explicit content consent. The model receives only bounded S1 packets; invalid output, provider failures, and timeouts fall back to deterministic clusters. |
+| Semantic refine (optional) | `intent_engine/semantic_pack.py` + `intent_engine/semantic_cluster.py` | One session -> validated semantic clusters. | Requires `ROLE_B_SEMANTIC_CLUSTER`, `ROLE_B_LLM_ENABLED`, a selected OpenAI/Groq/Gemini key, and explicit content consent. Default mode sends condensed chronological summaries. With separate `ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT=true`, a lossless compact codec sends every raw Role A event field; shared strings/keys, timestamp deltas, and type legends minimize tokens. Groq uses 12k-character raw packets (others can use 36k), JSON-object mode, and local schema validation; raw events are never duplicated, and a small topic-only linker connects packet boundaries. Only validated workspace-safe links are merged back. Invalid output, provider failures, and timeouts fall back to deterministic clusters. |
 
 ### Enrichment and persistence
 
@@ -50,8 +50,8 @@ This layer needs no OpenAI key and is the source of truth for intent data.
 | Fallback labels | `intent_engine/labeling.py` | `TemplateFallbackLabelProvider` builds labels from cluster signals (`command_family`, file basename, domain, project tag). | Works without an API key; no Terraform/IAM keyword branches; summaries use safe normalized text only. |
 
 When LLM labeling is disabled or fails, labels are generated from structured hints computed in `pipeline.py` (`command_family`, `top_file`, `top_domain`, `dominant_family`, `project_tag`). Examples: `Run Npm`, `Edit auth.tsx`, `Research aws.amazon.com`, `Work on infra`. Parent intents aggregate child command families or project tags into `Work on {project}` or `{fam1} and {fam2} Work`.
-| Store | `intent_engine/store.py` | Persists `Intent` trees and `PipelineResult` in SQLite; provides cache, FTS search/highlighting, date/project stats, and deletion. | Writes replace a date atomically, FTS indexes only safe label/summary/insight/tag text, reads rebuild children, and `delete_date`/`delete_project` purge related rows and search entries. |
-| Orchestration | `intent_engine/pipeline.py` | Runs normalization through persistence and returns `PipelineResult`. | Cache checks use normalized data plus provider identity; IDs are deterministic; parents aggregate children; `PIPELINE_VERSION` is `1.0.0`; diagnostics contain only safe aggregate fields. |
+| Store | `intent_engine/store.py` | Persists `Intent` trees and `PipelineResult` in SQLite; provides cache, FTS search/highlighting, date/project stats, and deletion. | Writes replace a date atomically, FTS indexes a safe aggregate projection rather than evidence or event text, reads rebuild children, and `delete_date`/`delete_project` purge related rows and search entries. |
+| Orchestration | `intent_engine/pipeline.py` | Runs normalization through persistence and returns `PipelineResult`. | Cache checks include the safe-feature policy; IDs are deterministic; parents aggregate children; `PIPELINE_VERSION` is `1.1.0`; diagnostics contain only safe aggregate fields. |
 
 ### Deterministic runtime features
 
@@ -80,31 +80,33 @@ When LLM labeling is disabled or fails, labels are generated from structured hin
 - Clustering and resume construction do not require raw document text.
 - Only bounded `ResumePayload` fields are restore context: files, URLs, and shell values.
 - Raw event objects are internal pipeline context and are not API intent output or diagnostics content.
+- Optional label providers receive only `SafeIntentFeatures`: aggregate event counts, generic file kinds, and allowlisted command families. Evidence, event text, paths, URLs, titles, domains, and project identifiers are excluded.
+- Exact resume payloads remain local to the response assembly path; cloud models receive only availability and count metadata.
 - Semantic packets exclude messaging entirely, keep Spotify/media as background-only, and include text only with explicit consent: non-redacted editor changes and non-sensitive browser excerpts are bounded before cloud transmission. Prompts, packets, raw events, titles, URLs, commands, and private/redacted content are never persisted.
 - Semantic metadata contains only refinement confidence, role counts, one workspace root, and provider identity. It never contains prompts, snippets, raw events, URLs, commands, or private/redacted content.
 
 ## 4. LLM / Copilot layer (optional)
 
-This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and the selected provider credentials are present (`OPENAI_API_KEY`, or for Gemini either `GEMINI_API_KEY` or a service-account JSON via `GOOGLE_APPLICATION_CREDENTIALS` / `GEMINI_CREDENTIALS_PATH`, with matching `LLM_PROVIDER`). Otherwise factories select template fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
+This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`, and the selected provider credentials are present (`OPENAI_API_KEY`, `GROQ_API_KEY`, or for Gemini either `GEMINI_API_KEY` or a service-account JSON via `GOOGLE_APPLICATION_CREDENTIALS` / `GEMINI_CREDENTIALS_PATH`, with matching `LLM_PROVIDER`). Otherwise factories select template fallback behavior and the Copilot API returns `CopilotNotConfigured` with HTTP 503.
 
-- `intent_engine/providers.py` — evaluates flags dynamically; creates `TemplateFallbackLabelProvider` or `LLMLabelProvider`, and optionally an OpenAI or Gemini client via `create_llm_client()`.
-- `intent_engine/llm.py` — OpenAI Responses API adapter implementing the shared `LLMClient` protocol.
+- `intent_engine/providers.py` — evaluates flags dynamically; creates `TemplateFallbackLabelProvider` or `LLMLabelProvider`, and optionally an OpenAI, Groq, or Gemini client via `create_llm_client()`.
+- `intent_engine/llm.py` — OpenAI-compatible Responses API adapters for OpenAI and Groq, implementing the shared `LLMClient` protocol.
 - `intent_engine/llm_gemini.py` — Gemini adapter implementing the same protocol for labeling and Copilot tool loops.
-- `intent_engine/labeling.py` — optional LLM labeling through `LLMLabelProvider`; any SDK, timeout, validation, or network failure falls back to template labels.
-- `intent_engine/tools.py` — safe read-only allowlist: `search_intents`, `get_intent`, `get_resume_payload`, `get_current_intent`, and `get_intent_stats`. Calls are capped and validated before reaching `IntentStore`/`CurrentIntentEngine`.
+- `intent_engine/labeling.py` — optional LLM labeling through `LLMLabelProvider`, which revalidates a `SafeIntentFeatures` packet before every provider request; any SDK, timeout, validation, or network failure falls back to template labels.
+- `intent_engine/tools.py` — safe read-only allowlist: `search_intents`, `get_intent`, `get_resume_payload`, `get_current_intent`, and `get_intent_stats`. `get_resume_payload` reports only availability/count metadata to a model; exact restore data is assembled locally. Calls are capped and validated before reaching `IntentStore`/`CurrentIntentEngine`.
 - `intent_engine/copilot.py` — bounded tool-calling loop with search rewriting, QA, briefing, and narrative modes; derives citations from tool results, tracks `evidence_status`, keeps compact conversation summaries, and enforces resume-proposal integrity.
 - `api.py` — `POST /copilot/query` and `GET /copilot/briefing/{intent_id}`. Both are gated and return `CopilotNotConfigured` with 503 when unavailable.
 - `mcp_server.py` — optional stdio MCP adapter exposing the same five tools through `ToolRegistry`; install it separately with `requirements-mcp.txt`.
 
 ### Hard Copilot rules
 
-- LLM prompts contain only safe intent fields: labels, summaries, stats, insights, tags, TODO observations, and store-derived resume payloads.
+- LLM prompts contain only a cloud-safe intent projection: derived labels/summaries, aggregate stats, generic editor/browser counts, and allowlisted shell failure families. They exclude evidence, full paths, URLs, structured file/domain values, tags, TODO paths, semantic workspace data, and exact resume payloads.
 - The LLM may not invent files, URLs, commands, dates, or restore state.
-- `resume_proposal.resume_payload` must be copied from a successful `get_resume_payload`/store result; generated prose can supply only the briefing text.
+- `resume_proposal.resume_payload` is fetched from the local store after a successful availability check; generated prose can supply only the briefing text.
 - `GET /intents/search` remains deterministic. Natural-language query rewriting is Copilot-only.
 - All Copilot/MCP tools are read-only. They cannot fetch raw events, touch files/Git, or call Role A `POST /v1/restore`.
 - Semantic cache variants include provider/model plus content and clustering policy versions, preventing stale deterministic or cross-provider cache reuse.
-- Semantic refinement uses only the existing OpenAI/Gemini cloud-client factory. Ollama, LM Studio, and other local runtimes are not supported.
+- Semantic refinement uses only the existing OpenAI/Groq/Gemini cloud-client factory. Ollama, LM Studio, and other local runtimes are not supported.
 
 ### Resume selection and restore boundary
 
@@ -128,7 +130,7 @@ This layer is active only when `ROLE_B_LLM_ENABLED=true`, `ENABLE_COPILOT=true`,
 | `intent_engine/cluster.py` | deterministic | Topic/command-phase clustering with a four-cluster cap. |
 | `intent_engine/enrich.py` | deterministic | Stats, insights, tags, TODOs, and tree invariants. |
 | `intent_engine/resume.py` | deterministic | Bounded restore-context payload construction and merging. |
-| `intent_engine/labeling.py` | both | Template fallback labels and optional LLM labels (OpenAI or Gemini). |
+| `intent_engine/labeling.py` | both | Template fallback labels and optional LLM labels (OpenAI, Groq, or Gemini). |
 | `intent_engine/store.py` | deterministic | SQLite persistence, cache, FTS, aggregation, and forgetting. |
 | `intent_engine/pipeline.py` | both | End-to-end intent construction, caching, labeling, and persistence. |
 | `intent_engine/current.py` | deterministic | F11 current-work inference. |

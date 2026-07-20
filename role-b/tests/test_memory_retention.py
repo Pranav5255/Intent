@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from intent_engine.schemas import Intent, IntentInsights, IntentStats, PipelineResult, ResumePayload
+from intent_engine.schemas import ContextEvidence, Intent, IntentInsights, IntentStats, PipelineResult, ResumePayload
 from intent_engine.store import IntentStore
 
 
@@ -15,7 +15,14 @@ def run(awaitable):
     return asyncio.run(awaitable)
 
 
-def make_intent(intent_id: str, date: str, label: str, tags: list[str], insights: IntentInsights | None = None) -> Intent:
+def make_intent(
+    intent_id: str,
+    date: str,
+    label: str,
+    tags: list[str],
+    insights: IntentInsights | None = None,
+    evidence: list[ContextEvidence] | None = None,
+) -> Intent:
     return Intent(
         id=intent_id,
         date=date,
@@ -27,6 +34,7 @@ def make_intent(intent_id: str, date: str, label: str, tags: list[str], insights
         tags=tags,
         stats=IntentStats(event_count=3, duration_seconds=10),
         insights=insights or IntentInsights(),
+        evidence=evidence or [],
         resume_payload=ResumePayload(),
     )
 
@@ -75,12 +83,15 @@ def test_project_forgetting_preserves_other_projects_and_dates():
         assert [row["id"] for row in run(store.search_intents("Docs Work"))] == ["docs"]
 
 
-def test_fts_insights_contain_safe_aggregates_not_inserted_document_source():
+def test_fts_projection_excludes_evidence_and_identifying_insight_fields():
     with tempfile.TemporaryDirectory() as directory:
         store = IntentStore(str(Path(directory) / "intents.db"))
         inserted_code = "assume_role_policy = jsonencode({SECRET_DOCUMENT_SOURCE})"
         insights = IntentInsights(editor=[{"file": "iam.tf", "typed_chars": 42, "saves": 1}])
-        intent = make_intent("safe", "2026-07-13", "Safe IAM Work", ["project:infra"], insights)
+        intent = make_intent(
+            "safe", "2026-07-13", "Safe IAM Work", ["project:infra"], insights,
+            evidence=[ContextEvidence(field="document_change.text", value=inserted_code)],
+        )
         save(store, intent)
 
         async def read_fts():
@@ -91,7 +102,10 @@ def test_fts_insights_contain_safe_aggregates_not_inserted_document_source():
         row = run(read_fts())
         assert row is not None
         fts_insights = row["insights"]
-        assert "iam.tf" in fts_insights
+        assert "iam.tf" not in fts_insights
         assert inserted_code not in fts_insights
         assert "payload" not in fts_insights.lower()
         json.loads(fts_insights)
+        assert run(store.search_intents("SECRET_DOCUMENT_SOURCE")) == []
+        store._fts_available = False
+        assert run(store.search_intents("SECRET_DOCUMENT_SOURCE")) == []

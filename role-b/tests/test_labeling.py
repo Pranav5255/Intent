@@ -77,7 +77,7 @@ class FakeResponsesClient:
         raise NotImplementedError
 
 
-def test_llm_provider_validates_response_and_receives_role_a_approved_context() -> None:
+def test_llm_provider_validates_response_and_receives_only_safe_feature_packets() -> None:
     provider = OpenAILabelProvider(api_key="test-key")
     fake_client = FakeResponsesClient('{"label":"Review IAM Policy","summary":"Reviewed IAM configuration.","confidence":0.8}')
     provider._client = fake_client
@@ -85,9 +85,11 @@ def test_llm_provider_validates_response_and_receives_role_a_approved_context() 
 
     assert result["label"] == "Review IAM Policy"
     prompt = fake_client.calls[0]["user"]
-    assert "Edited iam.tf" in prompt
-    assert "https://secret.example/path" in prompt
-    assert "raw payload here" in prompt
+    assert "safe-intent-features-v1" in prompt
+    assert "Edited iam.tf" not in prompt
+    assert "https://secret.example/path" not in prompt
+    assert "raw payload here" not in prompt
+    assert "project:infra" not in prompt
     assert fake_client.calls[0]["schema_name"] == "intent_label"
 
 
@@ -105,4 +107,4 @@ def test_openai_provider_model_resolution(monkeypatch) -> None:
     assert OpenAILabelProvider(api_key="test-key").model == "env-model"
     explicit = OpenAILabelProvider(api_key="test-key", model="explicit-model")
     assert explicit.model == "explicit-model"
-    assert explicit.cache_identity == "openai:explicit-model"
+    assert explicit.cache_identity == "openai:explicit-model:safe-intent-features-v1"

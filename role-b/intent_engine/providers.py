@@ -6,12 +6,15 @@ import os
 from pathlib import Path
 
 from intent_engine.labeling import LLMLabelProvider, LabelProvider, TemplateFallbackLabelProvider
-from intent_engine.llm import OpenAIResponsesClient
+from intent_engine.llm import GroqResponsesClient, OpenAIResponsesClient
 from intent_engine.llm_base import LLMClient
 
 
-SEMANTIC_CONTENT_POLICY_VERSION = "1"
-_DEFAULT_SEMANTIC_TIMEOUT_MS = 8000
+SEMANTIC_CONTENT_POLICY_VERSION = "3"
+# A full-capture request can carry an entire activity replay. A minute permits
+# provider-side tokenization and structured output without silently falling
+# back to deterministic clustering.
+_DEFAULT_SEMANTIC_TIMEOUT_MS = 60_000
 
 
 def _truthy(name: str) -> bool:
@@ -36,9 +39,36 @@ def _gemini_configured() -> bool:
     return bool(credentials_path) and Path(credentials_path).is_file()
 
 
+def _groq_configured() -> bool:
+    return bool(os.environ.get("GROQ_API_KEY", "").strip())
+
+
+def _bedrock_configured() -> bool:
+    """Return whether a Bedrock region has been selected.
+
+    boto3 resolves credentials at request time through its standard chain. That
+    allows a Bedrock API key, an AWS profile, temporary IAM credentials, or an
+    attached role without requiring a particular secret in Role B's config.
+    """
+
+    return bool(
+        (
+            os.environ.get("BEDROCK_REGION")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+            or ""
+        ).strip()
+    )
+
+
 def _provider_configured() -> bool:
-    if _provider_name() == "gemini":
+    provider = _provider_name()
+    if provider == "gemini":
         return _gemini_configured()
+    if provider == "groq":
+        return _groq_configured()
+    if provider == "bedrock":
+        return _bedrock_configured()
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
 
 
@@ -66,6 +96,12 @@ def semantic_content_consent_granted() -> bool:
     return _truthy("ROLE_B_SEMANTIC_CONTENT_CONSENT")
 
 
+def semantic_full_capture_consent_granted() -> bool:
+    """Return whether the user explicitly opted into full captured data for semantic LLM calls."""
+
+    return semantic_content_consent_granted() and _truthy("ROLE_B_SEMANTIC_FULL_CAPTURE_CONSENT")
+
+
 def semantic_clustering_enabled() -> bool:
     """Return whether the future semantic clustering stage may use the LLM."""
 
@@ -78,6 +114,12 @@ def create_llm_client() -> LLMClient:
         from intent_engine.llm_gemini import GeminiClient
 
         return GeminiClient()
+    if provider == "groq":
+        return GroqResponsesClient()
+    if provider == "bedrock":
+        from intent_engine.llm_bedrock import BedrockConverseClient
+
+        return BedrockConverseClient()
     if provider != "openai":
         raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
     return OpenAIResponsesClient()

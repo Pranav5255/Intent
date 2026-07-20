@@ -1,8 +1,12 @@
 (() => {
   const SENSITIVE_PATH = /\b(login|log-in|signin|sign-in|auth|oauth|sso|account|billing|payment|checkout|wallet)\b/i;
   const INTERACTIVE_SELECTOR = "a,button,input,select,[role='button'],[role='link'],[role='checkbox'],[role='radio'],[role='switch'],[role='menuitem'],form";
+  const SCROLL_MIN_DISTANCE_PX = 240;
+  const SCROLL_MIN_INTERVAL_MS = 3_000;
   let captureEnabled = false;
   let contextEnabled = false;
+  let lastCapturedScrollY = 0;
+  let lastScrollSentAt = 0;
 
   function isSensitivePage() {
     if (SENSITIVE_PATH.test(location.pathname)) return true;
@@ -95,6 +99,39 @@
     }
   }
 
+  function scrollPositionBucket(currentY) {
+    const root = document.scrollingElement || document.documentElement;
+    const scrollableHeight = Math.max(0, root.scrollHeight - window.innerHeight);
+    if (!scrollableHeight) return 0;
+    return Math.min(10, Math.max(0, Math.round((currentY / scrollableHeight) * 10)));
+  }
+
+  function onScroll(event) {
+    const root = document.scrollingElement || document.documentElement;
+    const currentY = Math.max(0, Math.round(window.scrollY || root.scrollTop || 0));
+    if (!event.isTrusted || !captureEnabled || isSensitivePage()) {
+      lastCapturedScrollY = currentY;
+      return;
+    }
+    const delta = currentY - lastCapturedScrollY;
+    const now = Date.now();
+    if (Math.abs(delta) < SCROLL_MIN_DISTANCE_PX || now - lastScrollSentAt < SCROLL_MIN_INTERVAL_MS) return;
+
+    lastCapturedScrollY = currentY;
+    lastScrollSentAt = now;
+    browser.runtime.sendMessage({
+      kind: "intent-os-user-action",
+      payload: {
+        action: "scroll",
+        sensitive_page: false,
+        target: { tag: "document", role: "document" },
+        // Retain only a coarse direction and position, never page text,
+        // selectors, pointer coordinates, or exact scroll offsets.
+        scroll: { direction: delta > 0 ? "down" : "up", position_bucket: scrollPositionBucket(currentY) }
+      }
+    }).catch(() => undefined);
+  }
+
   async function refreshCaptureStatus() {
     try {
       const status = await browser.runtime.sendMessage({ kind: "intent-os-detailed-capture-status" });
@@ -108,6 +145,7 @@
   document.addEventListener("click", onClick, true);
   document.addEventListener("submit", onSubmit, true);
   document.addEventListener("change", onChange, true);
+  window.addEventListener("scroll", onScroll, { passive: true });
   void refreshCaptureStatus();
   setInterval(() => void refreshCaptureStatus(), 30_000);
 })();

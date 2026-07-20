@@ -6,7 +6,7 @@ from typing import Any, Protocol
 
 
 class LLMClient(Protocol):
-    """Minimal interface shared by OpenAI and Gemini adapters."""
+    """Minimal interface shared by optional provider adapters."""
 
     model: str
 
@@ -17,6 +17,8 @@ class LLMClient(Protocol):
         user: str,
         schema_name: str,
         schema: dict,
+        max_input_chars: int | None = 4_000,
+        prefer_json_object: bool = False,
     ) -> dict:
         """Return a JSON object matching the supplied schema."""
 

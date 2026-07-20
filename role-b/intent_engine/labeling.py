@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from abc import ABC, abstractmethod
 from collections import Counter
 
 from intent_engine.llm_base import LLMClient
+from intent_engine.schemas import (
+    SAFE_INTENT_PRIVACY_POLICY_VERSION,
+    Intent,
+    NormalizedEvent,
+    SafeIntentFeatures,
+)
 
 _INTENT_LABEL_SCHEMA = {
     "type": "object",
@@ -19,6 +26,105 @@ _INTENT_LABEL_SCHEMA = {
     "required": ["label", "summary", "confidence"],
     "additionalProperties": False,
 }
+
+_SAFE_EVENT_FAMILIES = frozenset({"editor", "browser", "command", "focus", "file_change", "idle", "other"})
+_SAFE_COMMAND_FAMILIES = frozenset({"terraform", "git", "pytest", "python", "npm", "pip", "docker", "make"})
+_SAFE_FILE_KINDS = frozenset({"code", "pdf", "image", "other"})
+SAFE_FEATURE_POLICY_VERSION = SAFE_INTENT_PRIVACY_POLICY_VERSION
+_SAFE_BOUNDARY_REASONS = frozenset({
+    "raw_event_content_omitted",
+    "child_evidence_omitted",
+    "untrusted_input_omitted",
+})
+_SOURCE_FAMILIES = {
+    "vscode": "editor",
+    "firefox": "browser",
+    "chrome": "browser",
+    "shell": "command",
+    "linux": "focus",
+    "filesystem": "file_change",
+}
+
+
+def build_safe_cluster_features(cluster: list[NormalizedEvent]) -> SafeIntentFeatures:
+    """Project a cluster into the fixed allowlist used by cloud labelers."""
+
+    events = list(cluster)
+    event_counts: Counter[str] = Counter()
+    command_families: list[str] = []
+    file_kinds: list[str] = []
+    for event in events:
+        if event.family in _SAFE_EVENT_FAMILIES:
+            event_counts[event.family] += 1
+        command_family = event.entities.command_family
+        if command_family in _SAFE_COMMAND_FAMILIES and command_family not in command_families:
+            command_families.append(command_family)
+        file_kind = event.entities.file_kind
+        if file_kind in _SAFE_FILE_KINDS and file_kind not in file_kinds:
+            file_kinds.append(file_kind)
+
+    duration_seconds = max(0, events[-1].ts - events[0].ts) if events else 0
+    return SafeIntentFeatures(
+        command_families=command_families,
+        file_kinds=file_kinds,
+        event_counts=dict(sorted(event_counts.items())),
+        duration_seconds=min(duration_seconds, 86_400),
+        boundary_reasons=["raw_event_content_omitted"],
+    )
+
+
+def build_safe_parent_features(children: list[Intent]) -> SafeIntentFeatures:
+    """Aggregate child intent metadata without reusing child labels or evidence."""
+
+    event_counts: Counter[str] = Counter()
+    command_families: list[str] = []
+    duration_seconds = 0
+    for child in children:
+        duration_seconds += max(0, child.stats.duration_seconds)
+        source_counted = False
+        for source, count in child.stats.sources.items():
+            family = _SOURCE_FAMILIES.get(source)
+            if family and isinstance(count, int) and not isinstance(count, bool) and count > 0:
+                event_counts[family] += count
+                source_counted = True
+        if not source_counted and child.stats.event_count > 0:
+            event_counts["other"] += child.stats.event_count
+        for insight in child.insights.shell:
+            family = insight.get("command_family") if isinstance(insight, dict) else None
+            if family in _SAFE_COMMAND_FAMILIES and family not in command_families:
+                command_families.append(family)
+
+    return SafeIntentFeatures(
+        command_families=command_families,
+        event_counts=dict(sorted(event_counts.items())),
+        duration_seconds=min(duration_seconds, 86_400),
+        child_count=min(len(children), 1_000),
+        boundary_reasons=["child_evidence_omitted"],
+    )
+
+
+def serialize_safe_features(features: SafeIntentFeatures) -> str:
+    """Return a stable, provider-ready representation of safe aggregate features."""
+
+    return json.dumps(features.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+
+
+def safe_provider_hints(hints: dict | None) -> dict:
+    """Keep optional provider hints to fixed categorical values only."""
+
+    if not isinstance(hints, dict):
+        return {}
+    safe: dict[str, object] = {}
+    command_family = hints.get("command_family")
+    if command_family in _SAFE_COMMAND_FAMILIES:
+        safe["command_family"] = command_family
+    dominant_family = hints.get("dominant_family")
+    if dominant_family in _SAFE_EVENT_FAMILIES:
+        safe["dominant_family"] = dominant_family
+    command_families = _safe_string_list(hints.get("command_families"), _SAFE_COMMAND_FAMILIES, 8)
+    if command_families:
+        safe["command_families"] = command_families
+    return safe
 
 
 class LabelProvider(ABC):
@@ -53,7 +159,7 @@ class TemplateFallbackLabelProvider(LabelProvider):
 
     @property
     def cache_identity(self) -> str:
-        return "template-fallback-v1"
+        return "template-fallback-v2"
 
     async def label_cluster(
         self,
@@ -136,7 +242,7 @@ class LLMLabelProvider(LabelProvider):
 
     @property
     def cache_identity(self) -> str:
-        return f"{self._provider_name}:{self.model}"
+        return f"{self._provider_name}:{self.model}:{SAFE_FEATURE_POLICY_VERSION}"
 
     async def label_cluster(
         self,
@@ -144,19 +250,19 @@ class LLMLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        # Role A has already applied consent, field bounds, redaction and domain
-        # blocking.  Keep the complete resulting context for the intelligence
-        # provider; the old 1,200-character, URL/content-stripping path made
-        # detailed capture unavailable to Role B.
-        safe_text = _intelligence_lines(cluster_events_text)
+        # The pipeline sends a SafeIntentFeatures packet here.  Parse and
+        # re-project it again so direct callers cannot bypass the cloud boundary.
+        safe_text = _provider_safe_features(cluster_events_text)
         try:
             response = await asyncio.wait_for(
-                self._completion("cluster", safe_text, project_tag),
+                self._completion("cluster", safe_text),
                 timeout=self.timeout_seconds,
             )
             return validate_label_result(response)
         except Exception:
-            return await self._fallback.label_cluster(safe_text, project_tag, hints)
+            # This fallback stays local, so it can retain the caller's normal
+            # deterministic hints without placing them in a provider request.
+            return await self._fallback.label_cluster(cluster_events_text, project_tag, hints)
 
     async def label_parent(
         self,
@@ -164,28 +270,28 @@ class LLMLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        safe_text = _intelligence_lines(parent_events_text)
+        safe_text = _provider_safe_features(parent_events_text)
         try:
             response = await asyncio.wait_for(
-                self._completion("parent", safe_text, project_tag),
+                self._completion("parent", safe_text),
                 timeout=self.timeout_seconds,
             )
             return validate_label_result(response)
         except Exception:
-            return await self._fallback.label_parent(safe_text, project_tag, hints)
+            return await self._fallback.label_parent(parent_events_text, project_tag, hints)
 
-    async def _completion(self, mode: str, safe_text: str, project_tag: str | None) -> dict:
+    async def _completion(self, mode: str, safe_text: str) -> dict:
         if mode == "parent":
             user = (
-                "Given these child intent labels and summaries, provide a 2-5 word parent label, "
+                "Given these safe aggregate child-intent features, provide a 2-5 word parent label, "
                 "a one-sentence summary, and confidence from 0 to 1.\n"
-                f"Project tag: {project_tag or 'none'}\nChildren:\n{safe_text}"
+                f"Safe features:\n{safe_text}"
             )
         else:
             user = (
-                "Given these consent-approved activity descriptions and context, provide a 2-5 word label, "
+                "Given these safe aggregate activity features, provide a 2-5 word label, "
                 "a one-sentence summary, and confidence from 0 to 1.\n"
-                f"Project tag: {project_tag or 'none'}\nEvents:\n{safe_text}"
+                f"Safe features:\n{safe_text}"
             )
         return await self._client.respond_json(
             system="Return only a JSON object with label, summary, and confidence.",
@@ -250,15 +356,85 @@ def _activity_lines(cluster_events_text: str) -> list[str]:
 
     if not isinstance(cluster_events_text, str):
         return []
-    return [line.strip() for line in cluster_events_text.splitlines() if re.match(r"^\d+\.\s+", line.strip())]
+    lines = [line.strip() for line in cluster_events_text.splitlines() if re.match(r"^\d+\.\s+", line.strip())]
+    return lines or _safe_feature_lines(cluster_events_text)
 
 
-def _intelligence_lines(cluster_events_text: str) -> str:
-    """Preserve complete Role-A-approved context while removing blank lines."""
+def _provider_safe_features(value: str) -> str:
+    """Rebuild a fixed allowlist packet before any provider request.
 
-    if not isinstance(cluster_events_text, str):
-        return ""
-    return "\n".join(line.rstrip() for line in cluster_events_text.splitlines() if line.strip())
+    ``cluster_events_text`` remains a string in the provider protocol for
+    backwards compatibility, so this defensive parser is the final protection
+    against direct callers supplying evidence or other untrusted text.
+    """
+
+    fallback = SafeIntentFeatures(boundary_reasons=["untrusted_input_omitted"])
+    if not isinstance(value, str):
+        return serialize_safe_features(fallback)
+    try:
+        payload = json.loads(value)
+    except (TypeError, ValueError):
+        return serialize_safe_features(fallback)
+    if not isinstance(payload, dict) or payload.get("policy_version") != SAFE_FEATURE_POLICY_VERSION:
+        return serialize_safe_features(fallback)
+
+    command_families = _safe_string_list(payload.get("command_families"), _SAFE_COMMAND_FAMILIES, 8)
+    file_kinds = _safe_string_list(payload.get("file_kinds"), _SAFE_FILE_KINDS, 4)
+    event_counts: dict[str, int] = {}
+    raw_counts = payload.get("event_counts")
+    if isinstance(raw_counts, dict):
+        for family, count in raw_counts.items():
+            if family not in _SAFE_EVENT_FAMILIES or isinstance(count, bool) or not isinstance(count, int):
+                continue
+            if count > 0:
+                event_counts[family] = min(count, 100_000)
+    boundary_reasons = _safe_string_list(payload.get("boundary_reasons"), _SAFE_BOUNDARY_REASONS, 4)
+    return serialize_safe_features(SafeIntentFeatures(
+        command_families=command_families,
+        file_kinds=file_kinds,
+        event_counts=dict(sorted(event_counts.items())),
+        duration_seconds=_safe_int(payload.get("duration_seconds"), 86_400),
+        child_count=_safe_int(payload.get("child_count"), 1_000),
+        boundary_reasons=boundary_reasons or ["untrusted_input_omitted"],
+    ))
+
+
+def _safe_feature_lines(cluster_events_text: str) -> list[str]:
+    """Render a generic local fallback summary from a safe feature packet."""
+
+    try:
+        payload = json.loads(_provider_safe_features(cluster_events_text))
+    except (TypeError, ValueError):  # pragma: no cover - defensive; helper always returns JSON
+        return []
+    lines: list[str] = []
+    for family, count in payload.get("event_counts", {}).items():
+        if isinstance(family, str) and isinstance(count, int) and count > 0:
+            suffix = "event" if count == 1 else "events"
+            lines.append(f"{len(lines) + 1}. Observed {count} {family} {suffix}")
+    for family in payload.get("command_families", []):
+        if isinstance(family, str):
+            lines.append(f"{len(lines) + 1}. Ran {family} commands")
+    if not lines:
+        lines.append("1. Observed aggregate activity")
+    return lines
+
+
+def _safe_string_list(value: object, allowed: frozenset[str], maximum: int) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    safe: list[str] = []
+    for item in value:
+        if item in allowed and item not in safe:
+            safe.append(item)
+        if len(safe) >= maximum:
+            break
+    return safe
+
+
+def _safe_int(value: object, maximum: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 0
+    return min(max(value, 0), maximum)
 
 
 def _summary(lines: list[str]) -> str:

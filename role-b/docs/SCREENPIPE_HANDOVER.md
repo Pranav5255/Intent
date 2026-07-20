@@ -45,8 +45,8 @@ Out of scope:
 | --- | --- | --- |
 | Batch pipeline | role-b/intent_engine/pipeline.py:run_pipeline normalizes a complete DayExport, sessions/clusters it, and persists a date atomically. | Good replayability, but no durable incremental cursor for live processing. |
 | Current intent | role-b/intent_engine/current.py:CurrentIntentEngine rereads a rolling 30-minute window and caches it for 60 seconds. | Repeated overlapping reads can recompute the same activity and cannot make late-arrival handling explicit. |
-| Provider boundary | pipeline.py and current.py build intelligence_text(...); normalize.py renders every approved evidence field. | A non-template label provider can receive raw Role A evidence today. This conflicts with the privacy rule above. |
-| Persistence | intent_engine/store.py stores complete Intent JSON, including evidence, and indexes it through _searchable_evidence. | Raw approved context can outlive Role A's raw-event retention policy in the Role B database. |
+| Provider boundary | pipeline.py and current.py build and pass `SafeIntentFeatures`; `LLMLabelProvider` revalidates that packet before every request. | Raw Role A evidence, document text, paths, URLs, titles, domains, and project identifiers do not reach optional label providers. |
+| Persistence | intent_engine/store.py still stores complete Intent JSON, including evidence, but FTS now rebuilds from a safe aggregate projection. | Local raw approved context can still outlive Role A's raw-event retention policy; retention/migration remains outstanding. |
 | Search | IntentStore.search_intents has FTS5 plus a LIKE fallback and an in-memory LRU cache. | It lacks query sanitisation/normalisation, relevance ordering, stable pagination, and an explicit indexed-content policy. |
 | Forgetting | delete_date and delete_project delete Role B rows and FTS entries transactionally. | Useful local deletion primitives, but they are not linked to source-event lineage or a retention worker. |
 
@@ -251,9 +251,9 @@ crates/screenpipe-db/src/text_normalizer.rs:
 - Index only the safe search projection: deterministic label, summary,
   project key, command families, file kinds, and allowed domains.
 
-Do not index Intent.evidence as _searchable_evidence currently does. It would
-make Role A-approved raw values durable and discoverable in a second database
-even after Role A's raw retention policy removes them.
+Do not index Intent.evidence in future search projections. The current
+`safe-search-v2` index excludes it, but legacy intent JSON still needs the
+retention/migration work described above.
 
 ### 6. Tie retention and deletion to provenance
 

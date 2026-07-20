@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -81,3 +82,35 @@ def test_current_cache_reuses_for_60_seconds_then_refreshes(monkeypatch) -> None
 
 def test_current_role_a_unavailable_returns_none() -> None:
     assert run(CurrentIntentEngine(FakeClient(unavailable=True)).get_current()) is None
+
+
+def test_current_provider_receives_safe_feature_packet(monkeypatch) -> None:
+    class RecordingProvider:
+        def __init__(self) -> None:
+            self.calls = []
+
+        async def label_cluster(self, cluster_events_text, project_tag=None, hints=None):
+            self.calls.append({"text": cluster_events_text, "project_tag": project_tag, "hints": hints})
+            return {"label": "Safe Current Work", "summary": "Inferred current activity.", "confidence": 0.8}
+
+    monkeypatch.setattr(current_module.time, "time", lambda: 10_000.0)
+    provider = RecordingProvider()
+    monkeypatch.setattr(current_module, "create_label_provider", lambda: provider)
+    client = FakeClient([
+        RawEvent(
+            id=f"event-{index}", ts=9_000 + index, source="vscode", type="document_change",
+            payload=EventPayload(path="/repo/private/iam.tf", changes=[{"text": "SECRET_EDITOR_SOURCE"}]),
+        )
+        for index in range(3)
+    ])
+
+    result = run(CurrentIntentEngine(client).get_current())
+
+    assert result is not None
+    packet = json.loads(provider.calls[0]["text"])
+    assert packet["policy_version"] == "safe-intent-features-v1"
+    captured = json.dumps(provider.calls)
+    assert "/repo/private/iam.tf" not in captured
+    assert "SECRET_EDITOR_SOURCE" not in captured
+    assert provider.calls[0]["project_tag"] is None
+    assert "top_file" not in (provider.calls[0]["hints"] or {})

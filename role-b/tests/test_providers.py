@@ -1,7 +1,8 @@
 import pytest
 
 from intent_engine.labeling import FallbackLabelProvider, LLMLabelProvider, OpenAILabelProvider
-from intent_engine.llm import OpenAIResponsesClient
+from intent_engine.llm import GroqResponsesClient, OpenAIResponsesClient
+from intent_engine.llm_bedrock import BedrockConverseClient
 from intent_engine.llm_gemini import GeminiClient
 from intent_engine.providers import (
     copilot_enabled,
@@ -20,11 +21,24 @@ def clear_provider_env(monkeypatch):
     monkeypatch.delenv("ROLE_B_LLM_ENABLED", raising=False)
     monkeypatch.delenv("ENABLE_COPILOT", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("GROQ_BASE_URL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
     monkeypatch.delenv("GEMINI_CREDENTIALS_PATH", raising=False)
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
     monkeypatch.delenv("GOOGLE_CLOUD_LOCATION", raising=False)
+    monkeypatch.delenv("BEDROCK_REGION", raising=False)
+    monkeypatch.delenv("BEDROCK_AWS_PROFILE", raising=False)
+    monkeypatch.delenv("BEDROCK_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("BEDROCK_MAX_TOKENS", raising=False)
+    monkeypatch.delenv("BEDROCK_TEMPERATURE", raising=False)
+    monkeypatch.delenv("BEDROCK_STRUCTURED_OUTPUT", raising=False)
+    monkeypatch.delenv("BEDROCK_STRICT_TOOL_USE", raising=False)
+    monkeypatch.delenv("AWS_REGION", raising=False)
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    monkeypatch.delenv("AWS_BEARER_TOKEN_BEDROCK", raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
     monkeypatch.delenv("INTENT_OS_LLM_MODEL", raising=False)
     monkeypatch.delenv("ROLE_B_SEMANTIC_CLUSTER", raising=False)
@@ -60,6 +74,29 @@ def test_gemini_provider_selection(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     client = create_llm_client()
     assert isinstance(client, GeminiClient)
+
+
+def test_groq_provider_selection(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    client = create_llm_client()
+    assert isinstance(client, GroqResponsesClient)
+    assert client.model == "openai/gpt-oss-20b"
+    assert client.base_url == "https://api.groq.com/openai/v1"
+
+
+def test_bedrock_provider_selection(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "bedrock")
+    monkeypatch.setenv("BEDROCK_REGION", "me-central-1")
+    client = create_llm_client()
+    assert isinstance(client, BedrockConverseClient)
+    assert client.region == "me-central-1"
+
+
+def test_bedrock_requires_explicit_region_to_enable(monkeypatch):
+    monkeypatch.setenv("ROLE_B_LLM_ENABLED", "true")
+    monkeypatch.setenv("LLM_PROVIDER", "bedrock")
+    assert not llm_enabled()
 
 
 def test_gemini_service_account_enables_llm(monkeypatch, tmp_path):
@@ -111,6 +148,14 @@ def test_blank_key_disables_llm(monkeypatch):
     assert not llm_enabled()
 
 
+def test_blank_groq_key_disables_llm(monkeypatch):
+    monkeypatch.setenv("ROLE_B_LLM_ENABLED", "true")
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "   ")
+    assert isinstance(create_label_provider(), FallbackLabelProvider)
+    assert not llm_enabled()
+
+
 def test_openai_alias_still_supported():
     assert issubclass(OpenAILabelProvider, LLMLabelProvider)
 
@@ -149,6 +194,15 @@ def test_semantic_clustering_supports_gemini(monkeypatch):
     assert semantic_clustering_enabled()
 
 
+def test_semantic_clustering_supports_groq(monkeypatch):
+    monkeypatch.setenv("ROLE_B_SEMANTIC_CLUSTER", "true")
+    monkeypatch.setenv("ROLE_B_SEMANTIC_CONTENT_CONSENT", "true")
+    monkeypatch.setenv("ROLE_B_LLM_ENABLED", "true")
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    assert semantic_clustering_enabled()
+
+
 def test_semantic_clustering_supports_gemini_service_account(monkeypatch, tmp_path):
     credentials = tmp_path / "sa.json"
     credentials.write_text('{"type":"service_account","project_id":"demo"}', encoding="utf-8")
@@ -162,7 +216,7 @@ def test_semantic_clustering_supports_gemini_service_account(monkeypatch, tmp_pa
 
 @pytest.mark.parametrize(
     ("value", "expected"),
-    [(None, 8000), ("7500", 7500), ("invalid", 8000), ("0", 8000), ("-1", 8000)],
+    [(None, 60_000), ("7500", 7500), ("invalid", 60_000), ("0", 60_000), ("-1", 60_000)],
 )
 def test_semantic_timeout_uses_positive_integer_or_default(monkeypatch, value, expected):
     if value is not None:

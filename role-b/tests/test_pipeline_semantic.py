@@ -9,7 +9,7 @@ from intent_engine.labeling import TemplateFallbackLabelProvider
 from intent_engine.llm import LLMError
 from intent_engine.logging import DiagnosticsLogger
 from intent_engine.pipeline import run_pipeline
-from intent_engine.schemas import DayExport, EventPayload, RawEvent
+from intent_engine.schemas import DayExport, EventPayload, PipelineWarning, RawEvent
 from intent_engine.store import IntentStore
 
 
@@ -53,7 +53,7 @@ def export():
         exported_at=1,
         events=[
             RawEvent(id="terraform", ts=1, source="shell", type="command", payload=EventPayload(cmd="terraform plan", cwd="/repo/app", exit_code=0)),
-            RawEvent(id="npm", ts=2, source="shell", type="command", payload=EventPayload(cmd="npm test", cwd="/repo/app", exit_code=0)),
+            RawEvent(id="npm", ts=302, source="shell", type="command", payload=EventPayload(cmd="npm test", cwd="/repo/app", exit_code=0)),
         ],
     )
 
@@ -61,8 +61,8 @@ def export():
 def proposals():
     return {
         "proposals": [
-            {"event_id": "terraform", "role": "task", "confidence": 0.9, "linked_event_ids": ["npm"]},
-            {"event_id": "npm", "role": "supporting_context", "confidence": 0.8, "linked_event_ids": ["terraform"]},
+            {"event_id": "p0", "role": "task", "confidence": 0.9, "topic": "Infrastructure plan", "linked_event_ids": ["p1"]},
+            {"event_id": "p1", "role": "supporting_context", "confidence": 0.8, "topic": "Infrastructure plan", "linked_event_ids": ["p0"]},
         ]
     }
 
@@ -90,7 +90,8 @@ def test_semantic_clusters_flow_through_enrichment_and_bounded_resume(monkeypatc
     assert intent.resume_payload.shell["cwd"] == "/repo/app"
     assert intent.semantic is not None
     assert intent.semantic.event_roles == {"task": 1, "supporting_context": 1}
-    assert intent.semantic.provider_identity == "semantic:gemini:gemini-test:content-policy-1:cluster-policy-1"
+    assert intent.semantic.topic == "Infrastructure plan"
+    assert intent.semantic.provider_identity == "semantic:gemini:gemini-test:content-policy-3:cluster-policy-17"
 
 
 def test_semantic_failure_falls_back_and_logs_safe_reason(monkeypatch):
@@ -111,6 +112,7 @@ def test_semantic_failure_falls_back_and_logs_safe_reason(monkeypatch):
 
     assert len(result.intents[0].children) == 2
     assert result.intents[0].semantic is None
+    assert result.warnings == [PipelineWarning(level="warning", message="Semantic refinement fallback: provider_unavailable")]
     assert record["semantic_fallback_reason"] == "provider_unavailable"
     assert "provider failed" not in json.dumps(record)
 

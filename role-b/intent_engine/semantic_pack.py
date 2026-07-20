@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from intent_engine.providers import semantic_content_consent_granted
+from intent_engine.providers import semantic_content_consent_granted, semantic_full_capture_consent_granted
 from intent_engine.schemas import NormalizedEvent
 
 
@@ -16,6 +16,10 @@ MAX_SNIPPET_CHARS_PER_PACKET = 2000
 
 _MESSAGING_MARKERS = ("whatsapp", "telegram", "signal", "slack", "discord", "teams")
 _MEDIA_MARKERS = ("spotify", "vlc", "rhythmbox", "media player", "music.apple.com", "music.youtube.com")
+_SAFE_BROWSER_ACTIONS = {
+    "click", "link_activation", "form_submit", "toggle", "select_change", "scroll",
+    "like", "reply", "repost", "share", "follow", "unfollow",
+}
 
 
 class SemanticPacketEvent(BaseModel):
@@ -32,6 +36,11 @@ class SemanticPacketEvent(BaseModel):
     safe_metadata: dict[str, str | int | bool | None] = Field(default_factory=dict)
     deterministic_role: Literal["candidate", "background"]
     content_snippet: str | None = None
+    # Present only under explicit full-capture cloud consent. This is the
+    # complete Role A event, including its envelope and payload. The compact
+    # provider codec lives in semantic_cluster.py and never persists this
+    # field separately.
+    captured_event: dict[str, Any] | None = None
 
 
 class SemanticCandidatePacket(BaseModel):
@@ -53,20 +62,23 @@ def build_semantic_candidate_packets(
     packets: list[SemanticCandidatePacket] = []
     candidates: list[NormalizedEvent] = []
     gap_seconds = max_gap_minutes * 60
+    full_capture = semantic_full_capture_consent_granted()
 
     def flush_candidates() -> None:
         nonlocal candidates
         if candidates:
-            packets.append(_build_packet(candidates, "candidate"))
+            packets.append(_build_packet(candidates, "candidate", full_capture=full_capture))
             candidates = []
 
     for event in sorted(session, key=lambda item: (item.ts, item.ordinal)):
         classification = _classify_event(event)
-        if classification == "excluded":
+        if classification == "excluded" and not full_capture:
             continue
+        if classification == "excluded":
+            classification = "candidate"
         if classification == "background":
             flush_candidates()
-            packets.append(_build_packet([event], "background"))
+            packets.append(_build_packet([event], "background", full_capture=full_capture))
             continue
 
         if candidates and (event.ts - candidates[-1].ts > gap_seconds or len(candidates) >= MAX_EVENTS_PER_PACKET):
@@ -77,21 +89,27 @@ def build_semantic_candidate_packets(
     return packets
 
 
-def _build_packet(events: list[NormalizedEvent], role: Literal["candidate", "background"]) -> SemanticCandidatePacket:
+def _build_packet(
+    events: list[NormalizedEvent], role: Literal["candidate", "background"], *, full_capture: bool = False
+) -> SemanticCandidatePacket:
     remaining_snippet_chars = MAX_SNIPPET_CHARS_PER_PACKET
     packet_events: list[SemanticPacketEvent] = []
     for event in events:
         snippet = None
-        if role == "candidate" and remaining_snippet_chars:
+        if not full_capture and role == "candidate" and remaining_snippet_chars:
             snippet = _content_snippet(event, remaining_snippet_chars)
             if snippet:
                 remaining_snippet_chars -= len(snippet)
-        packet_events.append(_packet_event(event, role, snippet))
+        packet_events.append(_packet_event(event, role, snippet, full_capture=full_capture))
     return SemanticCandidatePacket(start_ts=events[0].ts, end_ts=events[-1].ts, events=packet_events)
 
 
 def _packet_event(
-    event: NormalizedEvent, role: Literal["candidate", "background"], snippet: str | None
+    event: NormalizedEvent,
+    role: Literal["candidate", "background"],
+    snippet: str | None,
+    *,
+    full_capture: bool = False,
 ) -> SemanticPacketEvent:
     return SemanticPacketEvent(
         event_id=event.id,
@@ -109,10 +127,29 @@ def _packet_event(
             "save": event.signals.save,
             "todo_added": event.signals.todo_added,
             "exit_code": event.entities.exit_code,
+            "action": _browser_action(event),
         },
         deterministic_role=role,
         content_snippet=snippet,
+        captured_event=_captured_event(event) if full_capture else None,
     )
+
+
+def _captured_event(event: NormalizedEvent) -> dict[str, Any]:
+    """Return the complete captured Role A event under explicit cloud consent."""
+
+    raw = event.raw if isinstance(event.raw, dict) else {}
+    return raw
+
+
+def _browser_action(event: NormalizedEvent) -> str | None:
+    """Allowlist interaction mechanics without exposing page or target content."""
+
+    if event.family != "browser" or event.category != "user_action":
+        return None
+    payload = event.raw.get("payload") if isinstance(event.raw, dict) else None
+    action = payload.get("action") if isinstance(payload, dict) else None
+    return action if isinstance(action, str) and action in _SAFE_BROWSER_ACTIONS else None
 
 
 def _classify_event(event: NormalizedEvent) -> Literal["candidate", "background", "excluded"]:

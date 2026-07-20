@@ -9,7 +9,11 @@ from intent_engine.tools import ToolContext, ToolRegistry
 
 
 class BriefingLLM:
+    def __init__(self):
+        self.calls = []
+
     async def respond_with_tools(self, **kwargs):
+        self.calls.append(kwargs)
         return {
             "output_text": "You were fixing IAM permissions for Terraform apply. Resume /invented.tf, despite the stored payload.",
             "tool_calls": [],
@@ -32,7 +36,8 @@ def _seed():
 def test_briefing_copies_store_payload_and_ignores_invented_fields():
     temp, store, expected = _seed()
     try:
-        result = asyncio.run(IntentCopilot(BriefingLLM(), ToolRegistry(ToolContext(store))).query(
+        llm = BriefingLLM()
+        result = asyncio.run(IntentCopilot(llm, ToolRegistry(ToolContext(store))).query(
             CopilotQueryRequest(mode="briefing", intent_id="brief-1", question="Summarize this intent for resume")
         ))
         assert result.evidence_status == "sufficient"
@@ -40,5 +45,9 @@ def test_briefing_copies_store_payload_and_ignores_invented_fields():
         assert result.resume_proposal.briefing
         assert result.resume_proposal.resume_payload.model_dump() == expected.model_dump()
         assert "/invented.tf" not in result.resume_proposal.resume_payload.files
+        captured = str(llm.calls)
+        for marker in ("/repo/iam.tf", "https://docs.aws.amazon.com/iam", "terraform apply"):
+            assert marker not in captured
+        assert "resume_payload_available" in captured
     finally:
         temp.cleanup()

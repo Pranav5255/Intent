@@ -29,7 +29,7 @@ EVENT_PAYLOAD_FIELDS: dict[tuple[str, str], tuple[str, ...]] = {
 MAX_DOCUMENT_CHANGES = 25
 MAX_DOCUMENT_TEXT_BYTES = 8 * 1024
 CHANGE_KINDS = {"insert", "delete", "replace"}
-USER_ACTIONS = {"click", "link_activation", "form_submit", "toggle", "select_change", "like", "reply", "repost", "share", "follow", "unfollow"}
+USER_ACTIONS = {"click", "link_activation", "form_submit", "toggle", "select_change", "scroll", "like", "reply", "repost", "share", "follow", "unfollow"}
 
 
 def _bounded_string(value: object, field: str, maximum: int) -> None:
@@ -92,7 +92,7 @@ def _validate_document_change(payload: dict[str, Any]) -> None:
 
 
 def _validate_user_action(payload: dict[str, Any]) -> None:
-    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page", "context", "blocked"}
+    allowed_payload_fields = {"url", "tab_id", "window_id", "action", "target", "sensitive_page", "scroll", "context", "blocked"}
     if set(payload) - allowed_payload_fields:
         raise ValueError("user_action payload contains unsupported fields")
     _bounded_string(payload["url"], "url", 4096)
@@ -121,6 +121,20 @@ def _validate_user_action(payload: dict[str, Any]) -> None:
         if set(target) != {"tag", "role"}:
             raise ValueError("sensitive-page targets may contain only tag and role")
         return
+    if payload["action"] == "scroll":
+        if target != {"tag": "document", "role": "document"}:
+            raise ValueError("scroll target must be the document")
+        scroll = payload.get("scroll")
+        if not isinstance(scroll, dict) or set(scroll) != {"direction", "position_bucket"}:
+            raise ValueError("payload scroll must contain direction and position_bucket")
+        if scroll["direction"] not in {"up", "down"}:
+            raise ValueError("payload scroll.direction is invalid")
+        if not isinstance(scroll["position_bucket"], int) or not 0 <= scroll["position_bucket"] <= 10:
+            raise ValueError("payload scroll.position_bucket must be an integer from 0 to 10")
+        if "context" in payload:
+            raise ValueError("scroll payload may not include context")
+    elif "scroll" in payload:
+        raise ValueError("payload scroll is valid only for scroll actions")
     for field, maximum in (("label", 160), ("input_type", 64), ("href", 4096)):
         if field in target and (not isinstance(target[field], str) or len(target[field]) > maximum):
             raise ValueError(f"payload target.{field} must be a string of at most {maximum} characters")

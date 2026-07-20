@@ -1,0 +1,3 @@
+# Optional Amazon Bedrock Converse API provider.
+# This version includes Converse outputConfig support for structured JSON.
+boto3>=1.43.51,<2
