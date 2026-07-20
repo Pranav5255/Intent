@@ -1,10 +1,6 @@
 tmp
-.venv/
-
-# Local secrets — never commit service account keys or env files
-**/.env
-**/kube-orch*.json
-**/*service-account*.json
-**/*-credentials.json
-**/google-credentials.json
-**/secrets/
+.venv/*
+**/**/**node_modules/*
+**/**/node_modules/*
+**/node_modules/*
+node_modules/*

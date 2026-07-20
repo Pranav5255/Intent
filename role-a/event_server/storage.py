@@ -8,7 +8,7 @@ import sqlite3
 import time
 from datetime import date, datetime, time as datetime_time
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from .models import DayExport, EventIn, EventOut
 
@@ -56,22 +56,54 @@ class EventStore:
             )
 
     def insert(self, event: EventIn, ingested_at: int | None = None) -> tuple[bool, EventOut]:
-        ingested_at = ingested_at or int(time.time())
-        record = event.as_record()
-        with self._connection() as connection:
-            cursor = connection.execute(
-                """
-                INSERT INTO events(id, schema_version, ts, source, type, payload, ingested_at)
-                VALUES (:id, :schema_version, :ts, :source, :type, :payload, :ingested_at)
-                ON CONFLICT(id) DO NOTHING
-                """,
-                {**record, "payload": json.dumps(record["payload"], separators=(",", ":")), "ingested_at": ingested_at},
-            )
-            if cursor.rowcount:
-                persisted = EventOut(**record, ingested_at=ingested_at)
-                return True, persisted
-            row = connection.execute("SELECT * FROM events WHERE id = ?", (record["id"],)).fetchone()
-        return False, self._event_from_row(row)
+        """Persist one event through the same atomic path used by the writer."""
+
+        return self.insert_many([(event, ingested_at or int(time.time()))])[0]
+
+    def insert_many(self, records: Iterable[tuple[EventIn, int]]) -> list[tuple[bool, EventOut]]:
+        """Append a batch atomically while preserving per-event idempotency.
+
+        Role A uses UUIDs as collector retry keys.  A duplicate in the same
+        batch or a later batch returns the original stored row, exactly like
+        ``insert`` did before batching was introduced.
+        """
+
+        batch = list(records)
+        if not batch:
+            return []
+
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            results: list[tuple[bool, EventOut]] = []
+            for event, ingested_at in batch:
+                record = event.as_record()
+                cursor = connection.execute(
+                    """
+                    INSERT INTO events(id, schema_version, ts, source, type, payload, ingested_at)
+                    VALUES (:id, :schema_version, :ts, :source, :type, :payload, :ingested_at)
+                    ON CONFLICT(id) DO NOTHING
+                    """,
+                    {
+                        **record,
+                        "payload": json.dumps(record["payload"], separators=(",", ":")),
+                        "ingested_at": ingested_at,
+                    },
+                )
+                if cursor.rowcount:
+                    results.append((True, EventOut(**record, ingested_at=ingested_at)))
+                    continue
+                row = connection.execute("SELECT * FROM events WHERE id = ?", (record["id"],)).fetchone()
+                if row is None:
+                    raise RuntimeError("duplicate event could not be loaded")
+                results.append((False, self._event_from_row(row)))
+            connection.commit()
+            return results
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     @staticmethod
     def _event_from_row(row: sqlite3.Row) -> EventOut:
@@ -131,17 +163,34 @@ class EventStore:
         now = int(time.time()) if now is None else now
         with self._connection() as connection:
             rows = connection.execute(
-                "SELECT source, COUNT(*) AS event_count, MAX(ts) AS last_event_ts FROM events GROUP BY source ORDER BY source"
+                """
+                SELECT source, COUNT(*) AS event_count, MAX(ts) AS last_event_ts,
+                       MAX(ingested_at) AS last_ingested_at
+                FROM events
+                GROUP BY source
+                ORDER BY source
+                """
             ).fetchall()
         result: dict[str, dict[str, int | bool | None]] = {
-            source: {"event_count": 0, "last_event_ts": None, "healthy": False}
+            source: {
+                "event_count": 0,
+                "last_event_ts": None,
+                "last_ingested_at": None,
+                "last_ingest_lag_seconds": None,
+                "healthy": False,
+            }
             for source in ("vscode", "firefox", "shell", "linux", "filesystem")
         }
         for row in rows:
             last_event_ts = row["last_event_ts"]
+            last_ingested_at = row["last_ingested_at"]
             result[row["source"]] = {
                 "event_count": row["event_count"],
                 "last_event_ts": last_event_ts,
+                "last_ingested_at": last_ingested_at,
+                "last_ingest_lag_seconds": max(0, last_ingested_at - last_event_ts)
+                if last_event_ts is not None and last_ingested_at is not None
+                else None,
                 "healthy": last_event_ts is not None and now - last_event_ts <= stale_after_seconds,
             }
         return result
@@ -174,6 +223,120 @@ class EventStore:
                 """
             )
         return cursor.rowcount
+
+    def retention_preview(
+        self,
+        *,
+        detailed_days: int | None = None,
+        metadata_days: int | None = None,
+        now: int | None = None,
+    ) -> dict[str, object]:
+        """Count expired raw records without deleting them.
+
+        Detailed records are the opt-in editor/browser/filesystem payloads.
+        Metadata means every other Role A event.  Detailed records honour the
+        shortest configured window so a broad metadata cutoff cannot retain a
+        sensitive record longer than requested.
+        """
+
+        now = int(time.time()) if now is None else now
+        detailed_cutoff, metadata_cutoff = self._retention_cutoffs(
+            detailed_days=detailed_days,
+            metadata_days=metadata_days,
+            now=now,
+        )
+        detailed_where, detailed_params = self._detailed_retention_where(detailed_cutoff, metadata_cutoff)
+        metadata_where, metadata_params = self._metadata_retention_where(metadata_cutoff)
+        with self._connection() as connection:
+            detailed_count = connection.execute(
+                f"SELECT COUNT(*) FROM events WHERE {detailed_where}", detailed_params
+            ).fetchone()[0]
+            metadata_count = connection.execute(
+                f"SELECT COUNT(*) FROM events WHERE {metadata_where}", metadata_params
+            ).fetchone()[0]
+        return {
+            "now": now,
+            "detailed_days": detailed_days,
+            "metadata_days": metadata_days,
+            "cutoffs": {"detailed_before": detailed_cutoff, "metadata_before": metadata_cutoff},
+            "eligible": {
+                "detailed": detailed_count,
+                "metadata": metadata_count,
+                "total": detailed_count + metadata_count,
+            },
+        }
+
+    def purge_retention(
+        self,
+        *,
+        detailed_days: int | None = None,
+        metadata_days: int | None = None,
+        now: int | None = None,
+    ) -> dict[str, object]:
+        """Delete only records selected by an explicit tiered retention policy."""
+
+        preview = self.retention_preview(
+            detailed_days=detailed_days,
+            metadata_days=metadata_days,
+            now=now,
+        )
+        detailed_cutoff = preview["cutoffs"]["detailed_before"]
+        metadata_cutoff = preview["cutoffs"]["metadata_before"]
+        detailed_where, detailed_params = self._detailed_retention_where(detailed_cutoff, metadata_cutoff)
+        metadata_where, metadata_params = self._metadata_retention_where(metadata_cutoff)
+        with self._connection() as connection:
+            detailed_deleted = connection.execute(
+                f"DELETE FROM events WHERE {detailed_where}", detailed_params
+            ).rowcount
+            metadata_deleted = connection.execute(
+                f"DELETE FROM events WHERE {metadata_where}", metadata_params
+            ).rowcount
+        return {
+            **preview,
+            "deleted": {
+                "detailed": detailed_deleted,
+                "metadata": metadata_deleted,
+                "total": detailed_deleted + metadata_deleted,
+            },
+        }
+
+    @staticmethod
+    def _retention_cutoffs(
+        *, detailed_days: int | None, metadata_days: int | None, now: int
+    ) -> tuple[int | None, int | None]:
+        for name, value in (("detailed_days", detailed_days), ("metadata_days", metadata_days)):
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 1):
+                raise ValueError(f"{name} must be a positive integer or null")
+        return (
+            now - detailed_days * 86_400 if detailed_days is not None else None,
+            now - metadata_days * 86_400 if metadata_days is not None else None,
+        )
+
+    @staticmethod
+    def _detailed_event_clause() -> str:
+        return """(
+            (source = 'vscode' AND type = 'document_change')
+            OR (source = 'firefox' AND type = 'user_action')
+            OR (source = 'filesystem' AND type = 'file_content')
+        )"""
+
+    @classmethod
+    def _detailed_retention_where(
+        cls, detailed_cutoff: object, metadata_cutoff: object
+    ) -> tuple[str, tuple[object, ...]]:
+        cutoffs = [cutoff for cutoff in (detailed_cutoff, metadata_cutoff) if isinstance(cutoff, int)]
+        if not cutoffs:
+            return "0", ()
+        # A shorter retention period has a later cutoff timestamp.  Detailed
+        # events must expire when either applicable policy says so, therefore
+        # use the later cutoff rather than retaining them until both expire.
+        return f"{cls._detailed_event_clause()} AND ts < ?", (max(cutoffs),)
+
+    @classmethod
+    def _metadata_retention_where(cls, metadata_cutoff: object) -> tuple[str, tuple[object, ...]]:
+        if not isinstance(metadata_cutoff, int):
+            return "0", ()
+        return f"NOT {cls._detailed_event_clause()} AND ts < ?", (metadata_cutoff,)
 
 def default_database_path() -> Path:
     configured = os.environ.get("INTENT_OS_DATABASE")

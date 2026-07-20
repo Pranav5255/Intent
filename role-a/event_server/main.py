@@ -10,8 +10,9 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, s
 from fastapi.middleware.cors import CORSMiddleware
 
 from .detailed_capture import editor_event_is_approved, is_detailed_event, is_enabled, load as load_detailed_config, public_config
+from .ingestion import EventWriter, IngestionUnavailable
 from .logging_setup import configure_jsonl_logger
-from .models import CapturePause, DayExport, EventIn, EventOut, IngestResult
+from .models import CapturePause, DayExport, EventIn, EventOut, IngestResult, RetentionPurge
 from .redaction import redact_event
 from .restore import RestoreResult, ResumePayload, restore
 from .storage import EventStore, default_database_path
@@ -21,6 +22,10 @@ from collectors.activity.feed import ActivityFeed
 
 def get_store(request: Request) -> EventStore:
     return request.app.state.store
+
+
+def get_writer(request: Request) -> EventWriter:
+    return request.app.state.writer
 
 
 def get_detailed_config(request: Request) -> dict[str, object]:
@@ -45,6 +50,39 @@ def _source_staleness_seconds() -> int:
     return value if value > 0 else 1800
 
 
+def _environment_int(name: str, default: int, *, minimum: int = 1) -> int:
+    """Read an operational tuning value without making startup fragile."""
+
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+    return value if value >= minimum else default
+
+
+def _writer_settings(
+    *,
+    queue_capacity: int | None,
+    batch_size: int | None,
+    batch_wait_ms: int | None,
+    submit_timeout_seconds: float | None,
+) -> dict[str, int | float]:
+    return {
+        "queue_capacity": queue_capacity
+        if queue_capacity is not None
+        else _environment_int("INTENT_OS_INGEST_QUEUE_CAPACITY", 1_024),
+        "max_batch_size": batch_size
+        if batch_size is not None
+        else _environment_int("INTENT_OS_INGEST_BATCH_SIZE", 100),
+        "max_batch_wait_ms": batch_wait_ms
+        if batch_wait_ms is not None
+        else _environment_int("INTENT_OS_INGEST_BATCH_WAIT_MS", 25, minimum=0),
+        "submit_timeout_seconds": submit_timeout_seconds
+        if submit_timeout_seconds is not None
+        else _environment_int("INTENT_OS_INGEST_SUBMIT_TIMEOUT_SECONDS", 5),
+    }
+
+
 def _record_activity(feed: ActivityFeed, event: EventIn) -> None:
     if event.source == "linux" and event.type == "app_focus":
         feed.record("focus")
@@ -62,6 +100,11 @@ def create_app(
     database_path: str | None = None,
     detailed_capture_config_path: str | None = None,
     blocked_domains_config_path: str | None = None,
+    *,
+    ingestion_queue_capacity: int | None = None,
+    ingestion_batch_size: int | None = None,
+    ingestion_batch_wait_ms: int | None = None,
+    ingestion_submit_timeout_seconds: float | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Intent OS Event Server", version="0.1.0")
     app.state.detailed_capture_config_path = (
@@ -72,9 +115,22 @@ def create_app(
     @app.on_event("startup")
     def initialise_store() -> None:
         app.state.store = EventStore(default_database_path() if database_path is None else Path(database_path))
+        app.state.writer = EventWriter(
+            app.state.store,
+            **_writer_settings(
+                queue_capacity=ingestion_queue_capacity,
+                batch_size=ingestion_batch_size,
+                batch_wait_ms=ingestion_batch_wait_ms,
+                submit_timeout_seconds=ingestion_submit_timeout_seconds,
+            ),
+        )
         app.state.capture_paused = False
         app.state.activity_feed = ActivityFeed()
         app.state.logger = configure_jsonl_logger("event-server", "event-server.jsonl")
+
+    @app.on_event("shutdown")
+    def drain_writer() -> None:
+        app.state.writer.close()
 
     extension_origin = os.environ.get("INTENT_OS_FIREFOX_EXTENSION_ORIGIN")
     app.add_middleware(
@@ -92,19 +148,23 @@ def create_app(
     def ingest_event(
         event: EventIn,
         response: Response,
-        store: EventStore = Depends(get_store),
+        writer: EventWriter = Depends(get_writer),
         detailed_config: dict[str, object] = Depends(get_detailed_config),
         blocked_domains_config: dict[str, list[str]] = Depends(get_blocked_domains_config),
     ) -> IngestResult | Response:
         if app.state.capture_paused:
+            writer.record_drop("capture_paused")
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         if is_detailed_event(event.source, event.type) and not is_enabled(event.source, event.type, detailed_config):
+            writer.record_drop("detailed_capture_disabled")
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         if event.source == "vscode" and event.type == "document_change" and not editor_event_is_approved(event.payload, detailed_config):
+            writer.record_drop("editor_not_approved")
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         try:
             event = redact_event(event)
         except ValueError as exc:
+            writer.record_drop("redaction_rejected")
             _logger(app).error("event_rejected", extra={"event": "event_rejected", "error_type": type(exc).__name__})
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if event.source == "firefox" and event.type in {"tab_change", "user_action"}:
@@ -112,7 +172,15 @@ def create_app(
             if isinstance(url, str) and is_url_blocked(url, blocked_domains_config["blocked_domains"]):
                 copier = getattr(event, "model_copy", event.copy)
                 event = copier(update={"payload": redact_blocked_browser_event(event.payload)})
-        inserted, persisted = store.insert(event)
+        try:
+            outcome = writer.submit(event)
+        except IngestionUnavailable as exc:
+            _logger(app).error(
+                "event_persistence_unavailable",
+                extra={"event": "event_persistence_unavailable", "source": event.source, "error_type": type(exc).__name__},
+            )
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="event persistence is temporarily unavailable") from exc
+        inserted, persisted = outcome.inserted, outcome.event
         if inserted:
             _record_activity(app.state.activity_feed, persisted)
             _logger(app).info(
@@ -153,6 +221,25 @@ def create_app(
     def purge_detailed_capture(store: EventStore = Depends(get_store)) -> dict[str, object]:
         return {"ok": True, "deleted": store.purge_detailed_events()}
 
+    @app.get("/v1/retention/preview")
+    def retention_preview(
+        detailed_days: int | None = Query(default=None, ge=1, le=36_500),
+        metadata_days: int | None = Query(default=None, ge=1, le=36_500),
+        store: EventStore = Depends(get_store),
+    ) -> dict[str, object]:
+        if detailed_days is None and metadata_days is None:
+            raise HTTPException(status_code=422, detail="at least one retention window must be provided")
+        return store.retention_preview(detailed_days=detailed_days, metadata_days=metadata_days)
+
+    @app.post("/v1/retention/purge")
+    def purge_retention(payload: RetentionPurge, store: EventStore = Depends(get_store)) -> dict[str, object]:
+        if not payload.confirm:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="set confirm=true after reviewing retention preview")
+        return {
+            "ok": True,
+            **store.purge_retention(detailed_days=payload.detailed_days, metadata_days=payload.metadata_days),
+        }
+
     @app.post("/v1/restore", response_model=RestoreResult)
     def restore_state(payload: ResumePayload) -> RestoreResult:
         return restore(payload)
@@ -173,6 +260,7 @@ def create_app(
             "ok": True,
             "session_type": os.environ.get("XDG_SESSION_TYPE", "unknown"),
             "capture_paused": app.state.capture_paused,
+            "ingestion": app.state.writer.snapshot(),
             "sources": sources,
             "services": {
                 "event_server": True,
@@ -189,6 +277,8 @@ def create_app(
     app.add_api_route("/export/day", export_day, methods=["GET"], response_model=DayExport)
     app.add_api_route("/status", source_status, methods=["GET"])
     app.add_api_route("/restore", restore_state, methods=["POST"], response_model=RestoreResult)
+    app.add_api_route("/retention/preview", retention_preview, methods=["GET"])
+    app.add_api_route("/retention/purge", purge_retention, methods=["POST"])
     return app
 
 
