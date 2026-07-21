@@ -72,6 +72,16 @@ def _already_open_files(files: list[str]) -> set[str]:
     return {item for item in files if Path(item).name in output}
 
 
+def _editor_command(files: list[str]) -> list[str] | None:
+    """Return the safest available local editor invocation for restored files."""
+
+    for editor in ("code", "cursor"):
+        executable = shutil.which(editor)
+        if executable:
+            return [executable, "--reuse-window", *files]
+    return None
+
+
 def restore(payload: ResumePayload) -> RestoreResult:
     """Launch files, URLs and terminal state without using a shell interpreter."""
     restored: dict[str, int | bool] = {"files": 0, "urls": 0, "shell": False}
@@ -86,15 +96,15 @@ def restore(payload: ResumePayload) -> RestoreResult:
         open_files = _already_open_files(existing_files)
         existing_files = [item for item in existing_files if item not in open_files]
     if existing_files:
-        code = shutil.which("code")
-        if code:
+        editor_command = _editor_command(existing_files)
+        if editor_command:
             try:
-                _launch([code, "--reuse-window", *existing_files])
+                _launch(editor_command)
                 restored["files"] = len(existing_files)
             except OSError as exc:
                 failed.append(f"VS Code launch failed: {exc}")
         else:
-            failed.append("VS Code CLI (code) is unavailable")
+            failed.append("VS Code or Cursor CLI is unavailable")
 
     if payload.urls:
         firefox = shutil.which("firefox")

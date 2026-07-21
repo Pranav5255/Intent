@@ -8,7 +8,7 @@ It is deliberately a code-level comparison; Screenpipe documentation was not
 used to derive the recommendations.
 
 The goal is a live, explainable intent engine over Role A's approved structured
-events. It is not a plan to import Screenpipe's capture product into Intent OS.
+events. It is not a plan to import Screenpipe's capture product into Intent.
 
 The non-negotiable privacy rule is:
 
@@ -372,7 +372,7 @@ the durable cursor rather than memory.
 
 ## Code references used for this handover
 
-Intent OS:
+Intent:
 
 - role-b/intent_engine/pipeline.py
 - role-b/intent_engine/current.py

@@ -1,4 +1,4 @@
-# Intent OS — Screenpipe-Inspired Improvements (Codex Spec)
+# Intent — Screenpipe-Inspired Improvements (Codex Spec)
 
 **Purpose:** Feed this document to Codex when implementing patterns borrowed from [screenpipe](https://github.com/screenpipe/screenpipe). Tasks are split by **Role A**, **Role B**, and **Role C** with clear acceptance criteria and copy-paste prompts.
 
@@ -42,7 +42,7 @@
 
 ## 0. Codex Global Rules
 
-1. **Borrow patterns, not code.** Reimplement in Python/TS to match Intent OS conventions. Do not add Rust dependencies.
+1. **Borrow patterns, not code.** Reimplement in Python/TS to match Intent conventions. Do not add Rust dependencies.
 2. **One task per Codex session.** Finish acceptance criteria before starting the next task.
 3. **No scope creep into screenpipe territory.** If a task mentions OCR/audio/video — skip it.
 4. **Every task must map to Capture, Infer, or Resume.**
@@ -162,7 +162,7 @@ Sync daily on intent JSON shape and golden fixture results.
 ## 1. What We're Borrowing (Summary)
 
 
-| Screenpipe concept                                  | Intent OS adaptation                             | Primary role |
+| Screenpipe concept                                  | Intent adaptation                             | Primary role |
 | --------------------------------------------------- | ------------------------------------------------ | ------------ |
 | Domain URL blocklist (`url_filter.rs`)              | Block sensitive domains at ingest                | A            |
 | Activity feed / idle detection (`activity_feed.rs`) | `idle_start`/`idle_end` events → sessionize (B)  | A → B        |
@@ -329,7 +329,7 @@ Add optional linux/activity_state events if models.py updated.
 
 ## A-SP4: JSONL Structured Logging
 
-**Inspired by:** screenpipe operational rigor + Intent OS role A spec §7
+**Inspired by:** screenpipe operational rigor + Intent role A spec §7
 
 **Goal:** Debug demo-day failures with `tail -f | jq`.
 
@@ -1528,7 +1528,7 @@ Before demo recording, all roles verify:
 
 **Act 1 — Capture (15s):** Quick cuts — edit `auth.tsx`, Google MDN for JWT, run `npm test` → red failure.
 
-**Act 2 — Infer (25s):** Open Intent OS → digest hero: *"Building Login Feature"*. Expand nested tree: *Edit Auth Component* / *Fix Failing Tests*. Show insights: failed npm test, JWT research.
+**Act 2 — Infer (25s):** Open Intent → digest hero: *"Building Login Feature"*. Expand nested tree: *Edit Auth Component* / *Fix Failing Tests*. Show insights: failed npm test, JWT research.
 
 **Act 3 — Resume (20s):** Click **Resume** → VS Code opens `auth.tsx`, Firefox on MDN tab, terminal in `taskflow-app`.
 
@@ -1548,7 +1548,7 @@ Add to 90s video (optional 15s):
 2. Claude calls `list-intents` → reads summary → user says *"Resume it"*
 3. Claude calls `resume-intent` OR user clicks Resume in app (show both if time)
 
-This positions Intent OS as **agent-native context**, not just a GUI.
+This positions Intent as **agent-native context**, not just a GUI.
 
 ---
 

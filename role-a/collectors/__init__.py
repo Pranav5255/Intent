@@ -1,1 +1,1 @@
-"""Native Ubuntu collectors for Intent OS."""
+"""Native Ubuntu collectors for Intent."""

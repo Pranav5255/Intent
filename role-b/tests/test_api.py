@@ -37,6 +37,13 @@ class FakeRoleAClient:
         return self.events
 
 
+def test_role_a_url_can_be_isolated_with_an_environment_override(monkeypatch) -> None:
+    monkeypatch.setenv("INTENT_OS_ROLE_A_URL", "http://127.0.0.1:9587")
+    with tempfile.TemporaryDirectory() as directory:
+        app = create_app(IntentStore(str(Path(directory) / "intents.db")))
+    assert app.state.role_a_client.base_url == "http://127.0.0.1:9587"
+
+
 def test_health_cors_read_routes_and_replay() -> None:
     export = load_replay_fixture(str(Path(__file__).parent / "fixtures" / "demo-day.json"))
     with tempfile.TemporaryDirectory() as directory:

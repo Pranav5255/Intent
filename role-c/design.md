@@ -1,4 +1,4 @@
-# Intent OS — Role C Frontend Design Spec
+# Intent — Role C Frontend Design Spec
 
 This document is the source of truth for building the **production Role C frontend**. It translates the validated preview in `role-c/preview/` into a shippable Ubuntu overlay app.
 
@@ -10,7 +10,7 @@ This document is the source of truth for building the **production Role C fronte
 
 ## 1. Product summary
 
-Intent OS Role C is a **non-intrusive desktop overlay** that helps users:
+Intent Role C is a **non-intrusive desktop overlay** that helps users:
 
 1. **Recall** what they were working on (yesterday’s sessions, digest, search).
 2. **Resume** prior work with one click (files, URLs, terminal context via Role A restore).

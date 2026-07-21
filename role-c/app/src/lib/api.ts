@@ -53,7 +53,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       raw = await response.text();
     }
   } catch {
-    throw new ApiError(0, 'The local Intent OS service is unavailable.');
+    throw new ApiError(0, 'The local Intent service is unavailable.');
   }
 
   let payload: unknown = null;

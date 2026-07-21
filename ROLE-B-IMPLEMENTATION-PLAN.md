@@ -1,4 +1,4 @@
-# Intent OS — Role B Implementation Plan
+# Intent — Role B Implementation Plan
 
 ## 1. Mission and boundary
 

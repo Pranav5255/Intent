@@ -1,4 +1,4 @@
-"""SQLite persistence for append-only Intent OS events."""
+"""SQLite persistence for append-only Intent events."""
 
 from __future__ import annotations
 

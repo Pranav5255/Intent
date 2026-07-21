@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Best-effort, redacting sender used by Intent OS bash and zsh hooks."""
+"""Best-effort, redacting sender used by Intent bash and zsh hooks."""
 
 from __future__ import annotations
 

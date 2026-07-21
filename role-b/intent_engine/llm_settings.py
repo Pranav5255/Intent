@@ -150,7 +150,7 @@ def _write_settings(values: dict[str, str]) -> None:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.parent.chmod(0o700)
     body = (
-        "# Intent OS optional LLM settings. Managed locally; never commit this file.\n"
+        "# Intent optional LLM settings. Managed locally; never commit this file.\n"
         + "".join(f"{key}={values[key]}\n" for key in sorted(values))
     )
     descriptor, temporary_name = tempfile.mkstemp(prefix=".llm-", dir=path.parent, text=True)

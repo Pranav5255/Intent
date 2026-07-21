@@ -1,4 +1,4 @@
-# Intent OS shell capture for bash.
+# Intent shell capture for bash.
 # Sourced by intent-osctl shell enable.
 
 _intent_os_endpoint="${INTENT_OS_EVENT_ENDPOINT:-http://127.0.0.1:9477/v1/event}"

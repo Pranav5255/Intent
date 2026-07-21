@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Intent OS intelligence ingest every three hours
+Description=Run Intent intelligence ingest every three hours
 PartOf=intent-os-backend.target
 
 [Timer]

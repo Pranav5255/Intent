@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small GNOME/Ayatana AppIndicator for local Intent OS controls."""
+"""Small GNOME/Ayatana AppIndicator for local Intent controls."""
 
 from __future__ import annotations
 

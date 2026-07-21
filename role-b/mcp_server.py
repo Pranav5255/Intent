@@ -33,7 +33,7 @@ def create_mcp_server(store: IntentStore | None = None, current_engine: CurrentI
         store or IntentStore(os.environ.get("ROLE_B_DB_PATH", "intents.db")),
         current_engine,
     ))
-    server = FastMCP("Intent OS - Role B")
+    server = FastMCP("Intent - Role B")
 
     @server.tool()
     async def search_intents(query: str, limit: int = 10, date_from: str | None = None, date_to: str | None = None) -> dict:

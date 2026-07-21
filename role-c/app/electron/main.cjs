@@ -38,7 +38,7 @@ function createOverlay() {
 app.whenReady().then(() => {
   ipcMain.handle('intent-os:request', async (_event, request) => {
     if (!request || typeof request.url !== 'string' || !allowedLocalApiUrl(request.url)) {
-      throw new Error('Intent OS only permits requests to the local Role A and Role B services.');
+      throw new Error('Intent only permits requests to the local Role A and Role B services.');
     }
     const init = request.init || {};
     const response = await net.fetch(request.url, {

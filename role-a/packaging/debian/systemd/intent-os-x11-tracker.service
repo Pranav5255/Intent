@@ -1,5 +1,5 @@
 [Unit]
-Description=Intent OS X11 foreground tracker
+Description=Intent X11 foreground tracker
 After=intent-os-server.service
 Wants=intent-os-server.service
 PartOf=intent-os-backend.target

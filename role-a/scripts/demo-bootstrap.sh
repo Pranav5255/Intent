@@ -7,7 +7,7 @@ ROLE_B="$(cd "$ROOT/../role-b" && pwd)"
 DEMO_APP="$HOME/projects/taskflow-app"
 PYTHON="${PYTHON:-python3}"
 
-echo "== Intent OS demo bootstrap =="
+echo "== Intent demo bootstrap =="
 
 mkdir -p "$DEMO_APP/src"
 if [[ ! -f "$DEMO_APP/src/auth.tsx" ]]; then

@@ -1,4 +1,4 @@
-# Intent OS Role A privacy boundary
+# Intent Role A privacy boundary
 
 All Role A data stays on the local machine in
 `~/.local/share/intent-os/events.db` until the user exports a `day.json` file.
@@ -23,7 +23,7 @@ receive the recorded code changes and browser actions.
 
 ## Opt-in detailed capture
 
-Detailed capture is disabled by default. It requires both the local Intent OS
+Detailed capture is disabled by default. It requires both the local Intent
 consent switch and the VS Code/Cursor `intentOS.detailedCapture` setting for
 editor changes. Firefox detailed actions require the local browser consent
 switch. Status shows both settings and detailed-event counts.
@@ -42,7 +42,7 @@ switch. Status shows both settings and detailed-event counts.
   account, billing, checkout, password, or payment pages, only click/submit plus
   element tag/role are retained.
 
-Intent OS never records browser form values, keyboard events, text-area or
+Intent never records browser form values, keyboard events, text-area or
 contenteditable text, clipboard data, page HTML, DOM snapshots, network traffic,
 pointer coordinates, editor selections, terminal output, or cloud telemetry.
 

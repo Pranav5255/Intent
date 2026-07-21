@@ -30,7 +30,7 @@ def main() -> int:
         from collectors.workspace.watcher import run
         run("http://127.0.0.1:9477/v1/event", paths, capture_content=detailed["filesystem"]["enabled"])
     except (OSError, ValueError) as exc:
-        print(f"Intent OS workspace watcher: {exc}", file=sys.stderr)
+        print(f"Intent workspace watcher: {exc}", file=sys.stderr)
         return 1
     return 0
 

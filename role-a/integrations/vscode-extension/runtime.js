@@ -39,7 +39,7 @@ function createExtensionRuntime(vscode, options = {}) {
     configRequest = fetchImpl(configEndpoint, { method: "GET" })
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Intent OS detailed-capture config is unavailable");
+          throw new Error("Intent detailed-capture config is unavailable");
         }
         return response.json();
       })

@@ -17,9 +17,14 @@ function flattenIntents(intents: Intent[]): Intent[] {
   return intents.flatMap((intent) => [intent, ...flattenIntents(intent.children)]);
 }
 
+function recordingDemoMode(): boolean {
+  return new URLSearchParams(window.location.search).get('demo') === '1';
+}
+
 export default function App() {
   const { data, loading, error, load, setData } = useIntents();
   const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
+    if (recordingDemoMode()) return null;
     try {
       return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) ? null : 0;
     } catch {

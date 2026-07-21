@@ -2,7 +2,7 @@
 
 ## 1. What Role B is
 
-Role B is the local Intent OS service that converts Role A activity exports into deterministic intent trees, bounded resume payloads, and optional grounded Copilot answers. The API listens on `127.0.0.1:9478`; Role A listens on `127.0.0.1:9477`. Role B does not own the UI, launch applications, restore windows, or read Role A's SQLite database. See the [pipeline guide](docs/PIPELINE.md), the [Copilot execution plan](../ROLE-B-COPILOT-EXECUTION-PLAN.md), and the [Role C handoff](../ROLE-C-HANDOFF.md) when that repository-level handoff is available.
+Role B is the local Intent service that converts Role A activity exports into deterministic intent trees, bounded resume payloads, and optional grounded Copilot answers. The API listens on `127.0.0.1:9478`; Role A listens on `127.0.0.1:9477`. Role B does not own the UI, launch applications, restore windows, or read Role A's SQLite database. See the [pipeline guide](docs/PIPELINE.md), the [Copilot execution plan](../ROLE-B-COPILOT-EXECUTION-PLAN.md), and the [Role C handoff](../ROLE-C-HANDOFF.md) when that repository-level handoff is available.
 
 ## 2. Prerequisites
 

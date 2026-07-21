@@ -1,4 +1,4 @@
-# Install Intent OS on Ubuntu
+# Install Intent on Ubuntu
 
 ## Prerequisites
 
@@ -77,7 +77,7 @@ intent-osctl status
 `intent-osctl enable` starts the event API on `9477` and the Role B API on
 `9478`, alongside the X11 tracker and workspace watcher. `intent-osctl disable`
 stops and disables all user services. `intent-osctl shell disable --shell bash`
-removes only the marked Intent OS block from the shell rc file.
+removes only the marked Intent block from the shell rc file.
 
 ## Local backend data
 
@@ -99,7 +99,7 @@ intent-osctl detailed browser enable
 intent-osctl status
 ```
 
-For VS Code or Cursor, also set **Intent OS: Detailed Capture** to true in the
+For VS Code or Cursor, also set **Intent: Detailed Capture** to true in the
 editor settings (or add `"intentOS.detailedCapture": true` to settings JSON).
 The extension sends detailed editor events only when both this editor setting
 and the server-side editor consent are enabled.

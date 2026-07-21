@@ -1,7 +1,7 @@
-# Intent OS VS Code/Cursor companion
+# Intent VS Code/Cursor companion
 
 This package always emits local workspace, active-file, edit and save metadata.
-Detailed editor capture is separately opt-in: enable Intent OS editor consent
+Detailed editor capture is separately opt-in: enable Intent editor consent
 with `intent-osctl detailed editor enable`, add the workspace with
 `intent-osctl workspace add <path>`, and set `intentOS.detailedCapture` to
 `true` in VS Code or Cursor settings.

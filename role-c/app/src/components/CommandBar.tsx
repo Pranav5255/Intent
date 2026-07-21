@@ -46,7 +46,7 @@ export const CommandBar = forwardRef<HTMLInputElement, CommandBarProps>(function
         </button>
       )}
       {open ? (
-        <button className="key-hint button-reset" type="button" onClick={onClose} aria-label="Close Intent OS">
+        <button className="key-hint button-reset" type="button" onClick={onClose} aria-label="Close Intent">
           Esc
         </button>
       ) : (

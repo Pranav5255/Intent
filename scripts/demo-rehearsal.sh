@@ -20,7 +20,7 @@ check_json() {
   fi
 }
 
-echo "== Intent OS demo rehearsal =="
+echo "== Intent demo rehearsal =="
 
 echo
 echo "-- Role B unit tests --"

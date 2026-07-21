@@ -9,9 +9,9 @@ interface WelcomeScreenProps {
 
 const STEPS = [
   {
-    eyebrow: 'Welcome to Intent OS',
+    eyebrow: 'Welcome to Intent',
     title: 'Your work stays understandable.',
-    body: 'Intent OS turns the activity you choose to capture into a local timeline, so you can find yesterday’s work without relying on memory.',
+    body: 'Intent turns the activity you choose to capture into a local timeline, so you can find yesterday’s work without relying on memory.',
     details: ['Your timeline is stored locally.', 'You can use it without a cloud provider.', 'Capture controls stay under your account.'],
   },
   {
@@ -47,7 +47,7 @@ export function WelcomeScreen({ step, onBack, onNext, onFinish, onSkip, onOpenSe
         <div>
           {step > 0 && <button className="compact-quiet" type="button" onClick={onBack}>Back</button>}
           {lastStep && onOpenSettings && <button className="compact-quiet" type="button" onClick={onOpenSettings}>Set up Copilot</button>}
-          <button className="compact-primary" type="button" onClick={lastStep ? onFinish : onNext}>{lastStep ? 'Open Intent OS' : 'Next'}</button>
+          <button className="compact-primary" type="button" onClick={lastStep ? onFinish : onNext}>{lastStep ? 'Open Intent' : 'Next'}</button>
         </div>
       </div>
     </section>

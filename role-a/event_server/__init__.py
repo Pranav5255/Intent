@@ -1,1 +1,1 @@
-"""Intent OS local event server."""
+"""Intent local event server."""

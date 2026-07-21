@@ -1,4 +1,4 @@
-# Intent OS Role C
+# Intent Role C
 
 Electron + React desktop overlay for the local Role A and Role B services. It is intentionally a presentation layer: all work history comes from Role B, and every Role A restore is reviewed and confirmed by the user.
 

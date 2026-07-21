@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Intent OS
-Comment=Open the local Intent OS workspace overlay
+Name=Intent
+Comment=Open the local Intent workspace overlay
 Exec=intent-os
 Icon=intent-os
 Terminal=false

@@ -1,5 +1,5 @@
 [Unit]
-Description=Intent OS local event server
+Description=Intent local event server
 After=default.target
 PartOf=intent-os-backend.target
 

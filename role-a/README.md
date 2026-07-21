@@ -1,4 +1,4 @@
-# Intent OS — Role A
+# Intent — Role A
 
 Local Ubuntu activity capture and restoration service. It captures standard
 application, editor, browser, filesystem and shell metadata. Opt-in detailed

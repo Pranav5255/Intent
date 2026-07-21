@@ -46,5 +46,5 @@ grep -Fq 'ROLE_B_DB_PATH=%h/.local/share/intent-os/intents.db' "$WORK/usr/lib/sy
 grep -Fq 'OnCalendar=*-*-* 00/3:00:00' "$WORK/usr/lib/systemd/user/intent-os-pipeline.timer"
 grep -Fq 'Persistent=true' "$WORK/usr/lib/systemd/user/intent-os-pipeline.timer"
 grep -Fq 'intent-os-pipeline.timer' "$WORK/usr/lib/systemd/user/intent-os-backend.target"
-ROLE_B_DB_PATH="$WORK/role-b-check.db" PYTHONPATH="$WORK/opt/intent-os/role-b" "$WORK/opt/intent-os/role-b/.venv/bin/python" -c 'from intent_engine.api import app; assert app.title == "Intent OS - Role B"'
+ROLE_B_DB_PATH="$WORK/role-b-check.db" PYTHONPATH="$WORK/opt/intent-os/role-b" "$WORK/opt/intent-os/role-b/.venv/bin/python" -c 'from intent_engine.api import app; assert app.title == "Intent - Role B"'
 echo "Package structure OK: $PACKAGE"

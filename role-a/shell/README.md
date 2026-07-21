@@ -1,4 +1,4 @@
-# Intent OS shell integration
+# Intent shell integration
 
 `intent_os_shell_send.py` reads four NUL-delimited fields from standard input:
 command, working directory, exit code, and duration in milliseconds. It emits a

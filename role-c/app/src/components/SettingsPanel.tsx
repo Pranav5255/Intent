@@ -112,7 +112,7 @@ export function SettingsPanel({ settings, loading, saving, error, onClose, onSav
       </div>
       {loading ? <div className="loading-state"><span className="loader" />Loading local settings…</div> : (
         <form className="settings-form" onSubmit={submit}>
-          <p className="settings-intro">Provider keys are stored only in your private Intent OS configuration and are never shown again.</p>
+          <p className="settings-intro">Provider keys are stored only in your private Intent configuration and are never shown again.</p>
           <label className="settings-field">
             <span>Provider</span>
             <select value={form.provider} onChange={(event) => update('provider', event.target.value as LLMProvider)} disabled={saving}>

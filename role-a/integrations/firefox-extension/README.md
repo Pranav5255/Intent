@@ -1,4 +1,4 @@
-# Intent OS Firefox companion
+# Intent Firefox companion
 
 The companion sends sanitized active-tab metadata to the local Event API. Its
 optional content script additionally records semantic user actions after

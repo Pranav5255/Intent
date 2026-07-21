@@ -61,7 +61,7 @@ def safe_post(endpoint: str, event: dict[str, object]) -> None:
     try:
         post_event(endpoint, event)
     except OSError as exc:
-        print(f"Intent OS workspace watcher cannot post event: {exc}", flush=True)
+        print(f"Intent workspace watcher cannot post event: {exc}", flush=True)
 
 
 class WorkspaceHandler(FileSystemEventHandler):

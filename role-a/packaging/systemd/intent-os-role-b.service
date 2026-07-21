@@ -1,5 +1,5 @@
 [Unit]
-Description=Intent OS deterministic intelligence service
+Description=Intent deterministic intelligence service
 After=intent-os-server.service
 Wants=intent-os-server.service
 PartOf=intent-os-backend.target

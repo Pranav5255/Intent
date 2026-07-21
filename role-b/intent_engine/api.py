@@ -32,7 +32,7 @@ API_VERSION = "0.1.0"
 
 def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | None = None) -> FastAPI:
     """Build an injectable application instance for production and tests."""
-    application = FastAPI(title="Intent OS - Role B", version=API_VERSION)
+    application = FastAPI(title="Intent - Role B", version=API_VERSION)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -50,7 +50,8 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
     )
     database_path = os.environ.get("ROLE_B_DB_PATH", "intents.db")
     application.state.store = store or IntentStore(database_path)
-    application.state.role_a_client = role_a_client or RoleAClient()
+    role_a_base_url = os.environ.get("INTENT_OS_ROLE_A_URL", "").strip() or "http://127.0.0.1:9477"
+    application.state.role_a_client = role_a_client or RoleAClient(role_a_base_url)
     application.state.label_provider = create_label_provider()
     application.state.copilot_llm = create_copilot_llm()
     application.state.copilot_enabled = copilot_enabled()

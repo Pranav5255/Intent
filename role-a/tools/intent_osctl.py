@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-user control plane for Intent OS on Ubuntu."""
+"""Per-user control plane for Intent on Ubuntu."""
 
 from __future__ import annotations
 
@@ -40,8 +40,8 @@ SHELL_SOURCES = {
     "zsh": IMPORT_ROOT / "shell" / "intent-os.zsh",
 }
 SYSTEMD_SOURCE = IMPORT_ROOT / "packaging" / "systemd"
-MARKER_START = "# >>> Intent OS shell integration >>>"
-MARKER_END = "# <<< Intent OS shell integration <<<"
+MARKER_START = "# >>> Intent shell integration >>>"
+MARKER_END = "# <<< Intent shell integration <<<"
 UNIT_NAMES = (
     "intent-os-backend.target",
     "intent-os-server.service",
@@ -301,7 +301,7 @@ def command_export(date: str) -> int:
         print(json.dumps(fetch_json(f"http://127.0.0.1:9477/v1/export/day?date={date}"), indent=2))
         return 0
     except OSError as exc:
-        print(f"Intent OS export failed: {exc}", file=sys.stderr)
+        print(f"Intent export failed: {exc}", file=sys.stderr)
         return 1
 
 
@@ -325,7 +325,7 @@ def command_wait_ready() -> int:
         wait_for_json(f"{EVENT_API}/healthz")
         wait_for_json(f"{INTENT_API}/healthz")
     except RuntimeError as exc:
-        print(f"Intent OS: {exc}", file=sys.stderr)
+        print(f"Intent: {exc}", file=sys.stderr)
         return 1
     return 0
 
@@ -351,7 +351,7 @@ def notification_subject(intent: dict[str, object]) -> str:
 
 
 def launch_preview(url: str) -> bool:
-    """Invoke only an explicitly configured Intent OS preview client."""
+    """Invoke only an explicitly configured Intent preview client."""
 
     raw_command = os.environ.get("INTENT_OS_PREVIEW_COMMAND", "").strip()
     if not raw_command:
@@ -376,14 +376,14 @@ def command_notify_yesterday() -> int:
         wait_for_json(f"{EVENT_API}/healthz")
         intents = wait_for_json(f"{INTENT_API}/intents/yesterday")
     except RuntimeError as exc:
-        print(f"Intent OS notification skipped: {exc}", file=sys.stderr)
+        print(f"Intent notification skipped: {exc}", file=sys.stderr)
         return 0
     if not isinstance(intents, list) or not intents:
         return 0
     top = intents[0]
     if not isinstance(top, dict):
         return 0
-    summary = str(top.get("summary", "Open Intent OS to continue."))
+    summary = str(top.get("summary", "Open Intent to continue."))
     intent_id = top.get("id")
     if not isinstance(intent_id, str) or not intent_id.strip():
         return 0
@@ -391,20 +391,20 @@ def command_notify_yesterday() -> int:
     message = summary
     notify = shutil.which("notify-send")
     if not notify:
-        print("Intent OS notification skipped: notify-send is unavailable", file=sys.stderr)
+        print("Intent notification skipped: notify-send is unavailable", file=sys.stderr)
         return 0
     try:
         result = subprocess.run(
-            [notify, "--app-name=Intent OS", "--icon=dialog-information", "--action=default=Preview", f"Continue {subject}?", message],
+            [notify, "--app-name=Intent", "--icon=dialog-information", "--action=default=Preview", f"Continue {subject}?", message],
             check=False,
             capture_output=True,
             text=True,
         )
         if result.returncode == 0 and result.stdout.strip() == "default":
             if not launch_preview(preview_url(intent_id)):
-                print("Intent OS preview launcher unavailable", file=sys.stderr)
+                print("Intent preview launcher unavailable", file=sys.stderr)
     except OSError as exc:
-        print(f"Intent OS notification skipped: {exc}", file=sys.stderr)
+        print(f"Intent notification skipped: {exc}", file=sys.stderr)
     return 0
 
 
@@ -483,7 +483,7 @@ def main() -> int:
         elif args.command == "purge-detailed":
             print(json.dumps(post_json("http://127.0.0.1:9477/v1/detailed-capture/purge"), indent=2))
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
-        print(f"Intent OS: {exc}", file=sys.stderr)
+        print(f"Intent: {exc}", file=sys.stderr)
         return 1
     return 0
 

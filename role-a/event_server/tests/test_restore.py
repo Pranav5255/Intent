@@ -40,6 +40,17 @@ class RestoreTests(unittest.TestCase):
         )
         self.assertEqual(launch.call_args_list[2].args[0], ["/usr/bin/gnome-terminal", f"--working-directory={self.root.resolve()}"])
 
+    @patch("event_server.restore._launch")
+    @patch("event_server.restore.shutil.which")
+    def test_restores_files_in_cursor_when_vs_code_is_unavailable(self, which, launch) -> None:
+        which.side_effect = lambda name: {"cursor": "/usr/bin/cursor"}.get(name)
+
+        result = restore(ResumePayload(files=[str(self.file)]))
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.restored["files"], 1)
+        self.assertEqual(launch.call_args.args[0], ["/usr/bin/cursor", "--reuse-window", str(self.file.resolve())])
+
     def test_rejects_unsafe_url_scheme(self) -> None:
         with self.assertRaises(ValueError):
             ResumePayload(urls=["file:///home/pranav/private.txt"])

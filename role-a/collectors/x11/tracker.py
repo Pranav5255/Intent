@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit X11 foreground-window changes to the local Intent OS server."""
+"""Emit X11 foreground-window changes to the local Intent server."""
 
 from __future__ import annotations
 

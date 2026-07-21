@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replay a Role A day fixture into a local Intent OS event server."""
+"""Replay a Role A day fixture into a local Intent event server."""
 
 from __future__ import annotations
 

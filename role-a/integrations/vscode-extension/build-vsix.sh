@@ -12,7 +12,7 @@ if test -x "$EXT_DIR/node_modules/.bin/vsce" && "$EXT_DIR/node_modules/.bin/vsce
   "$EXT_DIR/node_modules/.bin/vsce" package --out "$DIST"
 else
   if ! command -v npm >/dev/null 2>&1; then
-    echo "npm is required to build the Intent OS VSIX" >&2
+    echo "npm is required to build the Intent VSIX" >&2
     exit 1
   fi
   tmp="$(mktemp -d)"
