@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import io
+import json
+import sqlite3
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +14,62 @@ from tools.intent_osctl import MARKER_END, MARKER_START, SHELL_SOURCES, remove_s
 
 
 class IntentOsCtlTests(unittest.TestCase):
+    def test_install_systemd_units_includes_unified_backend_units(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            with patch("tools.intent_osctl.Path.home", return_value=home):
+                intent_osctl.install_systemd_units()
+            installed = home / ".config" / "systemd" / "user"
+            self.assertTrue((installed / "intent-os-backend.target").is_file())
+            self.assertIn("intent_engine.scheduled_ingest", (installed / "intent-os-pipeline.service").read_text(encoding="utf-8"))
+            self.assertIn("OnCalendar=*-*-* 00/3:00:00", (installed / "intent-os-pipeline.timer").read_text(encoding="utf-8"))
+
+    def test_backend_lifecycle_operates_on_the_single_target(self) -> None:
+        with (
+            patch("tools.intent_osctl.import_graphical_environment"),
+            patch("tools.intent_osctl.install_systemd_units"),
+            patch("tools.intent_osctl.install_autostart"),
+            patch("tools.intent_osctl.run_systemctl") as systemctl,
+        ):
+            intent_osctl.enable_services()
+            intent_osctl.disable_services()
+            intent_osctl.session_start()
+        calls = [call.args for call in systemctl.call_args_list]
+        self.assertIn(("disable", *intent_osctl.BACKEND_COMPONENT_UNITS), calls)
+        self.assertIn(("enable", "--now", "intent-os-backend.target"), calls)
+        self.assertIn(("disable", "--now", "intent-os-backend.target"), calls)
+        self.assertIn(("start", "intent-os-backend.target"), calls)
+
+    def test_status_includes_safe_scheduler_metadata_and_systemd_details(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            database = Path(temporary) / "intents.db"
+            connection = sqlite3.connect(database)
+            connection.execute("CREATE TABLE store_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            connection.executemany(
+                "INSERT INTO store_metadata(key, value) VALUES (?, ?)",
+                [
+                    ("scheduled_ingest_last_completed_date", "2026-07-14"),
+                    ("scheduled_ingest_last_outcome", "pipeline_error"),
+                    ("unrelated", "private exception text"),
+                ],
+            )
+            connection.commit()
+            connection.close()
+            output = io.StringIO()
+            with (
+                patch.dict("tools.intent_osctl.os.environ", {"ROLE_B_DB_PATH": str(database)}, clear=False),
+                patch("tools.intent_osctl.fetch_json", return_value={"ok": True}),
+                patch("tools.intent_osctl.systemd_unit_state", return_value="active"),
+                patch("tools.intent_osctl.systemd_timer_next_activation", return_value="Tue 2026-07-21 03:00:00 IST"),
+                redirect_stdout(output),
+            ):
+                self.assertEqual(intent_osctl.command_status(), 0)
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["event_server"], {"ok": True})
+        self.assertEqual(payload["pipeline"]["last_completed_date"], "2026-07-14")
+        self.assertEqual(payload["pipeline"]["last_outcome"], "pipeline_error")
+        self.assertNotIn("private exception text", output.getvalue())
+
     def test_shell_integration_is_reversible_without_touching_user_content(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary)

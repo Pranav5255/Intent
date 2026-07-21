@@ -79,6 +79,9 @@ install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-server.service" "$STAG
 install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-role-b.service" "$STAGE/usr/lib/systemd/user/"
 install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-x11-tracker.service" "$STAGE/usr/lib/systemd/user/"
 install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-workspace-watch.service" "$STAGE/usr/lib/systemd/user/"
+install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-pipeline.service" "$STAGE/usr/lib/systemd/user/"
+install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-pipeline.timer" "$STAGE/usr/lib/systemd/user/"
+install -m 0644 "$ROOT/packaging/debian/systemd/intent-os-backend.target" "$STAGE/usr/lib/systemd/user/"
 sed \
   -e "s/@ARCHITECTURE@/$ARCHITECTURE/g" \
   -e "s/@ROLE_B_PYTHON_PACKAGE@/$PYTHON_PACKAGE/g" \

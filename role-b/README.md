@@ -173,6 +173,16 @@ Invoke-RestMethod http://127.0.0.1:9478/intents/current
 
 Role A unavailability is reported as HTTP 503 by the pipeline endpoint. The current-intent endpoint returns `null` when Role A is unavailable, no recent work exists, or confidence is below the F11 threshold.
 
+### Scheduled ingestion
+
+`python -m intent_engine.scheduled_ingest` is a one-shot backend command for
+the packaged scheduler. It is disabled by default with
+`ENABLE_PIPELINE_TRIGGER=false`; the packaged timer will opt in with
+`ENABLE_PIPELINE_TRIGGER=true` and the documented
+`PIPELINE_TRIGGER_INTERVAL_HOURS=3` cadence. Each enabled run fetches Role A
+day exports only through `GET /v1/export/day`, then uses the existing pipeline
+with its normal cache behavior. It never opens Role A's `events.db`.
+
 ## 8. Enable Intent Copilot (optional)
 
 Edit the local `.env` with Groq, OpenAI, or Gemini credentials. For Groq testing, use `LLM_PROVIDER=groq`, `GROQ_API_KEY`, and `INTENT_OS_LLM_MODEL=openai/gpt-oss-20b`. For Gemini, prefer a gitignored service-account JSON:

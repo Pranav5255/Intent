@@ -89,6 +89,37 @@ class IntentStore:
             )
             return await cursor.fetchone() is not None
 
+    async def get_metadata(self, key: str) -> str | None:
+        """Return a local operational metadata value without exposing SQLite to callers."""
+
+        async with self._connection() as connection:
+            cursor = await connection.execute("SELECT value FROM store_metadata WHERE key = ?", (key,))
+            row = await cursor.fetchone()
+        return str(row["value"]) if row is not None else None
+
+    async def set_metadata(self, key: str, value: str) -> None:
+        """Persist one local operational metadata value."""
+
+        await self.set_metadata_values({key: value})
+
+    async def set_metadata_values(self, values: dict[str, str]) -> None:
+        """Atomically persist local operational metadata values."""
+
+        if not values:
+            return
+        async with self._connection() as connection:
+            try:
+                await connection.execute("BEGIN")
+                await connection.executemany(
+                    "INSERT INTO store_metadata(key, value) VALUES (?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    list(values.items()),
+                )
+                await connection.commit()
+            except Exception:
+                await connection.rollback()
+                raise
+
     async def get_cached_intents(self, date: str, source_hash: str) -> list[Intent] | None:
         if not await self.cache_exists(date, source_hash):
             return None

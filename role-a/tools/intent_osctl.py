@@ -8,9 +8,11 @@ import json
 import os
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
+from datetime import date as calendar_date
 from pathlib import Path
 from typing import Any
 from urllib import error, request
@@ -41,11 +43,30 @@ SYSTEMD_SOURCE = IMPORT_ROOT / "packaging" / "systemd"
 MARKER_START = "# >>> Intent OS shell integration >>>"
 MARKER_END = "# <<< Intent OS shell integration <<<"
 UNIT_NAMES = (
+    "intent-os-backend.target",
     "intent-os-server.service",
     "intent-os-role-b.service",
     "intent-os-x11-tracker.service",
     "intent-os-workspace-watch.service",
+    "intent-os-pipeline.service",
+    "intent-os-pipeline.timer",
 )
+BACKEND_TARGET = "intent-os-backend.target"
+STATUS_UNITS = (
+    "intent-os-server.service",
+    "intent-os-role-b.service",
+    "intent-os-pipeline.service",
+    "intent-os-pipeline.timer",
+)
+BACKEND_COMPONENT_UNITS = (
+    "intent-os-server.service",
+    "intent-os-role-b.service",
+    "intent-os-x11-tracker.service",
+    "intent-os-workspace-watch.service",
+    "intent-os-pipeline.service",
+    "intent-os-pipeline.timer",
+)
+SCHEDULER_OUTCOMES = {"success", "role_a_unavailable", "pipeline_error"}
 INTENT_API = "http://127.0.0.1:9478"
 EVENT_API = "http://127.0.0.1:9477"
 ROLE_C_PREVIEW_URL = "http://127.0.0.1:9479/preview"
@@ -83,19 +104,23 @@ def enable_services() -> None:
     import_graphical_environment()
     install_systemd_units()
     run_systemctl("daemon-reload")
-    run_systemctl("enable", "--now", *UNIT_NAMES)
+    # Remove pre-target startup links from older installations before the
+    # backend target becomes the sole default-target entry point.
+    run_systemctl("disable", *BACKEND_COMPONENT_UNITS)
+    run_systemctl("enable", "--now", BACKEND_TARGET)
     install_autostart()
 
 
 def disable_services() -> None:
-    run_systemctl("disable", "--now", *UNIT_NAMES)
+    run_systemctl("disable", "--now", BACKEND_TARGET)
+    run_systemctl("disable", *BACKEND_COMPONENT_UNITS)
     autostart = Path.home() / ".config" / "autostart" / "intent-os.desktop"
     autostart.unlink(missing_ok=True)
 
 
 def session_start() -> None:
     import_graphical_environment()
-    run_systemctl("start", *UNIT_NAMES)
+    run_systemctl("start", BACKEND_TARGET)
     start_tray()
 
 
@@ -193,12 +218,82 @@ def post_json(url: str, payload: dict[str, object] | None = None) -> dict[str, o
 
 
 def command_status() -> int:
+    event_status: Any = None
+    event_api_available = True
     try:
-        print(json.dumps(fetch_json("http://127.0.0.1:9477/v1/status"), indent=2))
-        return 0
-    except OSError as exc:
-        print(f"Intent OS server is unavailable: {exc}", file=sys.stderr)
-        return 1
+        event_status = fetch_json("http://127.0.0.1:9477/v1/status")
+    except OSError:
+        event_api_available = False
+    print(json.dumps({
+        "event_server": event_status,
+        "services": {unit: systemd_unit_state(unit) for unit in STATUS_UNITS},
+        "pipeline": {
+            **scheduler_state(),
+            "next_timer_activation": systemd_timer_next_activation(),
+        },
+    }, indent=2))
+    return 0 if event_api_available else 1
+
+
+def systemd_unit_state(unit: str) -> str:
+    """Return an operational state without making `status` fail when systemd is unavailable."""
+
+    try:
+        result = subprocess.run(
+            ["systemctl", "--user", "is-active", unit],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return "unknown"
+    state = result.stdout.strip()
+    return state if state else "unknown"
+
+
+def systemd_timer_next_activation() -> str | None:
+    try:
+        result = subprocess.run(
+            [
+                "systemctl", "--user", "show", "intent-os-pipeline.timer",
+                "--property=NextElapseUSecRealtime", "--value",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def scheduler_state() -> dict[str, str | None]:
+    """Read only Role B's fixed scheduler metadata; never surface arbitrary values."""
+
+    database_path = Path(os.environ.get("ROLE_B_DB_PATH", Path.home() / ".local" / "share" / "intent-os" / "intents.db"))
+    try:
+        connection = sqlite3.connect(f"file:{database_path}?mode=ro", uri=True)
+        try:
+            rows = dict(connection.execute(
+                "SELECT key, value FROM store_metadata WHERE key IN (?, ?)",
+                ("scheduled_ingest_last_completed_date", "scheduled_ingest_last_outcome"),
+            ).fetchall())
+        finally:
+            connection.close()
+    except (OSError, sqlite3.Error):
+        return {"last_completed_date": None, "last_outcome": None}
+
+    completed_date = rows.get("scheduled_ingest_last_completed_date")
+    try:
+        calendar_date.fromisoformat(completed_date) if isinstance(completed_date, str) else None
+    except ValueError:
+        completed_date = None
+    outcome = rows.get("scheduled_ingest_last_outcome")
+    return {
+        "last_completed_date": completed_date if isinstance(completed_date, str) else None,
+        "last_outcome": outcome if outcome in SCHEDULER_OUTCOMES else None,
+    }
 
 
 def command_export(date: str) -> int:

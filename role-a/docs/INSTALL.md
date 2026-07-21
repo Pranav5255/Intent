@@ -59,6 +59,14 @@ intent-osctl status
 stops and disables all user services. `intent-osctl shell disable --shell bash`
 removes only the marked Intent OS block from the shell rc file.
 
+## Local backend data
+
+Packaged services keep their local backend data in `~/.local/share/intent-os`.
+Role A exclusively owns the raw captured-event database at `events.db`; Role B
+exclusively owns the derived-intent database at `intents.db`. The databases
+remain separate: Role B accesses Role A through its local HTTP API and does not
+open `events.db` directly.
+
 
 ## Detailed capture (opt-in)
 

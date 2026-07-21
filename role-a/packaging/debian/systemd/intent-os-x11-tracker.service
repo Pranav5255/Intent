@@ -2,6 +2,7 @@
 Description=Intent OS X11 foreground tracker
 After=intent-os-server.service
 Wants=intent-os-server.service
+PartOf=intent-os-backend.target
 
 [Service]
 Type=simple
@@ -12,4 +13,4 @@ RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
-WantedBy=default.target
+WantedBy=intent-os-backend.target
