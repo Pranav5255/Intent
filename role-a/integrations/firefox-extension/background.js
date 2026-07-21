@@ -6,7 +6,7 @@ const CONFIG_CACHE_MS = 30_000;
 const USER_ACTIONS = new Set(["click", "link_activation", "form_submit", "toggle", "select_change", "scroll", "like", "reply", "repost", "share", "follow", "unfollow"]);
 
 const pendingEvents = [];
-const lastTabFingerprint = new Map();
+const lastTabs = new Map();
 const timers = new Map();
 let configCache = null;
 let configFetchedAt = 0;
@@ -41,7 +41,8 @@ export function makeEvent(tab) {
     payload: {
       url,
       title: boundedText(tab.title, 512),
-      tab_id: tab.id
+      tab_id: tab.id,
+      window_id: tab.windowId
     }
   };
 }
@@ -153,9 +154,26 @@ function queueEvent(event) {
 function queueTabEvent(event) {
   if (!event) return;
   const fingerprint = event.payload.url + "\n" + event.payload.title;
-  if (lastTabFingerprint.get(event.payload.tab_id) === fingerprint) return;
-  lastTabFingerprint.set(event.payload.tab_id, fingerprint);
+  const previous = lastTabs.get(event.payload.tab_id);
+  if (previous && previous.fingerprint === fingerprint) return;
+  lastTabs.set(event.payload.tab_id, {
+    fingerprint,
+    url: event.payload.url,
+    windowId: event.payload.window_id
+  });
   queueEvent(event);
+}
+
+function queueTabCloseEvent(tabId) {
+  const tab = lastTabs.get(tabId);
+  if (!tab) return;
+  queueEvent({
+    id: crypto.randomUUID(),
+    ts: Math.floor(Date.now() / 1000),
+    source: "firefox",
+    type: "tab_close",
+    payload: { url: tab.url, tab_id: tabId, window_id: tab.windowId }
+  });
 }
 
 function scheduleTab(tabId) {
@@ -191,7 +209,8 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url || changeInfo.title || changeInfo.status === "complete") scheduleTab(tabId);
 });
 browser.tabs.onRemoved.addListener((tabId) => {
-  lastTabFingerprint.delete(tabId);
+  queueTabCloseEvent(tabId);
+  lastTabs.delete(tabId);
   const timer = timers.get(tabId);
   if (timer) clearTimeout(timer);
   timers.delete(tabId);

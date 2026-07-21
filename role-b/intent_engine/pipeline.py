@@ -21,9 +21,9 @@ from intent_engine.labeling import (
     serialize_safe_features,
     validate_label_result,
 )
-from intent_engine.providers import create_label_provider, create_llm_client, semantic_clustering_enabled
+from intent_engine.providers import create_label_provider, create_semantic_llm_client, semantic_clustering_enabled
 from intent_engine.normalize import compute_source_hash, normalize_events
-from intent_engine.resume import build_resume_payload, merge_resume_payloads
+from intent_engine.resume import RESUME_POLICY_VERSION, build_resume_payload
 from intent_engine.schemas import DayExport, Intent, IntentInsights, PipelineResult, PipelineWarning, SemanticIntentMetadata
 from intent_engine.semantic_cluster import SemanticRefinementResult, refine_semantic_clusters_detailed, semantic_cache_identity
 from intent_engine.llm_base import LLMClient
@@ -56,7 +56,7 @@ async def run_pipeline(
         input_hash = compute_source_hash(normalized)
         if semantic_enabled:
             try:
-                semantic_client = semantic_client or create_llm_client()
+                semantic_client = semantic_client or create_semantic_llm_client()
                 semantic_identity = semantic_cache_identity(semantic_client)
             except Exception:
                 semantic_fallback_reason = "provider_unavailable"
@@ -196,7 +196,10 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
         tags=list(dict.fromkeys(tag for child in children for tag in child.tags)),
         stats=stats,
         insights=IntentInsights(),
-        resume_payload=merge_resume_payloads([child.resume_payload for child in children]),
+        # A parent is the user-facing "open this session" action. Rebuild its
+        # payload from the full chronology so each observed browser tab keeps
+        # its final URL rather than a union of navigation history from children.
+        resume_payload=build_resume_payload(session),
         evidence=[item for child in children for item in child.evidence],
         children=children,
         semantic=_aggregate_semantic_metadata(children),
@@ -248,7 +251,7 @@ def _cluster_prefix(cluster) -> tuple[str, str, str] | None:
 
 def _provider_cache_hash(input_hash: str, provider_identity: str) -> str:
     return hashlib.sha256(
-        f"{input_hash}:{provider_identity}:{SAFE_FEATURE_POLICY_VERSION}".encode("utf-8")
+        f"{input_hash}:{provider_identity}:{SAFE_FEATURE_POLICY_VERSION}:{RESUME_POLICY_VERSION}".encode("utf-8")
     ).hexdigest()[:16]
 
 

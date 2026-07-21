@@ -15,6 +15,25 @@ from intent_engine.llm import LLMError, redact_for_prompt
 _VERTEX_SCOPES = ("https://www.googleapis.com/auth/cloud-platform",)
 
 
+def _gemini_response_schema(value: Any) -> Any:
+    """Drop JSON Schema keywords unsupported by Gemini structured output.
+
+    Pydantic emits ``additionalProperties`` for models configured with
+    ``extra=\"forbid\"``. Gemini's response-schema API rejects that keyword,
+    so preserve the schema shape while omitting it at every nesting level.
+    """
+
+    if isinstance(value, dict):
+        return {
+            key: _gemini_response_schema(item)
+            for key, item in value.items()
+            if key != "additionalProperties"
+        }
+    if isinstance(value, list):
+        return [_gemini_response_schema(item) for item in value]
+    return value
+
+
 def _resolve_credentials_path(
     credentials_path: str | None = None,
 ) -> str | None:
@@ -121,7 +140,7 @@ class GeminiClient:
             config = types.GenerateContentConfig(
                 system_instruction=redact_for_prompt(system),
                 response_mime_type="application/json",
-                response_schema=schema,
+                response_schema=_gemini_response_schema(schema),
             )
             return await asyncio.to_thread(
                 client.models.generate_content,

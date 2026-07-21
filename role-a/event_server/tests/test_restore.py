@@ -32,9 +32,13 @@ class RestoreTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(result.restored, {"files": 1, "urls": 2, "shell": True})
-        self.assertEqual(launch.call_count, 4)
+        self.assertEqual(launch.call_count, 3)
         self.assertEqual(launch.call_args_list[0].args[0], ["/usr/bin/code", "--reuse-window", str(self.file.resolve())])
-        self.assertEqual(launch.call_args_list[3].args[0], ["/usr/bin/gnome-terminal", f"--working-directory={self.root.resolve()}"])
+        self.assertEqual(
+            launch.call_args_list[1].args[0],
+            ["/usr/bin/firefox", "--new-window", "https://example.com/docs", "--new-tab", "https://example.com/next"],
+        )
+        self.assertEqual(launch.call_args_list[2].args[0], ["/usr/bin/gnome-terminal", f"--working-directory={self.root.resolve()}"])
 
     def test_rejects_unsafe_url_scheme(self) -> None:
         with self.assertRaises(ValueError):

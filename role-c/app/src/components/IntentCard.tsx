@@ -18,6 +18,8 @@ export function IntentCard({ intent, selectedId, onSelect, onResume }: IntentCar
   const [expanded, setExpanded] = useState(false);
   const childrenVisible = expanded || includesIntent(intent, selectedId);
   const project = projectTag(intent);
+  const tabCount = intent.resume_payload.urls.length;
+  const resumeLabel = tabCount ? `Review ${tabCount} tab${tabCount === 1 ? '' : 's'} & resume` : 'Resume';
   return (
     <article className={`intent-card ${selectedId === intent.id ? 'is-selected' : ''}`} role="option" aria-selected={selectedId === intent.id}>
       <button className="intent-main button-reset" type="button" onClick={() => onSelect(intent.id)}>
@@ -42,7 +44,7 @@ export function IntentCard({ intent, selectedId, onSelect, onResume }: IntentCar
             {childrenVisible ? 'Hide details' : `${intent.children.length} detail${intent.children.length === 1 ? '' : 's'}`}
           </button>
         )}
-        <button className="action-button primary" type="button" onClick={() => onResume(intent.id, 'resume')}>Resume</button>
+        <button className="action-button primary" type="button" onClick={() => onResume(intent.id, 'resume')}>{resumeLabel}</button>
         <button className="action-button" type="button" onClick={() => onResume(intent.id, 'continue')}>Continue</button>
       </div>
       {intent.children.length > 0 && childrenVisible && (

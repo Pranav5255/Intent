@@ -133,9 +133,14 @@ def create_app(
         app.state.writer.close()
 
     extension_origin = os.environ.get("INTENT_OS_FIREFOX_EXTENSION_ORIGIN")
+    # Role C is a local UI which presents the restore preview and asks for the
+    # user's confirmation before it calls /v1/restore.  Permit its dev origin
+    # in addition to the extension's configured origin so the browser build
+    # can exercise that reviewed path as well as the Electron build.
+    local_role_c_origins = ["http://localhost:9479", "http://127.0.0.1:9479"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[extension_origin] if extension_origin else [],
+        allow_origins=([extension_origin] if extension_origin else []) + local_role_c_origins,
         allow_methods=["POST", "OPTIONS"],
         allow_headers=["content-type"],
     )

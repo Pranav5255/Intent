@@ -21,11 +21,11 @@ test("sanitizes browser URLs before they leave Firefox", () => {
 });
 
 test("emits active-tab metadata only", () => {
-  const event = makeEvent({ id: 7, url: "https://example.com/a?x=1", title: "A page" });
+  const event = makeEvent({ id: 7, windowId: 3, url: "https://example.com/a?x=1", title: "A page" });
   assert.match(event.id, /^[0-9a-f-]{36}$/);
   assert.equal(event.source, "firefox");
   assert.equal(event.type, "tab_change");
-  assert.deepEqual(event.payload, { url: "https://example.com/a", title: "A page", tab_id: 7 });
+  assert.deepEqual(event.payload, { url: "https://example.com/a", title: "A page", tab_id: 7, window_id: 3 });
 });
 
 test("emits bounded semantic actions without form values", () => {

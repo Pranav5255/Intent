@@ -24,7 +24,7 @@ export function RestoreReview({ review, restoring, onClose, onConfirm }: Restore
       <p className="restore-summary">{review.summary || review.label}</p>
       <div className="restore-items" aria-label="Stored restore context">
         {payload.files.length > 0 && <RestoreItem label="Files" values={payload.files} />}
-        {payload.urls.length > 0 && <RestoreItem label="Pages" values={payload.urls} />}
+        {payload.urls.length > 0 && <RestoreItem label="Firefox tabs" values={payload.urls} />}
         {payload.shell.cwd && <RestoreItem label="Terminal folder" values={[payload.shell.cwd]} />}
         {!payload.files.length && !payload.urls.length && !payload.shell.cwd && <span>No restorable applications were stored for this session.</span>}
       </div>
@@ -33,7 +33,7 @@ export function RestoreReview({ review, restoring, onClose, onConfirm }: Restore
         <legend>Choose how to reopen it</legend>
         <label className={mode === 'resume' ? 'is-active' : ''}>
           <input type="radio" name="restore-mode" checked={mode === 'resume'} onChange={() => setMode('resume')} />
-          <strong>Resume</strong><span>Open saved files, pages, and terminal folder.</span>
+          <strong>Resume</strong><span>Open saved files, Firefox tabs, and terminal folder.</span>
         </label>
         <label className={mode === 'continue' ? 'is-active' : ''}>
           <input type="radio" name="restore-mode" checked={mode === 'continue'} onChange={() => setMode('continue')} />

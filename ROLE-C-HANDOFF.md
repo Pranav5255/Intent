@@ -65,7 +65,7 @@ Render the fields returned by Role B's `Intent` model:
 }
 ```
 
-Role B caps files at 5 and URLs at 8. Restore URLs are HTTP(S) only; treat the payload as authoritative and display it without expanding or inventing values.
+Role B caps files at 5 and URLs at 8. For Firefox, each URL is the final sanitized URL observed for one tab in the selected intent; distinct tabs on the same domain remain distinct. Restore URLs are HTTP(S) only; treat the payload as authoritative and display it without expanding or inventing values.
 
 ### CurrentIntent
 

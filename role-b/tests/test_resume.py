@@ -15,19 +15,21 @@ def event(
     *,
     family: str,
     ordinal: int = 0,
+    category: str = "event",
     file_path: str | None = None,
     url: str | None = None,
+    tab_id: int | None = None,
     cwd: str | None = None,
     command: str | None = None,
 ) -> NormalizedEvent:
-    raw = {"payload": {"url": url}} if url is not None else {}
+    raw = {"payload": {"url": url, **({"tab_id": tab_id} if tab_id is not None else {})}} if url is not None else {}
     return NormalizedEvent(
         id=event_id,
         ts=ts,
         ordinal=ordinal,
         source="test",
         family=family,
-        category="event",
+        category=category,
         text="Safe text",
         entities=EventEntities(file_path=file_path, cwd=cwd, command=command),
         raw=raw,
@@ -39,9 +41,9 @@ def test_build_payload_orders_files_urls_and_shell_by_recency() -> None:
         event("old-file", 1, family="editor", file_path="/work/old.py"),
         event("new-file", 10, family="editor", file_path="/work/new.py"),
         event("duplicate-file", 11, family="editor", file_path="/work/old.py"),
-        event("old-url", 2, family="browser", url="https://docs.example.com/old"),
-        event("new-same-domain", 12, family="browser", url="https://docs.example.com/new"),
-        event("other-url", 13, family="browser", url="http://example.org/page"),
+        event("old-url", 2, family="browser", url="https://docs.example.com/old", tab_id=7),
+        event("new-same-tab", 12, family="browser", url="https://docs.example.com/new", tab_id=7),
+        event("other-url", 13, family="browser", url="http://example.org/page", tab_id=8),
         event("shell", 20, family="command", cwd="/work", command="terraform apply"),
     ]
 
@@ -69,6 +71,25 @@ def test_build_payload_enforces_caps_and_filters_invalid_urls() -> None:
     assert all(url.startswith(("http://", "https://")) for url in payload.urls)
 
 
+def test_build_payload_keeps_distinct_tabs_on_the_same_domain() -> None:
+    payload = build_resume_payload([
+        event("docs", 1, family="browser", url="https://docs.example.com/guide", tab_id=1),
+        event("issue", 2, family="browser", url="https://docs.example.com/issues", tab_id=2),
+        event("updated-docs", 3, family="browser", url="https://docs.example.com/latest", tab_id=1),
+    ])
+
+    assert payload.urls == ["https://docs.example.com/latest", "https://docs.example.com/issues"]
+
+
+def test_build_payload_does_not_restore_a_tab_that_was_closed() -> None:
+    payload = build_resume_payload([
+        event("open", 1, family="browser", url="https://docs.example.com/guide", tab_id=1),
+        event("closed", 2, family="browser", category="tab_close", url="https://docs.example.com/guide", tab_id=1),
+    ])
+
+    assert payload.urls == []
+
+
 def test_merge_payloads_treats_final_child_as_most_recent() -> None:
     older = ResumePayload(
         files=["/work/older.py", "/work/shared.py"],
@@ -84,7 +105,7 @@ def test_merge_payloads_treats_final_child_as_most_recent() -> None:
     payload = merge_resume_payloads([older, newer])
 
     assert payload.files == ["/work/newer.py", "/work/shared.py", "/work/older.py"]
-    assert payload.urls == ["https://newer.example/", "https://shared.example/new", "https://older.example/"]
+    assert payload.urls == ["https://newer.example/", "https://shared.example/new", "https://older.example/", "https://shared.example/old"]
     assert payload.shell == {"cwd": "/newer", "last_cmd": "git status"}
 
 

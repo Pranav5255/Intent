@@ -100,9 +100,10 @@ def restore(payload: ResumePayload) -> RestoreResult:
         firefox = shutil.which("firefox")
         if firefox:
             try:
-                _launch([firefox, "--new-window", payload.urls[0]])
+                arguments = [firefox, "--new-window", payload.urls[0]]
                 for url in payload.urls[1:]:
-                    _launch([firefox, "--new-tab", url])
+                    arguments.extend(["--new-tab", url])
+                _launch(arguments)
                 restored["urls"] = len(payload.urls)
             except OSError as exc:
                 failed.append(f"Firefox launch failed: {exc}")

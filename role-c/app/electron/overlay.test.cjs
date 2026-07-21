@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { allowedLocalApiUrl, localApiOrigins, windowOptions } = require('./overlay.cjs');
+const { allowedLocalApiUrl, localApiOrigins, overlayShortcut, windowOptions } = require('./overlay.cjs');
 
 test('allows only the configured local Role A and Role B API origins', () => {
   const origins = localApiOrigins({
@@ -12,6 +12,11 @@ test('allows only the configured local Role A and Role B API origins', () => {
   assert.equal(allowedLocalApiUrl('http://localhost:9478/intents/digest', origins), false);
   assert.equal(allowedLocalApiUrl('https://example.com/restore', origins), false);
   assert.equal(allowedLocalApiUrl('file:///home/pranav/private.txt', origins), false);
+});
+
+test('uses the normal shortcut unless a local test shortcut is configured', () => {
+  assert.equal(overlayShortcut({}), 'Control+Space');
+  assert.equal(overlayShortcut({ INTENT_OS_OVERLAY_SHORTCUT: 'Control+Shift+Space' }), 'Control+Shift+Space');
 });
 
 test('creates a transparent, non-resizable desktop-work-area overlay', () => {

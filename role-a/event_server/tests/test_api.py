@@ -68,6 +68,19 @@ class EventApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    def test_role_c_dev_origin_can_post_the_reviewed_restore_request(self) -> None:
+        response = self.client.options(
+            "/v1/restore",
+            headers={
+                "Origin": "http://127.0.0.1:9479",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["access-control-allow-origin"], "http://127.0.0.1:9479")
+
     def test_retention_requires_confirmation_after_preview(self) -> None:
         payload = {
             "id": "00000000-0000-4000-8000-000000000013",

@@ -430,7 +430,7 @@ def test_disabled_semantic_clustering_does_not_call_client(monkeypatch):
 def test_factory_paths_and_cache_identity(monkeypatch, provider):
     client = FakeLLM({"proposals": [proposal("p0")]}, model=f"{provider}-model")
     monkeypatch.setenv("LLM_PROVIDER", provider)
-    monkeypatch.setattr("intent_engine.semantic_cluster.create_llm_client", lambda: client)
+    monkeypatch.setattr("intent_engine.semantic_cluster.create_semantic_llm_client", lambda: client)
 
     clusters = run(refine_semantic_clusters([event("known", 1)]))
 

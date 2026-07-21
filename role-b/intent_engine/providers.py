@@ -108,21 +108,29 @@ def semantic_clustering_enabled() -> bool:
     return _truthy("ROLE_B_SEMANTIC_CLUSTER") and llm_enabled() and semantic_content_consent_granted()
 
 
-def create_llm_client() -> LLMClient:
+def create_llm_client(*, timeout_seconds: float | None = None) -> LLMClient:
+    """Create the configured provider client with an optional request timeout."""
+
     provider = _provider_name()
     if provider == "gemini":
         from intent_engine.llm_gemini import GeminiClient
 
-        return GeminiClient()
+        return GeminiClient(timeout_seconds=timeout_seconds or 60.0)
     if provider == "groq":
-        return GroqResponsesClient()
+        return GroqResponsesClient(timeout_seconds=timeout_seconds or 60.0)
     if provider == "bedrock":
         from intent_engine.llm_bedrock import BedrockConverseClient
 
-        return BedrockConverseClient()
+        return BedrockConverseClient(timeout_seconds=timeout_seconds)
     if provider != "openai":
         raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
-    return OpenAIResponsesClient()
+    return OpenAIResponsesClient(timeout_seconds=timeout_seconds or 60.0)
+
+
+def create_semantic_llm_client() -> LLMClient:
+    """Create a provider client whose request limit matches semantic refinement."""
+
+    return create_llm_client(timeout_seconds=semantic_timeout_ms() / 1000)
 
 
 def create_label_provider() -> LabelProvider:

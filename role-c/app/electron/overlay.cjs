@@ -7,6 +7,10 @@ function localApiOrigins(environment = process.env) {
   ]);
 }
 
+function overlayShortcut(environment = process.env) {
+  return environment.INTENT_OS_OVERLAY_SHORTCUT?.trim() || 'Control+Space';
+}
+
 function allowedLocalApiUrl(rawUrl, origins = localApiOrigins()) {
   try {
     const url = new URL(rawUrl);
@@ -39,4 +43,4 @@ function windowOptions(bounds) {
   };
 }
 
-module.exports = { allowedLocalApiUrl, localApiOrigins, windowOptions };
+module.exports = { allowedLocalApiUrl, localApiOrigins, overlayShortcut, windowOptions };

@@ -6,14 +6,20 @@ from urllib.parse import urlsplit
 
 from intent_engine.schemas import NormalizedEvent, ResumePayload
 
+RESUME_POLICY_VERSION = "2"
+_MAX_RESTORE_URLS = 8
+
 
 def build_resume_payload(cluster: list[NormalizedEvent]) -> ResumePayload:
-    """Build a bounded, most-recent-first restore payload for one child intent."""
+    """Build a bounded restore payload with the last observed URL of each tab."""
 
     files: list[str] = []
     urls: list[str] = []
     seen_files: set[str] = set()
-    seen_domains: set[str] = set()
+    seen_urls: set[str] = set()
+    seen_tab_ids: set[int] = set()
+    closed_tab_ids: set[int] = set()
+    closed_urls: set[str] = set()
     shell: dict[str, str] = {}
 
     for event in sorted(cluster, key=lambda item: (item.ts, item.ordinal), reverse=True):
@@ -25,9 +31,27 @@ def build_resume_payload(cluster: list[NormalizedEvent]) -> ResumePayload:
 
         if event.family == "browser":
             url = _event_url(event)
-            domain = _restorable_domain(url)
-            if url and domain and domain not in seen_domains and len(urls) < 8:
-                seen_domains.add(domain)
+            tab_id = _event_tab_id(event)
+            if event.category == "tab_close":
+                if tab_id is not None:
+                    closed_tab_ids.add(tab_id)
+                if url:
+                    closed_urls.add(url)
+                continue
+            if tab_id is not None:
+                if tab_id in seen_tab_ids or tab_id in closed_tab_ids:
+                    continue
+                # Mark the tab even when its final URL is shared with another
+                # tab, so an older URL from this tab is not restored instead.
+                seen_tab_ids.add(tab_id)
+            if (
+                url
+                and _restorable_domain(url)
+                and url not in seen_urls
+                and url not in closed_urls
+                and len(urls) < _MAX_RESTORE_URLS
+            ):
+                seen_urls.add(url)
                 urls.append(url)
 
         if event.family == "command" and not shell:
@@ -46,7 +70,7 @@ def merge_resume_payloads(payloads: list[ResumePayload]) -> ResumePayload:
     urls: list[str] = []
     shell: dict[str, str] = {}
     seen_files: set[str] = set()
-    seen_domains: set[str] = set()
+    seen_urls: set[str] = set()
 
     for payload in reversed(payloads):
         for path in payload.files:
@@ -55,9 +79,8 @@ def merge_resume_payloads(payloads: list[ResumePayload]) -> ResumePayload:
                 files.append(path)
 
         for url in payload.urls:
-            domain = _restorable_domain(url)
-            if domain and domain not in seen_domains and len(urls) < 8:
-                seen_domains.add(domain)
+            if url not in seen_urls and _restorable_domain(url) and len(urls) < _MAX_RESTORE_URLS:
+                seen_urls.add(url)
                 urls.append(url)
 
         for key in ("cwd", "last_cmd"):
@@ -72,6 +95,12 @@ def _event_url(event: NormalizedEvent) -> str | None:
     payload = event.raw.get("payload")
     url = payload.get("url") if isinstance(payload, dict) else None
     return url if isinstance(url, str) else None
+
+
+def _event_tab_id(event: NormalizedEvent) -> int | None:
+    payload = event.raw.get("payload")
+    tab_id = payload.get("tab_id") if isinstance(payload, dict) else None
+    return tab_id if isinstance(tab_id, int) and not isinstance(tab_id, bool) and tab_id >= 0 else None
 
 
 def _restorable_domain(url: str | None) -> str | None:

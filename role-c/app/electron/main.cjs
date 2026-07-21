@@ -1,6 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, net, screen } = require('electron');
 const path = require('node:path');
-const { allowedLocalApiUrl, windowOptions } = require('./overlay.cjs');
+const { allowedLocalApiUrl, overlayShortcut, windowOptions } = require('./overlay.cjs');
 
 let overlayWindow = null;
 
@@ -46,7 +46,7 @@ app.whenReady().then(() => {
   ipcMain.on('intent-os:overlay-interaction', (_event, active) => setPointerPassthrough(Boolean(active)));
 
   createOverlay();
-  globalShortcut.register('Control+Space', () => {
+  globalShortcut.register(overlayShortcut(), () => {
     if (!overlayWindow || overlayWindow.isDestroyed()) return;
     setPointerPassthrough(true);
     overlayWindow.webContents.send('intent-os:toggle-overlay');

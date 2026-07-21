@@ -9,6 +9,7 @@ from intent_engine.providers import (
     create_copilot_llm,
     create_label_provider,
     create_llm_client,
+    create_semantic_llm_client,
     llm_enabled,
     semantic_clustering_enabled,
     semantic_content_consent_granted,
@@ -74,6 +75,17 @@ def test_gemini_provider_selection(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     client = create_llm_client()
     assert isinstance(client, GeminiClient)
+
+
+def test_semantic_client_uses_configured_timeout(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("ROLE_B_SEMANTIC_TIMEOUT_MS", "7500")
+
+    client = create_semantic_llm_client()
+
+    assert isinstance(client, GeminiClient)
+    assert client.timeout_seconds == 7.5
 
 
 def test_groq_provider_selection(monkeypatch):

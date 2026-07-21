@@ -15,7 +15,7 @@ from intent_engine.llm import LLMError
 from intent_engine.llm_base import LLMClient
 from intent_engine.providers import (
     SEMANTIC_CONTENT_POLICY_VERSION,
-    create_llm_client,
+    create_semantic_llm_client,
     semantic_clustering_enabled,
     semantic_full_capture_consent_granted,
     semantic_timeout_ms,
@@ -156,7 +156,7 @@ async def refine_semantic_clusters_detailed(
 
     llm_client: LLMClient | None = None
     try:
-        llm_client = client or create_llm_client()
+        llm_client = client or create_semantic_llm_client()
         batch_results = await _request_semantic_batches(llm_client, _semantic_request_batches(request_packets))
         validated = _validated_clusters(session, request_packets, batch_results)
         if validated is None:

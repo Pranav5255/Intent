@@ -66,6 +66,37 @@ def test_respond_json_uses_schema_mode(monkeypatch):
     assert fake.last_kwargs["config"].response_mime_type == "application/json"
 
 
+def test_respond_json_omits_unsupported_additional_properties(monkeypatch):
+    fake = FakeGeminiClient()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    client = GeminiClient(api_key="test-key")
+    client._client = SimpleNamespace(models=SimpleNamespace(generate_content=fake.generate_content))
+    client._types = SimpleNamespace(
+        GenerateContentConfig=lambda **kwargs: SimpleNamespace(**kwargs),
+    )
+
+    run(
+        client.respond_json(
+            system="system",
+            user="user",
+            schema_name="nested",
+            schema={
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "object", "additionalProperties": False},
+                    }
+                },
+            },
+        )
+    )
+
+    assert fake.last_kwargs is not None
+    assert "additionalProperties" not in json.dumps(fake.last_kwargs["config"].response_schema)
+
+
 def test_respond_with_tools_returns_unified_shape(monkeypatch):
     fake = FakeGeminiClient()
 
