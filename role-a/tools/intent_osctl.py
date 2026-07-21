@@ -318,6 +318,18 @@ def wait_for_json(url: str, timeout: float = 30) -> Any:
     raise RuntimeError(f"service did not become ready: {url} ({last_error})")
 
 
+def command_wait_ready() -> int:
+    """Wait for the two local APIs used by the bundled desktop overlay."""
+
+    try:
+        wait_for_json(f"{EVENT_API}/healthz")
+        wait_for_json(f"{INTENT_API}/healthz")
+    except RuntimeError as exc:
+        print(f"Intent OS: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def preview_url(intent_id: str) -> str:
     """Return the Role C preview link for one stored intent without restoring it."""
 
@@ -402,6 +414,7 @@ def main() -> int:
     subparsers.add_parser("enable")
     subparsers.add_parser("disable")
     subparsers.add_parser("session-start")
+    subparsers.add_parser("wait-ready", help="wait for the local Role A and Role B APIs")
     subparsers.add_parser("status")
     export = subparsers.add_parser("export-day")
     export.add_argument("--date", required=True, help="YYYY-MM-DD")
@@ -434,6 +447,8 @@ def main() -> int:
             disable_services()
         elif args.command == "session-start":
             session_start()
+        elif args.command == "wait-ready":
+            return command_wait_ready()
         elif args.command == "status":
             return command_status()
         elif args.command == "export-day":

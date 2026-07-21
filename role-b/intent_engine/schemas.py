@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 SAFE_INTENT_PRIVACY_POLICY_VERSION = "safe-intent-features-v1"
@@ -296,6 +296,38 @@ class CopilotNotConfigured(BaseModel):
         "ROLE_B_LLM_ENABLED=true, and provider credentials "
         "(OPENAI_API_KEY, GEMINI_API_KEY, or GOOGLE_APPLICATION_CREDENTIALS)."
     )
+
+
+class LLMSettingsUpdate(BaseModel):
+    """Local-only provider settings accepted by the production desktop app."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["openai", "groq", "gemini", "bedrock"]
+    api_key: str | None = Field(default=None, max_length=4096)
+    clear_api_key: bool = False
+    model: str | None = Field(default=None, max_length=256)
+    enable_copilot: bool = True
+    groq_base_url: str | None = Field(default=None, max_length=1024)
+    google_cloud_project: str | None = Field(default=None, max_length=256)
+    google_cloud_location: str | None = Field(default=None, max_length=256)
+    bedrock_region: str | None = Field(default=None, max_length=256)
+    bedrock_profile: str | None = Field(default=None, max_length=256)
+
+    @field_validator(
+        "api_key",
+        "model",
+        "groq_base_url",
+        "google_cloud_project",
+        "google_cloud_location",
+        "bedrock_region",
+        "bedrock_profile",
+    )
+    @classmethod
+    def single_line_values(cls, value: str | None) -> str | None:
+        if value is not None and any(character in value for character in ("\x00", "\n", "\r")):
+            raise ValueError("must be a single-line value")
+        return value
 
 
 Intent.model_rebuild()

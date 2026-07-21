@@ -2,7 +2,7 @@
 Type=Application
 Name=Intent OS session bootstrap
 Comment=Make the graphical session available to Intent OS user services
-Exec=sh -c '/usr/bin/intent-osctl session-start; /usr/bin/intent-osctl notify-yesterday'
+Exec=sh -c '/usr/bin/intent-osctl session-start; INTENT_OS_PREVIEW_COMMAND=/usr/bin/intent-os /usr/bin/intent-osctl notify-yesterday'
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
 X-GNOME-Autostart-Delay=8

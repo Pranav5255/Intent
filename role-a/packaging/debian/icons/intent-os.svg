@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Intent OS">
+  <defs>
+    <linearGradient id="surface" x1="18" y1="14" x2="110" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#243554"/>
+      <stop offset="1" stop-color="#0d1525"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="35" y1="31" x2="91" y2="97" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9bc2ff"/>
+      <stop offset="1" stop-color="#5d96f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#surface)"/>
+  <rect x="18" y="18" width="92" height="92" rx="21" fill="none" stroke="#6ea8fe" stroke-opacity=".34" stroke-width="2"/>
+  <path d="M38 81.5 56.5 63l14 14L91 55.5" fill="none" stroke="url(#signal)" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"/>
+  <circle cx="38" cy="81.5" r="5.5" fill="#b9d5ff"/>
+  <circle cx="91" cy="55.5" r="5.5" fill="#b9d5ff"/>
+</svg>

@@ -32,7 +32,7 @@ describe('Role C backend clients', () => {
         },
       }),
     });
-    window.intentOS = { request, setInteractionActive: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
+    window.intentOS = { request, setInteractionActive: vi.fn(), setOverlayVisible: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
 
     const result = await roleBApi.selectResume({ intentId: 'intent-auth' });
 
@@ -52,7 +52,7 @@ describe('Role C backend clients', () => {
       status: 200,
       body: JSON.stringify({ ok: true, restored: { files: 1, urls: 1, shell: true }, failed: [] }),
     });
-    window.intentOS = { request, setInteractionActive: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
+    window.intentOS = { request, setInteractionActive: vi.fn(), setOverlayVisible: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
 
     await roleAApi.restore({ ...storedPayload, mode: 'continue' });
 
@@ -71,12 +71,31 @@ describe('Role C backend clients', () => {
       status: 503,
       body: JSON.stringify({ code: 'copilot_not_configured', message: 'Intent Copilot is not configured.' }),
     });
-    window.intentOS = { request, setInteractionActive: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
+    window.intentOS = { request, setInteractionActive: vi.fn(), setOverlayVisible: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
 
     await expect(roleBApi.askCopilot('What was I working on?')).rejects.toMatchObject({
       status: 503,
       message: 'Intent Copilot is not configured.',
     });
+  });
+
+  it('sends provider settings only to the local Role B service', async () => {
+    const request = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: JSON.stringify({ provider: 'gemini', model: '', copilot_enabled: true, api_key_configured: true, groq_base_url: '', google_cloud_project: '', google_cloud_location: 'us-central1', bedrock_region: '', bedrock_profile: '' }),
+    });
+    window.intentOS = { request, setInteractionActive: vi.fn(), setOverlayVisible: vi.fn(), onToggleOverlay: vi.fn(() => () => undefined) };
+
+    await roleBApi.saveLlmSettings({ provider: 'gemini', api_key: 'local-test-key', enable_copilot: true });
+
+    expect(request).toHaveBeenCalledWith(
+      'http://127.0.0.1:9478/settings/llm',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ provider: 'gemini', api_key: 'local-test-key', enable_copilot: true }),
+      }),
+    );
   });
 });
 

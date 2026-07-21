@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export function useOverlayState(toastVisible: boolean) {
+export function useOverlayState(surfaceVisible: boolean) {
   const [open, setOpen] = useState(false);
 
   const close = useCallback(() => setOpen(false), []);
@@ -22,8 +22,10 @@ export function useOverlayState(toastVisible: boolean) {
   }, [toggle]);
 
   useEffect(() => {
-    window.intentOS?.setInteractionActive(open || toastVisible);
-  }, [open, toastVisible]);
+    const visible = open || surfaceVisible;
+    window.intentOS?.setInteractionActive(visible);
+    window.intentOS?.setOverlayVisible(visible);
+  }, [open, surfaceVisible]);
 
   return { open, setOpen, close, toggle };
 }

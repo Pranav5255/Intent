@@ -19,13 +19,15 @@ test('uses the normal shortcut unless a local test shortcut is configured', () =
   assert.equal(overlayShortcut({ INTENT_OS_OVERLAY_SHORTCUT: 'Control+Shift+Space' }), 'Control+Shift+Space');
 });
 
-test('creates a transparent, non-resizable desktop-work-area overlay', () => {
+test('creates an opaque, non-resizable overlay smaller than the desktop work area', () => {
   const options = windowOptions({ x: 12, y: 34, width: 1920, height: 1046 });
   assert.deepEqual(
     { x: options.x, y: options.y, width: options.width, height: options.height },
-    { x: 12, y: 34, width: 1920, height: 1046 },
+    { x: 412, y: 177, width: 1120, height: 760 },
   );
   assert.equal(options.transparent, true);
+  assert.equal(options.backgroundColor, '#00000000');
+  assert.equal(options.show, false);
   assert.equal(options.frame, false);
   assert.equal(options.alwaysOnTop, true);
   assert.equal(options.resizable, false);

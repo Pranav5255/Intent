@@ -17,7 +17,8 @@ interface SessionDashboardProps {
   resumeCandidates: ResumeCandidate[] | null;
   onRetry: () => void;
   onSelect: (id: string) => void;
-  onResume: (id: string, preferredMode?: 'resume' | 'continue') => void;
+  onReview: (id: string) => void;
+  onContinue: (id: string) => void;
   onCopilotResume: (response: CopilotResponse) => void;
 }
 
@@ -30,15 +31,16 @@ export function SessionDashboard({
   resumeCandidates,
   onRetry,
   onSelect,
-  onResume,
+  onReview,
+  onContinue,
   onCopilotResume,
 }: SessionDashboardProps) {
   return (
     <section id="intent-dashboard" className="session-dashboard glass" aria-label="Intent sessions">
       {loading && !data ? <LoadingState /> : error && !data ? <ServiceError error={error} onRetry={onRetry} /> : null}
       {data && <DigestHero digest={data.digest} current={data.current} />}
-      {resumeCandidates && <ResumePicker candidates={resumeCandidates} onResume={onResume} />}
-      {content.kind === 'search' && <SearchResults {...content} selectedId={selectedId} onSelect={onSelect} onResume={onResume} />}
+      {resumeCandidates && <ResumePicker candidates={resumeCandidates} onReview={onReview} />}
+      {content.kind === 'search' && <SearchResults {...content} selectedId={selectedId} onSelect={onSelect} onReview={onReview} />}
       {content.kind === 'copilot' && <CopilotPanel {...content} onResume={onCopilotResume} />}
       {content.kind === 'timeline' && data && (
         <section className="sessions-section" aria-label="Yesterday's sessions">
@@ -46,7 +48,7 @@ export function SessionDashboard({
           {data.intents.length ? (
             <div className="intent-list" role="listbox" aria-label="Restorable sessions">
               {data.intents.map((intent) => (
-                <IntentCard key={intent.id} intent={intent} selectedId={selectedId} onSelect={onSelect} onResume={onResume} />
+                <IntentCard key={intent.id} intent={intent} selectedId={selectedId} onSelect={onSelect} onReview={onReview} onContinue={onContinue} />
               ))}
             </div>
           ) : <EmptyState message="No sessions found. Seed Role B with POST /pipeline/run-replay." />}
@@ -56,10 +58,10 @@ export function SessionDashboard({
   );
 }
 
-function SearchResults({ query, results, loading, selectedId, onSelect, onResume }: Extract<DashboardContent, { kind: 'search' }> & {
+function SearchResults({ query, results, loading, selectedId, onSelect, onReview }: Extract<DashboardContent, { kind: 'search' }> & {
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onResume: (id: string, preferredMode?: 'resume' | 'continue') => void;
+  onReview: (id: string) => void;
 }) {
   if (!query) return null;
   return (
@@ -74,7 +76,7 @@ function SearchResults({ query, results, loading, selectedId, onSelect, onResume
                 <span>{cleanHighlight(result.highlight_snippet || result.summary)}</span>
                 <time>{formatDate(result.date)}</time>
               </button>
-              <button className="action-button" type="button" onClick={() => onResume(result.id, 'resume')}>Review restore</button>
+              <button className="action-button" type="button" onClick={() => onReview(result.id)}>Review restore</button>
             </article>
           ))}
         </div>
@@ -108,13 +110,13 @@ function CopilotPanel({ question, response, loading, unavailable, onResume }: Ex
   );
 }
 
-function ResumePicker({ candidates, onResume }: { candidates: ResumeCandidate[]; onResume: (id: string, preferredMode?: 'resume' | 'continue') => void }) {
+function ResumePicker({ candidates, onReview }: { candidates: ResumeCandidate[]; onReview: (id: string) => void }) {
   return (
     <section className="resume-picker" aria-label="Choose a session to restore">
       <strong>Choose a stored session before restoring</strong>
       <p>Several sessions matched. Select one to review its exact saved context.</p>
       {candidates.map((candidate) => (
-        <button type="button" className="picker-item" key={candidate.intent_id} onClick={() => onResume(candidate.intent_id, 'resume')}>
+        <button type="button" className="picker-item" key={candidate.intent_id} onClick={() => onReview(candidate.intent_id)}>
           <span>{candidate.label}</span><small>{candidate.project_tag ?? 'Stored session'}</small>
         </button>
       ))}

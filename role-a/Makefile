@@ -1,6 +1,6 @@
 .PHONY: test test-python test-firefox test-vscode package-dev package-check
 
-PACKAGE_VERSION := 0.1.1
+PACKAGE_VERSION := 0.1.8
 PACKAGE_ARCH := $(shell dpkg --print-architecture)
 
 test: test-python test-firefox test-vscode

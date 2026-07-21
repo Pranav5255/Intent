@@ -7,9 +7,12 @@
 - Firefox for browser metadata capture.
 - VS Code is optional but recommended for editor-specific file context.
 
-The unified package includes Role A, Role B, the Firefox companion, and the
-VS Code/Cursor companion. Role B runs as a local user service on port `9478`
-with bundled Python dependencies; the package never installs VS Code or Cursor.
+The unified package includes Role A, Role B, Role C's Electron overlay, the
+Firefox companion, and the VS Code/Cursor companion. It bundles the Electron
+runtime and Role B's Python environment, so an installed user does not need
+Node.js, `npm`, a Python virtual environment, or a separately installed UI.
+Role B runs as a local user service on port `9478`; the package never installs
+VS Code or Cursor.
 
 ## Build artifacts
 
@@ -37,16 +40,33 @@ unset AMO_JWT_ISSUER AMO_JWT_SECRET  # ensures .env is used
 bash scripts/sign_firefox.sh
 INTENT_OS_FIREFOX_XPI="$(pwd)/integrations/firefox-extension/dist/intent-os-firefox-signed.xpi" \
   bash packaging/build-deb.sh
-sudo apt install ./dist/intent-os_0.1.1_amd64.deb
+sudo apt install ./dist/intent-os_0.1.8_amd64.deb
 ```
 
-## Per-user enablement
+## Install and launch
 
-After installation, each user explicitly enables the local Role A capture
-services and the Role B deterministic engine:
+After `apt` finishes, launch the app from the desktop menu or run:
 
 ```bash
-intent-osctl enable
+intent-os
+```
+
+That one command starts and enables the local user services, waits for both
+loopback APIs to be ready, opens the bundled Role C overlay, and configures
+future graphical sessions to start the local backend. It never enables detailed
+capture: editor and browser details remain opt-in. The app talks only to the
+bundled loopback services on `9477` and `9478`; no cloud credential is needed
+for the deterministic flow. The installed desktop entry includes its own icon,
+matches the bundled Electron window in the dock, and always opens the packaged
+renderer rather than a developer server.
+
+## Optional per-user integrations
+
+`intent-os` performs the backend enablement on first launch. Use the commands
+below only to install optional editor/shell integrations or to manage the
+backend manually:
+
+```bash
 intent-osctl vscode install       # if VS Code is installed
 intent-osctl cursor install       # if Cursor is installed
 intent-osctl workspace add ~/work/infra

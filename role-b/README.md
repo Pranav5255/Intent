@@ -26,6 +26,16 @@ copy .env.example .env   # then edit secrets locally — never commit .env
 
 The deterministic service works without `.env`, an LLM key, or the optional packages. Keep the real `.env` local; `.env.example` is the shareable template.
 
+### Production Settings
+
+The packaged desktop app has a production-only Settings panel for OpenAI,
+Groq, Gemini, and Amazon Bedrock. It writes the same provider variables used
+by the development environment file to ~/.config/intent-os/llm.env, atomically
+with mode 0600; it never writes a key into the source tree or returns one to
+the UI. The local Role B and scheduled pipeline services load that file on
+startup, and saving through Settings updates the running Role B process
+immediately.
+
 Optional provider packages:
 
 ```powershell

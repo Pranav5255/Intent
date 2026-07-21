@@ -9,6 +9,12 @@ function setPointerPassthrough(active) {
   overlayWindow.setIgnoreMouseEvents(!active, active ? undefined : { forward: true });
 }
 
+function setOverlayVisible(visible) {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  if (visible) overlayWindow.show();
+  else overlayWindow.hide();
+}
+
 function createOverlay() {
   const display = screen.getPrimaryDisplay();
   const bounds = display.workArea;
@@ -44,10 +50,12 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('intent-os:overlay-interaction', (_event, active) => setPointerPassthrough(Boolean(active)));
+  ipcMain.on('intent-os:overlay-visible', (_event, visible) => setOverlayVisible(Boolean(visible)));
 
   createOverlay();
   globalShortcut.register(overlayShortcut(), () => {
     if (!overlayWindow || overlayWindow.isDestroyed()) return;
+    if (!overlayWindow.isVisible()) overlayWindow.show();
     setPointerPassthrough(true);
     overlayWindow.webContents.send('intent-os:toggle-overlay');
   });

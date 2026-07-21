@@ -4,11 +4,14 @@ import { parseCommand } from './lib/parseMode';
 import { useIntents } from './hooks/useIntents';
 import { useOverlayState } from './hooks/useOverlayState';
 import { CommandBar } from './components/CommandBar';
-import { MorningToast } from './components/MorningToast';
 import { RestoreReview } from './components/RestoreReview';
 import { SessionDashboard, type DashboardContent } from './components/SessionDashboard';
+import { SettingsPanel } from './components/SettingsPanel';
 import { StatusToast, type StatusMessage } from './components/StatusToast';
-import type { CopilotResponse, Intent, RestoreReview as RestoreReviewData } from './types';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import type { CopilotResponse, Intent, LLMSettings, LLMSettingsUpdate, RestoreReview as RestoreReviewData } from './types';
+
+const ONBOARDING_STORAGE_KEY = 'intent-os-onboarding-complete-v1';
 
 function flattenIntents(intents: Intent[]): Intent[] {
   return intents.flatMap((intent) => [intent, ...flattenIntents(intent.children)]);
@@ -16,8 +19,21 @@ function flattenIntents(intents: Intent[]): Intent[] {
 
 export default function App() {
   const { data, loading, error, load, setData } = useIntents();
-  const [morningVisible, setMorningVisible] = useState(false);
-  const { open, setOpen, close } = useOverlayState(morningVisible);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
+    try {
+      return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) ? null : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<LLMSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const onboardingVisible = onboardingStep !== null;
+  const productionSettingsAvailable = Boolean(window.intentOS) && !import.meta.env.DEV;
+  const { open, setOpen, close } = useOverlayState(onboardingVisible || settingsOpen);
   const [value, setValue] = useState('');
   const [content, setContent] = useState<DashboardContent>({ kind: 'timeline' });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -40,6 +56,7 @@ export default function App() {
     setContent({ kind: 'timeline' });
     setRestoreReview(null);
     setResumeCandidates(null);
+    setSettingsOpen(false);
     close();
   }, [close]);
 
@@ -53,6 +70,48 @@ export default function App() {
     focusInput();
   }, [focusInput, load, setOpen, showStatus]);
 
+  const openSettings = useCallback(async () => {
+    if (!productionSettingsAvailable) return;
+    setRestoreReview(null);
+    setResumeCandidates(null);
+    setSettingsOpen(true);
+    setSettingsError(null);
+    setSettingsLoading(true);
+    setOpen(true);
+    try {
+      setSettings(await roleBApi.llmSettings());
+    } catch (reason) {
+      setSettingsError(reason instanceof Error ? reason.message : 'Could not load local provider settings.');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [productionSettingsAvailable, setOpen]);
+
+  const saveSettings = useCallback(async (update: LLMSettingsUpdate) => {
+    setSettingsSaving(true);
+    setSettingsError(null);
+    try {
+      const saved = await roleBApi.saveLlmSettings(update);
+      setSettings(saved);
+      showStatus({ text: saved.copilot_enabled ? 'Copilot provider saved locally.' : 'Provider saved. Copilot remains off.', variant: 'success' });
+    } catch (reason) {
+      setSettingsError(reason instanceof Error ? reason.message : 'Could not save local provider settings.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  }, [showStatus]);
+
+  const completeOnboarding = useCallback((openDashboard: boolean) => {
+    try {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
+    } catch {
+      // The guide is still dismissible when browser storage is unavailable.
+    }
+    setOnboardingStep(null);
+    if (openDashboard) openOverlay();
+    else closeOverlay();
+  }, [closeOverlay, openOverlay]);
+
   useEffect(() => {
     if (!open) return;
     void load().catch(() => undefined);
@@ -64,12 +123,6 @@ export default function App() {
     }, 60_000);
     return () => window.clearInterval(poll);
   }, [focusInput, load, open, setData]);
-
-  useEffect(() => {
-    if (!data || sessionStorage.getItem('intent-os-toast-dismissed')) return;
-    const timeout = window.setTimeout(() => setMorningVisible(true), 1500);
-    return () => window.clearTimeout(timeout);
-  }, [data]);
 
   useEffect(() => () => {
     if (statusTimer.current) clearTimeout(statusTimer.current);
@@ -111,15 +164,17 @@ export default function App() {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape' && open) {
         event.preventDefault();
-        if (restoreReview) setRestoreReview(null);
+        if (onboardingVisible) return;
+        if (settingsOpen) setSettingsOpen(false);
+        else if (restoreReview) setRestoreReview(null);
         else closeOverlay();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [closeOverlay, open, restoreReview]);
+  }, [closeOverlay, onboardingVisible, open, restoreReview, settingsOpen]);
 
-  const requestResume = useCallback(async (intentId?: string, query?: string, preferredMode: 'resume' | 'continue' = 'resume') => {
+  const requestRestoreReview = useCallback(async (intentId?: string, query?: string) => {
     setResumeCandidates(null);
     try {
       const selection = await roleBApi.selectResume({ intentId, query });
@@ -137,7 +192,6 @@ export default function App() {
         summary: selection.selected.summary,
         projectTag: selection.selected.project_tag,
         payload: selection.selected.resume_payload,
-        preferredMode,
       });
     } catch (reason) {
       showStatus({ text: reason instanceof Error ? reason.message : 'Could not load saved restore context.', variant: 'error' });
@@ -165,15 +219,43 @@ export default function App() {
       label: citation?.label ?? 'Stored restore context',
       summary: proposal.briefing ?? citation?.summary ?? 'Review the stored restore context before opening it.',
       payload: proposal.resume_payload,
-      preferredMode: 'resume',
     });
   }, []);
 
-  const confirmRestore = useCallback(async (mode: 'resume' | 'continue') => {
+  const continueWithTabs = useCallback(async (intentId: string) => {
+    setResumeCandidates(null);
+    setRestoreReview(null);
+    setRestoring(true);
+    try {
+      const selection = await roleBApi.selectResume({ intentId });
+      if (selection.needs_picker || !selection.selected) {
+        showStatus({ text: 'Choose a stored session to review before continuing.', variant: 'error' });
+        return;
+      }
+      const urls = selection.selected.resume_payload.urls;
+      if (!urls.length) {
+        showStatus({ text: 'No Firefox tabs were stored for this session.', variant: 'info' });
+        return;
+      }
+      const result = await roleAApi.restore({ mode: 'continue', files: [], urls, shell: {} });
+      if (result.ok) {
+        showStatus({ text: `Opened ${result.restored.urls} saved Firefox tab${result.restored.urls === 1 ? '' : 's'}.`, variant: 'success' });
+        closeOverlay();
+      } else {
+        showStatus({ text: `Could not open all saved tabs: ${result.failed.join(' ')}`, variant: 'error' });
+      }
+    } catch (reason) {
+      showStatus({ text: reason instanceof Error ? reason.message : 'Could not open saved Firefox tabs.', variant: 'error' });
+    } finally {
+      setRestoring(false);
+    }
+  }, [closeOverlay, showStatus]);
+
+  const confirmRestore = useCallback(async () => {
     if (!restoreReview) return;
     setRestoring(true);
     try {
-      const result = await roleAApi.restore({ ...restoreReview.payload, mode });
+      const result = await roleAApi.restore({ ...restoreReview.payload, mode: 'resume' });
       setRestoreReview(null);
       if (result.ok) {
         showStatus({ text: 'Saved context opened locally.', variant: 'success' });
@@ -204,7 +286,8 @@ export default function App() {
   const handleInputKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeOverlay();
+      if (settingsOpen) setSettingsOpen(false);
+      else closeOverlay();
       return;
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -218,60 +301,77 @@ export default function App() {
       void requestCopilot();
       return;
     }
-    void requestResume(selectedId ?? undefined, parsed.mode === 'restore' ? parsed.query : undefined);
-  };
-
-  const dismissMorning = () => {
-    sessionStorage.setItem('intent-os-toast-dismissed', 'true');
-    setMorningVisible(false);
-  };
-
-  const resumeMorning = () => {
-    dismissMorning();
-    openOverlay();
-    void requestResume(data?.digest.top_intent_ids[0]);
+    void requestRestoreReview(selectedId ?? undefined, parsed.mode === 'restore' ? parsed.query : undefined);
   };
 
   const inputBusy = loading || content.kind === 'search' && content.loading || content.kind === 'copilot' && content.loading;
+  const overlayVisible = open || onboardingVisible || settingsOpen;
   return (
-    <main className={`overlay-shell ${open ? 'is-open' : 'is-idle'}`}>
-      <div className="command-region">
-        <CommandBar
-          ref={inputRef}
-          value={value}
-          mode={parsed.mode}
-          open={open}
-          expanded={open}
-          busy={inputBusy}
-          onChange={setValue}
-          onKeyDown={handleInputKey}
-          onOpen={openOverlay}
-          onClose={closeOverlay}
+    <main className={`overlay-shell ${overlayVisible ? 'is-open' : 'is-idle'}`}>
+      {onboardingVisible ? (
+        <WelcomeScreen
+          step={onboardingStep ?? 0}
+          onBack={() => setOnboardingStep((step) => Math.max(0, (step ?? 0) - 1))}
+          onNext={() => setOnboardingStep((step) => Math.min(2, (step ?? 0) + 1))}
+          onFinish={() => completeOnboarding(true)}
+          onSkip={() => completeOnboarding(false)}
+          onOpenSettings={productionSettingsAvailable ? () => {
+            completeOnboarding(false);
+            void openSettings();
+          } : undefined}
         />
-        {open && (
-          <SessionDashboard
-            data={data}
-            content={content}
-            loading={loading}
-            error={error}
-            selectedId={selectedId}
-            resumeCandidates={resumeCandidates}
-            onRetry={() => void load().catch(() => undefined)}
-            onSelect={setSelectedId}
-            onResume={(intentId, preferredMode = 'resume') => void requestResume(intentId, undefined, preferredMode)}
-            onCopilotResume={reviewCopilotProposal}
+      ) : (
+        <div className={`command-region ${restoreReview ? 'has-restore-review' : ''}`}>
+          <CommandBar
+            ref={inputRef}
+            value={value}
+            mode={parsed.mode}
+            open={open}
+            expanded={open}
+            busy={inputBusy}
+            onChange={setValue}
+            onKeyDown={handleInputKey}
+            onOpen={openOverlay}
+            onClose={closeOverlay}
+            productionSettings={productionSettingsAvailable}
+            onOpenSettings={() => void openSettings()}
           />
-        )}
-        {restoreReview && (
-          <RestoreReview
-            review={restoreReview}
-            restoring={restoring}
-            onClose={() => setRestoreReview(null)}
-            onConfirm={(mode) => void confirmRestore(mode)}
-          />
-        )}
-      </div>
-      {data && <MorningToast digest={data.digest} visible={morningVisible} onResume={resumeMorning} onDismiss={dismissMorning} />}
+          {open && (settingsOpen ? (
+            <SettingsPanel
+              settings={settings}
+              loading={settingsLoading}
+              saving={settingsSaving}
+              error={settingsError}
+              onClose={() => setSettingsOpen(false)}
+              onSave={(update) => void saveSettings(update)}
+            />
+          ) : (
+            <div className={`dashboard-layout ${restoreReview ? 'has-restore-review' : ''}`}>
+              <SessionDashboard
+                data={data}
+                content={content}
+                loading={loading}
+                error={error}
+                selectedId={selectedId}
+                resumeCandidates={resumeCandidates}
+                onRetry={() => void load().catch(() => undefined)}
+                onSelect={setSelectedId}
+                onReview={(intentId) => void requestRestoreReview(intentId)}
+                onContinue={(intentId) => void continueWithTabs(intentId)}
+                onCopilotResume={reviewCopilotProposal}
+              />
+              {restoreReview && (
+                <RestoreReview
+                  review={restoreReview}
+                  restoring={restoring}
+                  onClose={() => setRestoreReview(null)}
+                  onConfirm={() => void confirmRestore()}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <StatusToast status={status} />
     </main>
   );

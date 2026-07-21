@@ -19,9 +19,10 @@ from intent_engine.pipeline import PIPELINE_VERSION, run_pipeline
 from intent_engine.current import CurrentIntentEngine
 from intent_engine.normalize import normalize_events
 from intent_engine.prediction import PredictionEngine
+from intent_engine.llm_settings import save_settings, settings_summary
 from intent_engine.providers import copilot_enabled, create_copilot_llm, create_label_provider
 from intent_engine.resume_select import select_resume_preview
-from intent_engine.schemas import CopilotNotConfigured, CopilotQueryRequest, DayExport, PipelineResult, ResumeSelectRequest
+from intent_engine.schemas import CopilotNotConfigured, CopilotQueryRequest, DayExport, LLMSettingsUpdate, PipelineResult, ResumeSelectRequest
 from intent_engine.source import RoleAClient, RoleAUnavailableError
 from intent_engine.store import IntentStore
 from intent_engine.tools import ToolContext, ToolRegistry
@@ -65,6 +66,26 @@ def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | No
     @application.get("/healthz")
     async def healthz() -> dict:
         return {"ok": True, "version": API_VERSION, "pipeline_version": PIPELINE_VERSION}
+
+    @application.get("/settings/llm")
+    async def llm_settings() -> dict:
+        return settings_summary()
+
+    @application.put("/settings/llm")
+    async def update_llm_settings(request: LLMSettingsUpdate) -> dict:
+        try:
+            summary = save_settings(request.model_dump())
+            application.state.label_provider = create_label_provider()
+            application.state.copilot_llm = create_copilot_llm()
+            application.state.copilot_enabled = copilot_enabled()
+            application.state.copilot = (
+                IntentCopilot(application.state.copilot_llm, application.state.tools)
+                if application.state.copilot_llm is not None
+                else None
+            )
+            return summary
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid local provider setting") from exc
 
     @application.get("/intents/yesterday")
     async def intents_yesterday() -> list:

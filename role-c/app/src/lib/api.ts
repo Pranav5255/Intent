@@ -5,6 +5,8 @@ import type {
   DashboardData,
   Digest,
   Intent,
+  LLMSettings,
+  LLMSettingsUpdate,
   RestoreResult,
   ResumeSelectResponse,
   SearchResult,
@@ -121,6 +123,18 @@ export const roleBApi = {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ question, mode: 'qa' }),
+    });
+  },
+
+  async llmSettings(): Promise<LLMSettings> {
+    return request<LLMSettings>(`${roleB}/settings/llm`);
+  },
+
+  async saveLlmSettings(settings: LLMSettingsUpdate): Promise<LLMSettings> {
+    return request<LLMSettings>(`${roleB}/settings/llm`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(settings),
     });
   },
 };

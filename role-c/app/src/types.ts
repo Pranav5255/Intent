@@ -122,7 +122,33 @@ export interface RestoreReview {
   summary: string;
   projectTag?: string | null;
   payload: ResumePayload;
-  preferredMode?: 'resume' | 'continue';
 }
 
 export type CommandMode = 'search' | 'copilot' | 'restore';
+
+export type LLMProvider = 'openai' | 'groq' | 'gemini' | 'bedrock';
+
+export interface LLMSettings {
+  provider: LLMProvider;
+  model: string;
+  copilot_enabled: boolean;
+  api_key_configured: boolean;
+  groq_base_url: string;
+  google_cloud_project: string;
+  google_cloud_location: string;
+  bedrock_region: string;
+  bedrock_profile: string;
+}
+
+export interface LLMSettingsUpdate {
+  provider: LLMProvider;
+  api_key?: string;
+  clear_api_key?: boolean;
+  model?: string;
+  enable_copilot: boolean;
+  groq_base_url?: string;
+  google_cloud_project?: string;
+  google_cloud_location?: string;
+  bedrock_region?: string;
+  bedrock_profile?: string;
+}

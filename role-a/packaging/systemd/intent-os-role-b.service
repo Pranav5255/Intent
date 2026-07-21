@@ -11,8 +11,7 @@ ExecStart=@INTENT_OS_ROLE_B_PYTHON@ -m uvicorn intent_engine.api:app --host 127.
 Restart=on-failure
 RestartSec=3
 Environment=ROLE_B_DB_PATH=%h/.local/share/intent-os/intents.db
-Environment=ROLE_B_LLM_ENABLED=false
-Environment=ENABLE_COPILOT=false
+EnvironmentFile=-%h/.config/intent-os/llm.env
 
 [Install]
 WantedBy=intent-os-backend.target

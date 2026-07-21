@@ -12,6 +12,7 @@ Restart=on-failure
 RestartSec=30
 Environment=ENABLE_PIPELINE_TRIGGER=true
 Environment=ROLE_B_DB_PATH=%h/.local/share/intent-os/intents.db
+EnvironmentFile=-%h/.config/intent-os/llm.env
 
 [Install]
 WantedBy=intent-os-backend.target

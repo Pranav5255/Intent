@@ -51,3 +51,12 @@ class SystemdPackagingTests(unittest.TestCase):
         builder = (ROLE_A_ROOT / "packaging" / "build-deb.sh").read_text(encoding="utf-8")
         for unit in (*COMPONENTS, "intent-os-pipeline.service", "intent-os-pipeline.timer", "intent-os-backend.target"):
             self.assertIn(unit, builder)
+
+    def test_debian_builder_includes_the_role_c_runtime_and_launcher(self) -> None:
+        builder = (ROLE_A_ROOT / "packaging" / "build-deb.sh").read_text(encoding="utf-8")
+        self.assertIn('ROLE_C_ROOT=$(cd "$ROOT/../role-c/app" && pwd)', builder)
+        self.assertIn('npm --prefix "$ROLE_C_ROOT" run build', builder)
+        self.assertIn('node_modules/electron/dist', builder)
+        self.assertIn('intent-os-launcher', builder)
+        self.assertIn('intent-os.desktop', builder)
+        self.assertIn('icons/intent-os.svg', builder)

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Intent OS
+Comment=Open the local Intent OS workspace overlay
+Exec=intent-os
+Icon=intent-os
+Terminal=false
+Categories=Utility;
+Keywords=focus;workspace;restore;productivity;
+StartupWMClass=intent-os-role-c
+StartupNotify=true

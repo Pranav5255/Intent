@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
-  --glass-bg: rgba(20, 22, 28, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --glass-bg: #1a1d25;
+  --glass-border: #39404e;
+  --glass-highlight: #4d5667;
   --text-primary: rgba(255, 255, 255, 0.94);
   --text-secondary: rgba(255, 255, 255, 0.62);
   --text-muted: rgba(255, 255, 255, 0.42);
   --accent: #6ea8fe;
-  --accent-soft: rgba(110, 168, 254, 0.18);
+  --accent-soft: rgba(110, 168, 254, 0.207);
   --success: #5dd39e;
   --danger: #ff7b72;
   --warning: #f7be65;
@@ -20,6 +20,9 @@
   --motion-hover: 90ms ease;
   --bar-width: 640px;
   --bar-height: 56px;
+  --overlay-top: clamp(16px, 6vh, 72px);
+  --overlay-bottom: clamp(24px, 5vh, 64px);
+  --panel-gap: 10px;
   --font: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", Cantarell, sans-serif;
   font-family: var(--font);
 }

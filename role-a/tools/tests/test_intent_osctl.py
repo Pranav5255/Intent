@@ -23,6 +23,8 @@ class IntentOsCtlTests(unittest.TestCase):
             self.assertTrue((installed / "intent-os-backend.target").is_file())
             self.assertIn("intent_engine.scheduled_ingest", (installed / "intent-os-pipeline.service").read_text(encoding="utf-8"))
             self.assertIn("OnCalendar=*-*-* 00/3:00:00", (installed / "intent-os-pipeline.timer").read_text(encoding="utf-8"))
+            self.assertIn("EnvironmentFile=-%h/.config/intent-os/llm.env", (installed / "intent-os-role-b.service").read_text(encoding="utf-8"))
+            self.assertIn("EnvironmentFile=-%h/.config/intent-os/llm.env", (installed / "intent-os-pipeline.service").read_text(encoding="utf-8"))
 
     def test_backend_lifecycle_operates_on_the_single_target(self) -> None:
         with (
@@ -69,6 +71,18 @@ class IntentOsCtlTests(unittest.TestCase):
         self.assertEqual(payload["pipeline"]["last_completed_date"], "2026-07-14")
         self.assertEqual(payload["pipeline"]["last_outcome"], "pipeline_error")
         self.assertNotIn("private exception text", output.getvalue())
+
+    def test_wait_ready_requires_both_local_apis(self) -> None:
+        with patch("tools.intent_osctl.wait_for_json", side_effect=[{"ok": True}, {"ok": True}]) as wait:
+            self.assertEqual(intent_osctl.command_wait_ready(), 0)
+        self.assertEqual(
+            [call.args[0] for call in wait.call_args_list],
+            [f"{intent_osctl.EVENT_API}/healthz", f"{intent_osctl.INTENT_API}/healthz"],
+        )
+
+    def test_wait_ready_reports_a_local_startup_failure(self) -> None:
+        with patch("tools.intent_osctl.wait_for_json", side_effect=RuntimeError("Role A is unavailable")):
+            self.assertEqual(intent_osctl.command_wait_ready(), 1)
 
     def test_shell_integration_is_reversible_without_touching_user_content(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
