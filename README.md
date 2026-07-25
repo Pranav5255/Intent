@@ -24,7 +24,7 @@ bash scripts/sign_firefox.sh
 INTENT_FIREFOX_XPI="$(pwd)/integrations/firefox-extension/dist/intent-firefox-signed.xpi" make -C capture package
 
 # Install and run
-sudo apt install ./capture/dist/intent_0.1.8_amd64.deb
+sudo apt install ./capture/dist/intent_1.0.0_amd64.deb
 intent
 ```
 

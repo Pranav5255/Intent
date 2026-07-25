@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 ENGINE_ROOT=$(cd "$ROOT/../engine" && pwd)
 DESKTOP_ROOT=$(cd "$ROOT/../desktop/app" && pwd)
-VERSION=0.1.8
+VERSION=1.0.0
 ARCHITECTURE=$(dpkg --print-architecture)
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 PYTHON_PACKAGE="python${PYTHON_VERSION}"

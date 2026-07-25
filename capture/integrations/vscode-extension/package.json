@@ -2,7 +2,7 @@
   "name": "intent-vscode",
   "displayName": "Intent Capture",
   "description": "Emit local Intent editor events to the Role A event server.",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "publisher": "intent",
   "engines": {
     "vscode": "^1.85.0"

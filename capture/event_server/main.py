@@ -106,7 +106,7 @@ def create_app(
     ingestion_batch_wait_ms: int | None = None,
     ingestion_submit_timeout_seconds: float | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="Intent Event Server", version="0.1.0")
+    app = FastAPI(title="Intent Event Server", version="1.0.0")
     app.state.detailed_capture_config_path = (
         Path(detailed_capture_config_path) if detailed_capture_config_path else None
     )
