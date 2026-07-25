@@ -7,7 +7,7 @@ PartOf=intent-backend.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/intent
-ExecStart=/usr/bin/python3 collectors/x11/tracker.py --endpoint http://127.0.0.1:9477/v1/event
+ExecStart=/usr/bin/python3 -m collectors.x11.tracker --endpoint http://127.0.0.1:9477/v1/event
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1

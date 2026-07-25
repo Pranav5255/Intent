@@ -8,7 +8,7 @@ Requires=intent-server.service
 Type=simple
 Environment=INTENT_INSTALL_ROOT=@INTENT_INSTALL_ROOT@
 WorkingDirectory=@INTENT_INSTALL_ROOT@
-ExecStart=@INTENT_PYTHON@ collectors/x11/tracker.py
+ExecStart=@INTENT_PYTHON@ -m collectors.x11.tracker
 Restart=on-failure
 RestartSec=5
 

@@ -33,7 +33,7 @@ from intent_engine.source import RoleAClient, RoleAUnavailableError
 from intent_engine.store import IntentStore
 from intent_engine.tools import ToolContext, ToolRegistry
 
-API_VERSION = "1.0.0"
+API_VERSION = "1.0.1"
 
 
 def create_app(store: IntentStore | None = None, role_a_client: RoleAClient | None = None) -> FastAPI:
