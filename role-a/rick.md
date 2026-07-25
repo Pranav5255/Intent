@@ -1,1 +1,0 @@
-# this file is dedicated on my research on rick and morty

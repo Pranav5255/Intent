@@ -1,0 +1,16 @@
+#!/bin/sh
+# Launch the self-contained desktop overlay and its local backend.
+set -eu
+
+if [ "${1:-}" = "uninstall" ]; then
+  shift
+  exec /usr/bin/intentctl uninstall "$@"
+fi
+
+unset ELECTRON_RUN_AS_NODE
+unset VITE_DEV_SERVER_URL
+
+/usr/bin/intentctl enable
+/usr/bin/intentctl wait-ready
+
+exec /opt/intent/desktop/electron/electron /opt/intent/desktop/app "$@"

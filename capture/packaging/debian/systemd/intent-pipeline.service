@@ -1,0 +1,19 @@
+[Unit]
+Description=Intent scheduled intelligence ingest
+After=intent-server.service
+Wants=intent-server.service
+PartOf=intent-backend.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/intent/engine
+ExecStart=/opt/intent/engine/.venv/bin/python -m intent_engine.scheduled_ingest
+Restart=on-failure
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+Environment=ENABLE_PIPELINE_TRIGGER=true
+Environment=ROLE_B_DB_PATH=%h/.local/share/intent/intents.db
+EnvironmentFile=-%h/.config/intent/llm.env
+
+[Install]
+WantedBy=intent-backend.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Intent unified local backend
+Wants=intent-server.service intent-engine.service intent-x11-tracker.service intent-workspace-watch.service intent-pipeline.timer
+
+[Install]
+WantedBy=default.target

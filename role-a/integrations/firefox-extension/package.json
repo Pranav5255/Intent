@@ -1,9 +1,0 @@
-{
-  "name": "intent-os-firefox-companion",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --test tests/*.test.mjs",
-    "build": "rm -rf dist && mkdir -p dist && zip -qr dist/intent-os-firefox.xpi manifest.json background.js content.js"
-  }
-}

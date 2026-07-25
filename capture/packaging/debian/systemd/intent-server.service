@@ -1,0 +1,16 @@
+[Unit]
+Description=Intent local event server
+After=default.target
+PartOf=intent-backend.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/intent
+ExecStart=/usr/bin/python3 -m uvicorn event_server.main:app --host 127.0.0.1 --port 9477
+Restart=on-failure
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+Environment=INTENT_DATABASE=%h/.local/share/intent/events.db
+
+[Install]
+WantedBy=intent-backend.target

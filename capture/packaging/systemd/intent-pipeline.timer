@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Intent intelligence ingest every three hours
+PartOf=intent-backend.target
+
+[Timer]
+Unit=intent-pipeline.service
+OnBootSec=2min
+OnCalendar=*-*-* 00/3:00:00
+Persistent=true
+
+[Install]
+WantedBy=intent-backend.target

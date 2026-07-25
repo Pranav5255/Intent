@@ -1,0 +1,16 @@
+[Unit]
+Description=Intent X11 foreground window tracker
+After=graphical-session.target intent-server.service
+PartOf=intent-backend.target
+Requires=intent-server.service
+
+[Service]
+Type=simple
+Environment=INTENT_INSTALL_ROOT=@INTENT_INSTALL_ROOT@
+WorkingDirectory=@INTENT_INSTALL_ROOT@
+ExecStart=@INTENT_PYTHON@ collectors/x11/tracker.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=intent-backend.target

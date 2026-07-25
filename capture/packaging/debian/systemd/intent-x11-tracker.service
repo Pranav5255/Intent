@@ -1,0 +1,16 @@
+[Unit]
+Description=Intent X11 foreground tracker
+After=intent-server.service
+Wants=intent-server.service
+PartOf=intent-backend.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/intent
+ExecStart=/usr/bin/python3 collectors/x11/tracker.py --endpoint http://127.0.0.1:9477/v1/event
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=intent-backend.target

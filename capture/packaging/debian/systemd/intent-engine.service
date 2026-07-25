@@ -1,0 +1,18 @@
+[Unit]
+Description=Intent deterministic intelligence service
+After=intent-server.service
+Wants=intent-server.service
+PartOf=intent-backend.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/intent/engine
+ExecStart=/opt/intent/engine/.venv/bin/python -m uvicorn intent_engine.api:app --host 127.0.0.1 --port 9478
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+Environment=ROLE_B_DB_PATH=%h/.local/share/intent/intents.db
+EnvironmentFile=-%h/.config/intent/llm.env
+
+[Install]
+WantedBy=intent-backend.target

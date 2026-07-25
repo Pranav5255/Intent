@@ -1,6 +1,0 @@
-[Unit]
-Description=Intent unified local backend
-Wants=intent-os-server.service intent-os-role-b.service intent-os-x11-tracker.service intent-os-workspace-watch.service intent-os-pipeline.timer
-
-[Install]
-WantedBy=default.target

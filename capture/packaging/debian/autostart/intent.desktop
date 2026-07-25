@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Intent session bootstrap
+Comment=Make the graphical session available to Intent user services
+Exec=sh -c '/usr/bin/intentctl session-start; INTENT_PREVIEW_COMMAND=/usr/bin/intent /usr/bin/intentctl notify-yesterday'
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=8

@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+ROOT=/opt/intent
+POLICY_FILE=/etc/firefox/policies/policies.json
+POLICY_XPI=/etc/firefox/policies/intent-firefox.xpi
+TEMPLATE="$ROOT/packaging/debian/firefox-policies.json"
+
+if [ "${1:-}" = "remove" ] || [ "${1:-}" = "purge" ]; then
+  if [ -f "$POLICY_FILE" ] && [ -f "$TEMPLATE" ] && cmp -s "$POLICY_FILE" "$TEMPLATE"; then
+    rm -f "$POLICY_FILE"
+    rm -f "$POLICY_XPI"
+  fi
+fi
+
+if [ "${1:-}" = "purge" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+  if command -v intentctl >/dev/null 2>&1; then
+    su - "$SUDO_USER" -c "intentctl uninstall --skip-package --legacy" >/dev/null 2>&1 || true
+  elif command -v intent-osctl >/dev/null 2>&1; then
+    su - "$SUDO_USER" -c "intent-osctl disable" >/dev/null 2>&1 || true
+  fi
+fi
+
+exit 0
