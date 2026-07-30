@@ -46,8 +46,15 @@ _SOURCE_FAMILIES = {
 }
 
 
-def build_safe_cluster_features(cluster: list[NormalizedEvent]) -> SafeIntentFeatures:
+def build_safe_cluster_features(
+    cluster: list[NormalizedEvent],
+    *,
+    semantic_topic: str | None = None,
+    project_tag: str | None = None,
+) -> SafeIntentFeatures:
     """Project a cluster into the fixed allowlist used by cloud labelers."""
+
+    from intent_engine.cluster import ClusterEngine
 
     events = list(cluster)
     event_counts: Counter[str] = Counter()
@@ -63,10 +70,36 @@ def build_safe_cluster_features(cluster: list[NormalizedEvent]) -> SafeIntentFea
         if file_kind in _SAFE_FILE_KINDS and file_kind not in file_kinds:
             file_kinds.append(file_kind)
 
+    topic = ClusterEngine()._get_topic_score(events)
+    families = Counter(event.family for event in events if event.family not in {"idle"})
+    dominant_family = families.most_common(1)[0][0] if families else None
+    if dominant_family not in _SAFE_EVENT_FAMILIES:
+        dominant_family = None
+
+    domains = _safe_domain_roots(topic.get("domains") or [])
+    if not domains:
+        top_domain = topic.get("top_domain")
+        if isinstance(top_domain, str) and top_domain:
+            domains = _safe_domain_roots([top_domain])
+
+    file_names = _safe_basenames(topic.get("file_names") or [])
+    if not file_names:
+        top_file = topic.get("top_file")
+        if isinstance(top_file, str) and top_file:
+            file_names = _safe_basenames([top_file])
+
     duration_seconds = max(0, events[-1].ts - events[0].ts) if events else 0
+    safe_topic = _safe_semantic_topic(semantic_topic)
+    project_key = _safe_project_key(project_tag)
+
     return SafeIntentFeatures(
+        project_key=project_key,
         command_families=command_families,
         file_kinds=file_kinds,
+        domains=domains,
+        file_names=file_names,
+        dominant_family=dominant_family,
+        semantic_topic=safe_topic,
         event_counts=dict(sorted(event_counts.items())),
         duration_seconds=min(duration_seconds, 86_400),
         boundary_reasons=["raw_event_content_omitted"],
@@ -78,6 +111,9 @@ def build_safe_parent_features(children: list[Intent]) -> SafeIntentFeatures:
 
     event_counts: Counter[str] = Counter()
     command_families: list[str] = []
+    domains: list[str] = []
+    file_names: list[str] = []
+    topics: list[str] = []
     duration_seconds = 0
     for child in children:
         duration_seconds += max(0, child.stats.duration_seconds)
@@ -93,9 +129,31 @@ def build_safe_parent_features(children: list[Intent]) -> SafeIntentFeatures:
             family = insight.get("command_family") if isinstance(insight, dict) else None
             if family in _SAFE_COMMAND_FAMILIES and family not in command_families:
                 command_families.append(family)
+        for insight in child.insights.browser:
+            domain = insight.get("domain") if isinstance(insight, dict) else None
+            if isinstance(domain, str):
+                domains = _merge_limited(domains, _safe_domain_roots([domain]), 3)
+        for insight in child.insights.editor:
+            file_name = insight.get("file") if isinstance(insight, dict) else None
+            if isinstance(file_name, str):
+                file_names = _merge_limited(file_names, _safe_basenames([file_name]), 3)
+        if child.semantic and child.semantic.topic:
+            topic = _safe_semantic_topic(child.semantic.topic)
+            if topic and topic not in topics:
+                topics.append(topic)
+
+    dominant_family = None
+    if event_counts:
+        dominant_family = event_counts.most_common(1)[0][0]
+        if dominant_family not in _SAFE_EVENT_FAMILIES:
+            dominant_family = None
 
     return SafeIntentFeatures(
         command_families=command_families,
+        domains=domains,
+        file_names=file_names,
+        dominant_family=dominant_family,
+        semantic_topic=topics[0] if len(topics) == 1 else None,
         event_counts=dict(sorted(event_counts.items())),
         duration_seconds=min(duration_seconds, 86_400),
         child_count=min(len(children), 1_000),
@@ -124,7 +182,47 @@ def safe_provider_hints(hints: dict | None) -> dict:
     command_families = _safe_string_list(hints.get("command_families"), _SAFE_COMMAND_FAMILIES, 8)
     if command_families:
         safe["command_families"] = command_families
+    top_file = hints.get("top_file")
+    if isinstance(top_file, str) and top_file:
+        basename = _basename(top_file)
+        if basename:
+            safe["top_file"] = basename[:120]
+    top_domain = hints.get("top_domain")
+    if isinstance(top_domain, str) and top_domain:
+        roots = _safe_domain_roots([top_domain])
+        if roots:
+            safe["top_domain"] = roots[0]
     return safe
+
+
+def merge_label_provider_packet(
+    features_text: str,
+    hints: dict | None = None,
+    project_tag: str | None = None,
+) -> str:
+    """Merge categorical hints into a provider-safe feature packet."""
+
+    safe_text = _provider_safe_features(features_text)
+    try:
+        payload = json.loads(safe_text)
+    except (TypeError, ValueError):
+        return safe_text
+    if not isinstance(payload, dict):
+        return safe_text
+
+    hint_values = safe_provider_hints(hints)
+    if hint_values.get("dominant_family") and not payload.get("dominant_family"):
+        payload["dominant_family"] = hint_values["dominant_family"]
+    if hint_values.get("command_family") and hint_values["command_family"] not in payload.get("command_families", []):
+        payload.setdefault("command_families", []).insert(0, hint_values["command_family"])
+    if hint_values.get("top_domain"):
+        payload["domains"] = _merge_limited(payload.get("domains", []), [hint_values["top_domain"]], 3)
+    if hint_values.get("top_file"):
+        payload["file_names"] = _merge_limited(payload.get("file_names", []), [hint_values["top_file"]], 3)
+    project_key = _safe_project_key(project_tag)
+    if project_key and not payload.get("project_key"):
+        payload["project_key"] = project_key
+    return serialize_safe_features(SafeIntentFeatures.model_validate(payload))
 
 
 class LabelProvider(ABC):
@@ -252,7 +350,7 @@ class LLMLabelProvider(LabelProvider):
     ) -> dict:
         # The pipeline sends a SafeIntentFeatures packet here.  Parse and
         # re-project it again so direct callers cannot bypass the cloud boundary.
-        safe_text = _provider_safe_features(cluster_events_text)
+        safe_text = merge_label_provider_packet(cluster_events_text, hints, project_tag)
         try:
             response = await asyncio.wait_for(
                 self._completion("cluster", safe_text),
@@ -270,7 +368,7 @@ class LLMLabelProvider(LabelProvider):
         project_tag: str | None = None,
         hints: dict | None = None,
     ) -> dict:
-        safe_text = _provider_safe_features(parent_events_text)
+        safe_text = merge_label_provider_packet(parent_events_text, hints, project_tag)
         try:
             response = await asyncio.wait_for(
                 self._completion("parent", safe_text),
@@ -294,7 +392,11 @@ class LLMLabelProvider(LabelProvider):
                 f"Safe features:\n{safe_text}"
             )
         return await self._client.respond_json(
-            system="Return only a JSON object with label, summary, and confidence.",
+            system=(
+                "Return only a JSON object with label, summary, and confidence. "
+                "Use domains, file_names, semantic_topic, and dominant_family when present. "
+                "Do not invent file paths, URLs, or commands."
+            ),
             user=user,
             schema_name="intent_label",
             schema=_INTENT_LABEL_SCHEMA,
@@ -375,11 +477,21 @@ def _provider_safe_features(value: str) -> str:
         payload = json.loads(value)
     except (TypeError, ValueError):
         return serialize_safe_features(fallback)
-    if not isinstance(payload, dict) or payload.get("policy_version") != SAFE_FEATURE_POLICY_VERSION:
+    if not isinstance(payload, dict):
+        return serialize_safe_features(fallback)
+    policy_version = payload.get("policy_version")
+    if policy_version not in {SAFE_FEATURE_POLICY_VERSION, "safe-intent-features-v1"}:
         return serialize_safe_features(fallback)
 
     command_families = _safe_string_list(payload.get("command_families"), _SAFE_COMMAND_FAMILIES, 8)
     file_kinds = _safe_string_list(payload.get("file_kinds"), _SAFE_FILE_KINDS, 4)
+    domains = _safe_domain_list(payload.get("domains"))
+    file_names = _safe_basename_list(payload.get("file_names"))
+    dominant_family = payload.get("dominant_family")
+    if dominant_family not in _SAFE_EVENT_FAMILIES:
+        dominant_family = None
+    semantic_topic = _safe_semantic_topic(payload.get("semantic_topic") if isinstance(payload.get("semantic_topic"), str) else None)
+    project_key = _safe_project_key(payload.get("project_key") if isinstance(payload.get("project_key"), str) else None)
     event_counts: dict[str, int] = {}
     raw_counts = payload.get("event_counts")
     if isinstance(raw_counts, dict):
@@ -390,8 +502,13 @@ def _provider_safe_features(value: str) -> str:
                 event_counts[family] = min(count, 100_000)
     boundary_reasons = _safe_string_list(payload.get("boundary_reasons"), _SAFE_BOUNDARY_REASONS, 4)
     return serialize_safe_features(SafeIntentFeatures(
+        project_key=project_key,
         command_families=command_families,
         file_kinds=file_kinds,
+        domains=domains,
+        file_names=file_names,
+        dominant_family=dominant_family,
+        semantic_topic=semantic_topic,
         event_counts=dict(sorted(event_counts.items())),
         duration_seconds=_safe_int(payload.get("duration_seconds"), 86_400),
         child_count=_safe_int(payload.get("child_count"), 1_000),
@@ -480,3 +597,73 @@ def _title_case(value: str) -> str:
 
 def _truncate(value: str, limit: int) -> str:
     return value if len(value) <= limit else value[: limit - 3] + "..."
+
+
+def _safe_domain_roots(domains: list[str]) -> list[str]:
+    compact: list[str] = []
+    for domain in domains:
+        if not isinstance(domain, str):
+            continue
+        normalized = domain.strip().lower()
+        if not normalized or normalized in compact:
+            continue
+        compact.append(normalized[:120])
+        if len(compact) >= 3:
+            break
+    return compact
+
+
+def _safe_basenames(values: list[str]) -> list[str]:
+    compact: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        basename = _basename(value.strip())
+        if not basename or basename in compact:
+            continue
+        compact.append(basename[:120])
+        if len(compact) >= 3:
+            break
+    return compact
+
+
+def _safe_domain_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return _safe_domain_roots([item for item in value if isinstance(item, str)])
+
+
+def _safe_basename_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return _safe_basenames([item for item in value if isinstance(item, str)])
+
+
+def _safe_semantic_topic(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = " ".join(value.split()).strip()
+    if not normalized or normalized.casefold() == "unknown":
+        return None
+    return normalized[:80]
+
+
+def _safe_project_key(project_tag: str | None) -> str | None:
+    if not isinstance(project_tag, str):
+        return None
+    normalized = project_tag.strip()
+    if not normalized:
+        return None
+    if normalized.startswith("project:"):
+        normalized = normalized.split(":", 1)[1].strip()
+    return normalized[:120] if normalized else None
+
+
+def _merge_limited(existing: list[str], additions: list[str], maximum: int) -> list[str]:
+    merged = list(existing)
+    for item in additions:
+        if item and item not in merged:
+            merged.append(item)
+        if len(merged) >= maximum:
+            break
+    return merged[:maximum]

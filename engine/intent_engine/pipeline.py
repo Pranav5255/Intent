@@ -87,7 +87,11 @@ async def run_pipeline(
             semantic_result: SemanticRefinementResult | None = None
             clusters = deterministic_clusters
             if semantic_enabled and semantic_client is not None:
-                semantic_result = await refine_semantic_clusters_detailed(session, semantic_client)
+                semantic_result = await refine_semantic_clusters_detailed(
+                    session,
+                    semantic_client,
+                    deterministic_clusters=deterministic_clusters,
+                )
                 if semantic_result.clusters is None:
                     semantic_fallback_reason = semantic_result.fallback_reason or "invalid_response"
                     warnings.append(PipelineWarning(
@@ -109,6 +113,7 @@ async def run_pipeline(
                     cluster,
                     child.tags[0] if child.tags else None,
                     cluster_hints,
+                    metadata,
                 )
                 children.append(child.model_copy(update=label))
             if len(children) == 1:
@@ -209,8 +214,17 @@ def _session_intent(date: str, source_hash: str, session_index: int, session, ch
     return parent
 
 
-async def _label_cluster(provider: LabelProvider, cluster, project_tag: str | None, hints: dict) -> dict:
-    text = serialize_safe_features(build_safe_cluster_features(cluster))
+async def _label_cluster(
+    provider: LabelProvider,
+    cluster,
+    project_tag: str | None,
+    hints: dict,
+    semantic: SemanticIntentMetadata | None = None,
+) -> dict:
+    semantic_topic = semantic.topic if semantic else None
+    text = serialize_safe_features(
+        build_safe_cluster_features(cluster, semantic_topic=semantic_topic, project_tag=project_tag)
+    )
     return await _safe_label(provider, "label_cluster", text, project_tag, hints)
 
 

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "date": "2026-07-30",
+  "exported_at": 1753881600,
+  "events": [
+    {
+      "id": "evt-browser-1",
+      "ts": 1753881600,
+      "source": "firefox",
+      "type": "tab_change",
+      "payload": {
+        "url": "https://docs.python.org/3/library/asyncio-task.html",
+        "title": "Coroutines and Tasks"
+      }
+    },
+    {
+      "id": "evt-editor-1",
+      "ts": 1753881660,
+      "source": "vscode",
+      "type": "document_change",
+      "payload": {
+        "path": "/home/user/project/README.md",
+        "workspace": "/home/user/project",
+        "changes": [{"text": "asyncio timeout handling", "redacted": false}]
+      }
+    },
+    {
+      "id": "evt-shell-1",
+      "ts": 1753881720,
+      "source": "shell",
+      "type": "command",
+      "payload": {
+        "cmd": "pytest tests/test_async.py",
+        "cwd": "/home/user/project",
+        "exit_code": 1
+      }
+    },
+    {
+      "id": "evt-browser-2",
+      "ts": 1753881780,
+      "source": "firefox",
+      "type": "tab_change",
+      "payload": {
+        "url": "https://stackoverflow.com/questions/12345/asyncio-timeout",
+        "title": "Python asyncio timeout pattern"
+      }
+    }
+  ]
+}

@@ -153,6 +153,12 @@ def editor_event_is_approved(payload: dict[str, Any], config: dict[str, Any]) ->
 
 def public_config(config: dict[str, Any]) -> dict[str, Any]:
     """Return non-secret configuration consumed by local extensions and status."""
+    from .retention_policy import load as load_retention_policy, public_summary
+
+    try:
+        retention = public_summary(load_retention_policy())
+    except ValueError:
+        retention = "indefinite"
     return {
         "editor": {
             "enabled": config["editor"]["enabled"],
@@ -161,6 +167,6 @@ def public_config(config: dict[str, Any]) -> dict[str, Any]:
         "browser": {"enabled": config["browser"]["enabled"], "context_enabled": config["browser"]["context_enabled"]},
         "filesystem": {"enabled": config["filesystem"]["enabled"]},
         "approved_workspaces": approved_workspaces(),
-        "retention": "indefinite",
+        "retention": retention,
         "export_includes_details": True,
     }

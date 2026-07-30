@@ -132,6 +132,10 @@ export interface LLMSettings {
   provider: LLMProvider;
   model: string;
   copilot_enabled: boolean;
+  semantic_cluster_enabled: boolean;
+  semantic_content_consent: boolean;
+  semantic_full_capture_consent: boolean;
+  semantic_timeout_ms: number;
   api_key_configured: boolean;
   credentials_configured: boolean;
   groq_base_url: string;
@@ -147,9 +151,57 @@ export interface LLMSettingsUpdate {
   clear_api_key?: boolean;
   model?: string;
   enable_copilot: boolean;
+  enable_semantic_cluster?: boolean;
+  enable_semantic_content_consent?: boolean;
+  enable_semantic_full_capture_consent?: boolean;
+  semantic_timeout_ms?: number;
   groq_base_url?: string;
   google_cloud_project?: string;
   google_cloud_location?: string;
   bedrock_region?: string;
   bedrock_profile?: string;
 }
+
+export interface DetailedCaptureSettings {
+  editor: { enabled: boolean; excluded_patterns: string[] };
+  browser: { enabled: boolean; context_enabled: boolean };
+  filesystem: { enabled: boolean };
+  approved_workspaces: string[];
+  retention: string;
+  export_includes_details: boolean;
+}
+
+export interface DetailedCaptureSettingsUpdate {
+  editor?: { enabled?: boolean };
+  browser?: { enabled?: boolean; context_enabled?: boolean };
+  filesystem?: { enabled?: boolean };
+}
+
+export interface FilesystemCaptureSettings {
+  all_accessible: boolean;
+}
+
+export interface RetentionPolicy {
+  metadata_days: number | null;
+  detailed_days: number | null;
+}
+
+export interface CaptureStatus {
+  capture_paused?: boolean;
+  detailed_capture?: {
+    event_counts?: Record<string, number>;
+  };
+}
+
+export interface IntelligencePreviewSample {
+  semantic_clustering_example: Record<string, unknown>;
+  labeling_example: Record<string, unknown>;
+  copilot_example: Record<string, unknown>;
+  disclosure: string[];
+  browser_detailed_enabled: boolean;
+  browser_context_enabled: boolean;
+}
+
+export type CapturePreset = 'metadata' | 'actions' | 'actions_excerpts';
+
+export type SettingsTab = 'capture' | 'intelligence' | 'storage';

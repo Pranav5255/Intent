@@ -92,16 +92,37 @@ def build_semantic_candidate_packets(
 def _build_packet(
     events: list[NormalizedEvent], role: Literal["candidate", "background"], *, full_capture: bool = False
 ) -> SemanticCandidatePacket:
-    remaining_snippet_chars = MAX_SNIPPET_CHARS_PER_PACKET
+    snippet_budgets = _fair_snippet_budgets(events, role, full_capture=full_capture)
     packet_events: list[SemanticPacketEvent] = []
-    for event in events:
+    for index, event in enumerate(events):
         snippet = None
-        if not full_capture and role == "candidate" and remaining_snippet_chars:
-            snippet = _content_snippet(event, remaining_snippet_chars)
-            if snippet:
-                remaining_snippet_chars -= len(snippet)
+        if not full_capture and role == "candidate" and snippet_budgets[index] > 0:
+            snippet = _content_snippet(event, snippet_budgets[index])
         packet_events.append(_packet_event(event, role, snippet, full_capture=full_capture))
     return SemanticCandidatePacket(start_ts=events[0].ts, end_ts=events[-1].ts, events=packet_events)
+
+
+def _fair_snippet_budgets(
+    events: list[NormalizedEvent],
+    role: Literal["candidate", "background"],
+    *,
+    full_capture: bool,
+) -> list[int]:
+    if full_capture or role != "candidate" or not semantic_content_consent_granted():
+        return [0 for _ in events]
+    eligible = [
+        index
+        for index, event in enumerate(events)
+        if _content_snippet(event, MAX_SNIPPET_CHARS_PER_EVENT) is not None
+    ]
+    if not eligible:
+        return [0 for _ in events]
+    per_event = max(1, MAX_SNIPPET_CHARS_PER_PACKET // len(eligible))
+    per_event = min(per_event, MAX_SNIPPET_CHARS_PER_EVENT)
+    budgets = [0 for _ in events]
+    for index in eligible:
+        budgets[index] = per_event
+    return budgets
 
 
 def _packet_event(

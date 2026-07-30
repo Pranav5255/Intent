@@ -262,13 +262,21 @@ class ToolRegistry:
         shell = []
         for item in intent.insights.editor:
             if isinstance(item, dict):
-                editor.append({
+                entry = {
                     "typed_chars": ToolRegistry._non_negative_int(item.get("typed_chars")),
                     "saves": ToolRegistry._non_negative_int(item.get("saves")),
-                })
+                }
+                file_name = item.get("file")
+                if isinstance(file_name, str) and file_name.strip():
+                    entry["file"] = file_name.strip()[:120]
+                editor.append(entry)
         for item in intent.insights.browser:
             if isinstance(item, dict):
-                browser.append({"visits": ToolRegistry._non_negative_int(item.get("visits"))})
+                entry = {"visits": ToolRegistry._non_negative_int(item.get("visits"))}
+                domain = item.get("domain")
+                if isinstance(domain, str) and domain.strip():
+                    entry["domain"] = domain.strip()[:120]
+                browser.append(entry)
         for item in intent.insights.shell:
             if not isinstance(item, dict):
                 continue
@@ -294,6 +302,7 @@ class ToolRegistry:
         return {
             "refined": intent.semantic.refined,
             "confidence": intent.semantic.confidence,
+            "topic": intent.semantic.topic[:80] if isinstance(intent.semantic.topic, str) else None,
             "event_roles": roles,
         }
 

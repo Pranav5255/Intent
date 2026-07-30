@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-SAFE_INTENT_PRIVACY_POLICY_VERSION = "safe-intent-features-v1"
+SAFE_INTENT_PRIVACY_POLICY_VERSION = "safe-intent-features-v2"
 
 
 class EventPayload(BaseModel):
@@ -142,11 +142,14 @@ class SafeIntentFeatures(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    policy_version: Literal["safe-intent-features-v1"] = "safe-intent-features-v1"
-    project_key: str | None = None
+    policy_version: Literal["safe-intent-features-v2"] = "safe-intent-features-v2"
+    project_key: str | None = Field(default=None, max_length=120)
     command_families: list[str] = Field(default_factory=list, max_length=8)
     file_kinds: list[Literal["code", "pdf", "image", "other"]] = Field(default_factory=list, max_length=4)
-    domains: list[str] = Field(default_factory=list, max_length=0)
+    domains: list[str] = Field(default_factory=list, max_length=3)
+    file_names: list[str] = Field(default_factory=list, max_length=3)
+    dominant_family: Literal["editor", "browser", "command", "focus", "file_change", "idle", "other"] | None = None
+    semantic_topic: str | None = Field(default=None, max_length=80)
     event_counts: dict[str, int] = Field(default_factory=dict)
     duration_seconds: int = Field(default=0, ge=0, le=86_400)
     child_count: int = Field(default=0, ge=0, le=1_000)
@@ -340,6 +343,10 @@ class LLMSettingsUpdate(BaseModel):
     clear_api_key: bool = False
     model: str | None = Field(default=None, max_length=256)
     enable_copilot: bool = True
+    enable_semantic_cluster: bool | None = None
+    enable_semantic_content_consent: bool | None = None
+    enable_semantic_full_capture_consent: bool | None = None
+    semantic_timeout_ms: int | None = Field(default=None, ge=1_000, le=120_000)
     groq_base_url: str | None = Field(default=None, max_length=1024)
     google_cloud_project: str | None = Field(default=None, max_length=256)
     google_cloud_location: str | None = Field(default=None, max_length=256)

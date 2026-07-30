@@ -9,15 +9,31 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from .detailed_capture import editor_event_is_approved, is_detailed_event, is_enabled, load as load_detailed_config, public_config
+from .detailed_capture import editor_event_is_approved, is_detailed_event, is_enabled, load as load_detailed_config, public_config, save as save_detailed_config
 from .ingestion import EventWriter, IngestionUnavailable
 from .logging_setup import configure_jsonl_logger
-from .models import CapturePause, DayExport, DayExportMeta, EventIn, EventOut, IncrementalEventsPage, IngestResult, RetentionPurge
+from .models import (
+    CapturePause,
+    DayExport,
+    DayExportMeta,
+    DetailedCaptureUpdate,
+    EventIn,
+    EventOut,
+    FilesystemCaptureUpdate,
+    IncrementalEventsPage,
+    IngestResult,
+    RetentionPolicyUpdate,
+    RetentionPurge,
+    WorkspacesUpdate,
+)
 from .redaction import redact_event
 from .restore import RestoreResult, ResumePayload, restore
 from .storage import EventStore, default_database_path
 from .url_filter import is_url_blocked, load as load_blocked_domains, redact_blocked_browser_event
+from .intelligence_preview import build_preview_sample
+from .retention_policy import load as load_retention_policy, save as save_retention_policy
 from collectors.activity.feed import ActivityFeed
+from tools import filesystem_capture, workspaces
 
 
 def get_store(request: Request) -> EventStore:
@@ -237,6 +253,84 @@ def create_app(
     @app.get("/v1/detailed-capture/config")
     def detailed_capture_config(detailed_config: dict[str, object] = Depends(get_detailed_config)) -> dict[str, object]:
         return public_config(detailed_config)
+
+    @app.put("/v1/detailed-capture/config")
+    def update_detailed_capture_config(
+        payload: DetailedCaptureUpdate,
+        request: Request,
+    ) -> dict[str, object]:
+        path = request.app.state.detailed_capture_config_path
+        try:
+            current = load_detailed_config(path)
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        if payload.editor is not None:
+            if payload.editor.enabled is not None:
+                current["editor"]["enabled"] = payload.editor.enabled
+            if payload.editor.excluded_patterns is not None:
+                current["editor"]["excluded_patterns"] = payload.editor.excluded_patterns
+        if payload.browser is not None:
+            if payload.browser.enabled is not None:
+                current["browser"]["enabled"] = payload.browser.enabled
+            if payload.browser.context_enabled is not None:
+                current["browser"]["context_enabled"] = payload.browser.context_enabled
+        if payload.filesystem is not None and payload.filesystem.enabled is not None:
+            current["filesystem"]["enabled"] = payload.filesystem.enabled
+        try:
+            save_detailed_config(current, path)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return public_config(current)
+
+    @app.get("/v1/workspaces")
+    def list_workspaces() -> dict[str, list[str]]:
+        try:
+            return workspaces.load()
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.put("/v1/workspaces")
+    def update_workspaces(payload: WorkspacesUpdate) -> dict[str, list[str]]:
+        try:
+            config = {"workspaces": payload.workspaces}
+            workspaces.save(config)
+            return workspaces.load()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/v1/filesystem-capture")
+    def filesystem_capture_config() -> dict[str, bool]:
+        try:
+            return filesystem_capture.load()
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.put("/v1/filesystem-capture")
+    def update_filesystem_capture(payload: FilesystemCaptureUpdate) -> dict[str, bool]:
+        try:
+            filesystem_capture.save({"all_accessible": payload.all_accessible})
+            return filesystem_capture.load()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/v1/retention/policy")
+    def retention_policy_get() -> dict[str, object]:
+        try:
+            return load_retention_policy()
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.put("/v1/retention/policy")
+    def retention_policy_put(payload: RetentionPolicyUpdate) -> dict[str, object]:
+        try:
+            save_retention_policy(payload.model_dump())
+            return load_retention_policy()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/v1/intelligence/preview-sample")
+    def intelligence_preview_sample(detailed_config: dict[str, object] = Depends(get_detailed_config)) -> dict[str, object]:
+        return build_preview_sample(detailed_config)
 
     @app.get("/v1/config")
     def config(blocked_domains_config: dict[str, list[str]] = Depends(get_blocked_domains_config)) -> dict[str, object]:

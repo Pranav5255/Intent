@@ -282,3 +282,36 @@ class RetentionPurge(BaseModel):
         if values.get("detailed_days") is None and values.get("metadata_days") is None:
             raise ValueError("at least one retention window must be provided")
         return values
+
+
+class DetailedCaptureEditorUpdate(BaseModel):
+    enabled: bool | None = None
+    excluded_patterns: list[str] | None = None
+
+
+class DetailedCaptureBrowserUpdate(BaseModel):
+    enabled: bool | None = None
+    context_enabled: bool | None = None
+
+
+class DetailedCaptureFilesystemUpdate(BaseModel):
+    enabled: bool | None = None
+
+
+class DetailedCaptureUpdate(BaseModel):
+    editor: DetailedCaptureEditorUpdate | None = None
+    browser: DetailedCaptureBrowserUpdate | None = None
+    filesystem: DetailedCaptureFilesystemUpdate | None = None
+
+
+class WorkspacesUpdate(BaseModel):
+    workspaces: list[str] = Field(default_factory=list)
+
+
+class FilesystemCaptureUpdate(BaseModel):
+    all_accessible: bool
+
+
+class RetentionPolicyUpdate(BaseModel):
+    metadata_days: int | None = Field(default=None, ge=1, le=36_500)
+    detailed_days: int | None = Field(default=None, ge=1, le=36_500)

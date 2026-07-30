@@ -12,7 +12,13 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from intent_engine.providers import copilot_enabled
+from intent_engine.providers import (
+    copilot_enabled,
+    semantic_clustering_enabled,
+    semantic_content_consent_granted,
+    semantic_full_capture_consent_granted,
+    semantic_timeout_ms,
+)
 
 
 PROVIDERS = ("openai", "groq", "gemini", "bedrock")
@@ -25,6 +31,10 @@ _MANAGED_KEYS = {
     "LLM_PROVIDER",
     "ENGINE_LLM_ENABLED",
     "ENABLE_COPILOT",
+    "ENGINE_SEMANTIC_CLUSTER",
+    "ENGINE_SEMANTIC_CONTENT_CONSENT",
+    "ENGINE_SEMANTIC_FULL_CAPTURE_CONSENT",
+    "ENGINE_SEMANTIC_TIMEOUT_MS",
     "INTENT_LLM_MODEL",
     "OPENAI_API_KEY",
     "GROQ_API_KEY",
@@ -115,6 +125,10 @@ def settings_summary() -> dict[str, Any]:
         "provider": provider,
         "model": effective("INTENT_LLM_MODEL"),
         "copilot_enabled": copilot_enabled(),
+        "semantic_cluster_enabled": semantic_clustering_enabled(),
+        "semantic_content_consent": semantic_content_consent_granted(),
+        "semantic_full_capture_consent": semantic_full_capture_consent_granted(),
+        "semantic_timeout_ms": semantic_timeout_ms(),
         "api_key_configured": api_key_configured,
         "credentials_configured": credentials_configured,
         "groq_base_url": effective("GROQ_BASE_URL", _DEFAULT_GROQ_BASE_URL),
@@ -195,8 +209,23 @@ def save_settings(update: dict[str, Any]) -> dict[str, Any]:
 
     values = load_saved_settings()
     values["LLM_PROVIDER"] = provider
-    values["ENGINE_LLM_ENABLED"] = "true" if update.get("enable_copilot", True) else "false"
-    values["ENABLE_COPILOT"] = "true" if update.get("enable_copilot", True) else "false"
+    copilot_on = bool(update.get("enable_copilot", True))
+    semantic_cluster = update.get("enable_semantic_cluster")
+    semantic_content = update.get("enable_semantic_content_consent")
+    llm_on = copilot_on or bool(semantic_cluster) or bool(semantic_content)
+    values["ENGINE_LLM_ENABLED"] = "true" if llm_on else "false"
+    values["ENABLE_COPILOT"] = "true" if copilot_on else "false"
+    if update.get("enable_semantic_cluster") is not None:
+        values["ENGINE_SEMANTIC_CLUSTER"] = "true" if update["enable_semantic_cluster"] else "false"
+    if update.get("enable_semantic_content_consent") is not None:
+        values["ENGINE_SEMANTIC_CONTENT_CONSENT"] = "true" if update["enable_semantic_content_consent"] else "false"
+    if update.get("enable_semantic_full_capture_consent") is not None:
+        values["ENGINE_SEMANTIC_FULL_CAPTURE_CONSENT"] = "true" if update["enable_semantic_full_capture_consent"] else "false"
+    if update.get("semantic_timeout_ms") is not None:
+        timeout = int(update["semantic_timeout_ms"])
+        if timeout < 1_000 or timeout > 120_000:
+            raise ValueError("semantic_timeout_ms must be between 1000 and 120000")
+        values["ENGINE_SEMANTIC_TIMEOUT_MS"] = str(timeout)
     _set_optional(values, "INTENT_LLM_MODEL", update.get("model"))
     _set_optional(values, "GROQ_BASE_URL", update.get("groq_base_url"))
     _set_optional(values, "GOOGLE_CLOUD_PROJECT", update.get("google_cloud_project"))

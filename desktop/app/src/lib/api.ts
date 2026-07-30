@@ -1,13 +1,19 @@
 import type {
+  CaptureStatus,
   CopilotResponse,
   CurrentIntent,
   DashboardData,
+  DetailedCaptureSettings,
+  DetailedCaptureSettingsUpdate,
   Digest,
+  FilesystemCaptureSettings,
+  IntelligencePreviewSample,
   Intent,
   LLMSettings,
   LLMSettingsUpdate,
   RestoreResult,
   ResumeSelectResponse,
+  RetentionPolicy,
   SearchResult,
 } from '../types';
 
@@ -149,5 +155,74 @@ export const roleAApi = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
     });
+  },
+
+  async captureConfig(): Promise<DetailedCaptureSettings> {
+    return request<DetailedCaptureSettings>(`${roleA}/v1/detailed-capture/config`);
+  },
+
+  async saveCaptureConfig(update: DetailedCaptureSettingsUpdate): Promise<DetailedCaptureSettings> {
+    return request<DetailedCaptureSettings>(`${roleA}/v1/detailed-capture/config`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(update),
+    });
+  },
+
+  async filesystemCapture(): Promise<FilesystemCaptureSettings> {
+    return request<FilesystemCaptureSettings>(`${roleA}/v1/filesystem-capture`);
+  },
+
+  async saveFilesystemCapture(allAccessible: boolean): Promise<FilesystemCaptureSettings> {
+    return request<FilesystemCaptureSettings>(`${roleA}/v1/filesystem-capture`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ all_accessible: allAccessible }),
+    });
+  },
+
+  async retentionPolicy(): Promise<RetentionPolicy> {
+    return request<RetentionPolicy>(`${roleA}/v1/retention/policy`);
+  },
+
+  async saveRetentionPolicy(policy: RetentionPolicy): Promise<RetentionPolicy> {
+    return request<RetentionPolicy>(`${roleA}/v1/retention/policy`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(policy),
+    });
+  },
+
+  async captureStatus(): Promise<CaptureStatus> {
+    return request<CaptureStatus>(`${roleA}/v1/status`);
+  },
+
+  async purgeDetailed(): Promise<{ ok: boolean; deleted: number }> {
+    return request<{ ok: boolean; deleted: number }>(`${roleA}/v1/detailed-capture/purge`, { method: 'POST' });
+  },
+
+  async retentionPreview(detailedDays?: number, metadataDays?: number): Promise<{ eligible: { total: number } }> {
+    return request<{ eligible: { total: number } }>(
+      queryString(`${roleA}/v1/retention/preview`, {
+        detailed_days: detailedDays,
+        metadata_days: metadataDays,
+      }),
+    );
+  },
+
+  async purgeRetention(detailedDays?: number, metadataDays?: number): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`${roleA}/v1/retention/purge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        detailed_days: detailedDays ?? null,
+        metadata_days: metadataDays ?? null,
+        confirm: true,
+      }),
+    });
+  },
+
+  async intelligencePreviewSample(): Promise<IntelligencePreviewSample> {
+    return request<IntelligencePreviewSample>(`${roleA}/v1/intelligence/preview-sample`);
   },
 };

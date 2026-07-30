@@ -45,7 +45,7 @@ SEMANTIC_BATCH_OVERLAP_EVENTS = 1
 # Packet summaries keep typical activity sessions within a single request.  If
 # a session still needs multiple requests, serial submission avoids exceeding
 # low-tier providers' token-per-minute quota and discarding the whole result.
-SEMANTIC_CLUSTER_POLICY_VERSION = "17"
+SEMANTIC_CLUSTER_POLICY_VERSION = "18"
 
 _SYSTEM_PROMPT = (
     "Classify every supplied chronological packet. Return exactly one proposal per packet_id, "
@@ -139,7 +139,10 @@ async def refine_semantic_clusters(
 
 
 async def refine_semantic_clusters_detailed(
-    session: list[NormalizedEvent], client: LLMClient | None = None
+    session: list[NormalizedEvent],
+    client: LLMClient | None = None,
+    *,
+    deterministic_clusters: list[list[NormalizedEvent]] | None = None,
 ) -> SemanticRefinementResult:
     """Return semantic clusters with safe provenance or a normalized fallback signal."""
 
@@ -147,7 +150,8 @@ async def refine_semantic_clusters_detailed(
         return SemanticRefinementResult(None, {}, None, "disabled")
 
     source_packets = build_semantic_candidate_packets(session)
-    request_packets = _semantic_request_packets(source_packets)
+    cluster_index_by_event = _deterministic_cluster_index(deterministic_clusters)
+    request_packets = _semantic_request_packets(source_packets, cluster_index_by_event)
     packet_events = [event for packet in request_packets for event in packet.events]
     if not packet_events:
         return SemanticRefinementResult([], {}, None)
@@ -189,18 +193,63 @@ def semantic_cache_identity(client: LLMClient) -> str:
     )
 
 
-def _semantic_request_packets(packets: list[SemanticCandidatePacket]) -> list[_SemanticRequestPacket]:
+def _semantic_request_packets(
+    packets: list[SemanticCandidatePacket],
+    cluster_index_by_event: dict[str, int] | None = None,
+) -> list[_SemanticRequestPacket]:
+    cluster_index_by_event = cluster_index_by_event or {}
     return [
         _SemanticRequestPacket(
             packet_id=f"p{index}",
             source_packet=packet,
-            summary=_packet_summary(f"p{index}", packet),
+            summary=_packet_summary(f"p{index}", packet, cluster_index_by_event),
         )
         for index, packet in enumerate(packets)
     ]
 
 
-def _packet_summary(packet_id: str, packet: SemanticCandidatePacket) -> dict[str, object]:
+def _deterministic_cluster_index(
+    deterministic_clusters: list[list[NormalizedEvent]] | None,
+) -> dict[str, int]:
+    if not deterministic_clusters:
+        return {}
+    mapping: dict[str, int] = {}
+    for cluster_index, cluster in enumerate(deterministic_clusters):
+        for event in cluster:
+            mapping[event.id] = cluster_index
+    return mapping
+
+
+def _packet_timeline(
+    packet: SemanticCandidatePacket,
+    cluster_index_by_event: dict[str, int],
+) -> list[dict[str, object]]:
+    timeline: list[dict[str, object]] = []
+    start_ts = packet.start_ts
+    for event in packet.events[:12]:
+        entry: dict[str, object] = {
+            "offset_s": max(0, event.ts - start_ts),
+            "family": event.family,
+        }
+        if event.domain:
+            entry["domain"] = event.domain[:120]
+        if event.file_name:
+            entry["file"] = event.file_name[:120]
+        action = event.safe_metadata.get("action")
+        if isinstance(action, str) and action:
+            entry["action"] = action[:64]
+        cluster_index = cluster_index_by_event.get(event.event_id)
+        if cluster_index is not None:
+            entry["deterministic_cluster_id"] = cluster_index
+        timeline.append(entry)
+    return timeline
+
+
+def _packet_summary(
+    packet_id: str,
+    packet: SemanticCandidatePacket,
+    cluster_index_by_event: dict[str, int] | None = None,
+) -> dict[str, object]:
     """Project a local packet into a small, consent-bounded provider summary."""
 
     events = packet.events
@@ -229,6 +278,16 @@ def _packet_summary(packet_id: str, packet: SemanticCandidatePacket) -> dict[str
     snippets = _summary_values((event.content_snippet for event in events), limit=2, max_chars=90)
     if snippets:
         summary["snippet"] = " ".join(snippets)[:180]
+    timeline = _packet_timeline(packet, cluster_index_by_event or {})
+    if timeline:
+        summary["timeline"] = timeline
+    cluster_ids = {
+        cluster_index_by_event[event.event_id]
+        for event in events
+        if cluster_index_by_event and event.event_id in cluster_index_by_event
+    }
+    if len(cluster_ids) == 1:
+        summary["deterministic_cluster_id"] = next(iter(cluster_ids))
     return summary
 
 
