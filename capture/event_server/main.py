@@ -157,7 +157,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=([extension_origin] if extension_origin else []) + local_role_c_origins,
-        allow_methods=["POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["content-type"],
     )
 
@@ -323,7 +323,12 @@ def create_app(
     @app.put("/v1/retention/policy")
     def retention_policy_put(payload: RetentionPolicyUpdate) -> dict[str, object]:
         try:
-            save_retention_policy(payload.model_dump())
+            save_retention_policy(
+                {
+                    "metadata_days": payload.metadata_days,
+                    "detailed_days": payload.detailed_days,
+                }
+            )
             return load_retention_policy()
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
