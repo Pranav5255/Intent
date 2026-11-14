@@ -1,0 +1,25 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+exclude = ["app/src-tauri"]
+
+[workspace.package]
+version = "2.0.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/Pranav5255/Intent"
+rust-version = "1.88"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3
+panic = "abort"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# Keep debug artifacts small; disk on the dev Mac is tight.
+[profile.dev]
+debug = "line-tables-only"

@@ -1,0 +1,8 @@
+[package]
+name = "intent-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+intent-types = { path = "../intent-types" }

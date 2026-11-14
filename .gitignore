@@ -7,3 +7,6 @@ node_modules/
 dist/
 *.db
 .env
+target/
+app/src-tauri/target/
+app/src-tauri/gen/
