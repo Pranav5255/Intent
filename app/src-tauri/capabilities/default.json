@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Both windows may call Intent's own commands and listen to app events. No plugin APIs are exposed to JS; HTTP happens in Rust.",
+  "windows": ["main", "overlay"],
+  "permissions": ["core:default"]
+}
