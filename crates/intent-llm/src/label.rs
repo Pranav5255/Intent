@@ -12,7 +12,7 @@ use crate::harness::{Harness, StructuredCall};
 use crate::traits::{LabelLevel, LabelProvider, LabelResult, LlmError};
 use crate::util::truncate_chars;
 
-const PROMPT_VERSION: &str = "label-2.0-1";
+const PROMPT_VERSION: &str = "label-2.0-2";
 
 const SYSTEM_PROMPT: &str = "You name a block of computer work from aggregate activity features. \
 Return only JSON: label = 2-5 word title, summary = exactly one sentence, confidence = 0-1. \
@@ -72,8 +72,10 @@ fn sentence_count(text: &str) -> usize {
 /// Port of 1.x `validate_label_result`.
 pub fn validate_label(label: &str, summary: &str, confidence: f64) -> Result<(), String> {
     let words = label.split_whitespace().count();
-    if !(2..=5).contains(&words) {
-        return Err(format!("label must contain 2-5 words, got {words}"));
+    // The prompt asks for 2-5 words; up to 7 is accepted (the engine's MAX_LABEL_WORDS)
+    // rather than discarding a good label from a small model and falling back.
+    if !(2..=7).contains(&words) {
+        return Err(format!("label must contain 2-7 words, got {words}"));
     }
     if summary.trim().is_empty() {
         return Err("summary must be a non-empty sentence".into());
@@ -102,6 +104,9 @@ pub fn provider_features(features: &SafeIntentFeatures) -> Value {
     f.project_key = f.project_key.map(|t| truncate_chars(&t, 80).to_owned());
     let mut v = serde_json::to_value(&f).unwrap_or_default();
     if let Value::Object(map) = &mut v {
+        // Internal bookkeeping, not activity: small models echo it into labels
+        // ("... in the safe-intent-features-v2 project").
+        map.remove("policy_version");
         map.retain(|_, x| match x {
             Value::Null => false,
             Value::Array(a) => !a.is_empty(),
@@ -165,7 +170,8 @@ mod tests {
     fn label_validation() {
         assert!(validate_label("Fix flaky tests", "Fixed flaky tests in the engine.", 0.8).is_ok());
         assert!(validate_label("Tests", "One.", 0.8).is_err());
-        assert!(validate_label("a b c d e f", "One sentence.", 0.8).is_err());
+        assert!(validate_label("a b c d e f", "One sentence.", 0.8).is_ok());
+        assert!(validate_label("a b c d e f g h", "One sentence.", 0.8).is_err());
         assert!(validate_label("Fix tests", "First sentence. Second sentence.", 0.8).is_err());
         assert!(validate_label("Fix tests", "Edited v2.0 config and main.rs files", 0.8).is_ok());
         assert!(validate_label("Fix tests", "Fine.", 1.2).is_err());
@@ -185,5 +191,6 @@ mod tests {
         assert_eq!(v["domains"].as_array().unwrap().len(), 5);
         assert!(v.get("file_names").is_none());
         assert!(v.get("project_key").is_none());
+        assert!(v.get("policy_version").is_none(), "never shown to the model");
     }
 }
