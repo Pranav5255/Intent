@@ -144,7 +144,7 @@ export function TimelineView({ actions }: { actions: MainActions }) {
 function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
   const data = useAsync(() => api.intentsFor(date), [date]);
   const [trackRef, width] = useWidth<HTMLDivElement>();
-  const [hover, setHover] = useState<{ intent: Intent; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<Intent | null>(null);
   const roots = useMemo(() => (data.data ?? []).filter((i) => i.depth === 0).sort((a, b) => a.start_ts - b.start_ts), [data.data]);
   const isToday = date === todayIso();
   const segs = useMemo(() => buildAxis(roots, width, isToday ? nowSec() : null), [roots, width, isToday]);
@@ -196,7 +196,7 @@ function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
               .filter((s) => s.kind === 'gap')
               .map((s) => (
                 <div key={s.start} className="tl-gap" style={{ left: s.x, width: s.w }}>
-                  <span className="tl-gap-label mono">— {duration(s.end - s.start + 2 * PAD)} idle —</span>
+                  <span className="tl-gap-label mono" title="Idle">{duration(s.end - s.start + 2 * PAD)} idle</span>
                 </div>
               ))}
             {ticks.map((t) => (
@@ -210,12 +210,8 @@ function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
                   <button
                     className="tl-bar"
                     style={{ left: x, width: w, ['--lane' as string]: laneFor(r) }}
-                    onMouseEnter={(e) => {
-                      const box = (e.currentTarget.parentElement?.parentElement as HTMLElement).getBoundingClientRect();
-                      const b = e.currentTarget.getBoundingClientRect();
-                      setHover({ intent: r, x: b.left - box.left + Math.min(b.width / 2, 60), y: row * 36 });
-                    }}
-                    onFocus={() => setHover({ intent: r, x: x + 20, y: row * 36 })}
+                    onMouseEnter={() => setHover(r)}
+                    onFocus={() => setHover(r)}
                     onClick={() => actions.openIntent(r.id)}
                     aria-label={`${r.label}, ${clock(r.start_ts)} to ${clock(r.end_ts)}`}
                   >
@@ -236,27 +232,27 @@ function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
               </div>
             )}
             <div style={{ height: roots.length * 36 }} />
-            {hover && (
-              <div
-                className={`tl-pop ${hover.y / 36 >= roots.length / 2 ? 'is-above' : ''}`}
-                style={{
-                  left: Math.max(24, Math.min(hover.x, width - 280)),
-                  top: hover.y / 36 >= roots.length / 2 ? hover.y + 4 : hover.y + 32,
-                }}
-              >
-                <div className="tl-pop-title">{hover.intent.label}</div>
-                <div className="tl-pop-meta">
-                  {projectOf(hover.intent) && <Project name={projectOf(hover.intent)!} />}
-                  <span className="mono t3">
-                    {clock(hover.intent.start_ts)}–{clock(hover.intent.end_ts)} · {duration(hover.intent.stats.duration_seconds)}
-                  </span>
-                </div>
-                <p className="tl-pop-sum">{hover.intent.summary}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
+      {roots.length > 0 && (
+        <div className="tl-detail" aria-live="polite">
+          {hover ? (
+            <>
+              <div className="tl-pop-title">{hover.label}</div>
+              <div className="tl-pop-meta">
+                {projectOf(hover) && <Project name={projectOf(hover)!} />}
+                <span className="mono t3">
+                  {clock(hover.start_ts)}–{clock(hover.end_ts)} · {duration(hover.stats.duration_seconds)}
+                </span>
+              </div>
+              <p className="tl-pop-sum">{hover.summary}</p>
+            </>
+          ) : (
+            <p className="tl-detail-hint t3">Hover a thread to see what happened · click to open it</p>
+          )}
+        </div>
+      )}
       {!data.loading && roots.length === 0 && (
         <Empty icon="timeline" title={`Nothing recorded on ${relativeDay(date)}`} text="Pick another day, or check that capture was running." />
       )}

@@ -630,12 +630,13 @@
 }
 
 .tl-gap-label {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  align-self: flex-end;
+  margin-bottom: 6px;
   font-size: 10.5px;
   color: var(--text-3);
   background: var(--surface);
-  padding: 6px 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 
@@ -688,21 +689,18 @@
   padding: 0 3px;
 }
 
-.tl-pop {
-  position: absolute;
-  z-index: 5;
-  width: 300px;
-  padding: 10px 12px;
+.tl-detail {
+  margin-top: 12px;
+  min-height: 92px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
   border-radius: var(--r-panel);
-  background: var(--raised);
-  box-shadow: var(--overlay-ring);
-  pointer-events: none;
-  transform: translateX(-24px);
-  animation: fade var(--t-fast) var(--ease);
+  background: var(--surface);
 }
 
-.tl-pop.is-above {
-  transform: translate(-24px, -100%);
+.tl-detail-hint {
+  margin: 0;
+  font-size: 12.5px;
 }
 
 .tl-pop-title {
