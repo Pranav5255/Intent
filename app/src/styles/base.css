@@ -1,0 +1,149 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-row);
+  line-height: 1.45;
+  font-feature-settings: 'ss03', 'cv11';
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+body.is-overlay {
+  background: transparent;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: default;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* Borderless text inputs carry their own focus treatment (container ring). */
+.ov-input:focus-visible,
+.ap-input:focus-visible,
+.search-input:focus-visible,
+.set-search input:focus-visible {
+  outline: none;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'zero' 0, 'calt' 0;
+  font-size: var(--fs-meta);
+  letter-spacing: -0.01em;
+}
+
+.num {
+  font-feature-settings: 'ss03', 'tnum';
+}
+
+.display {
+  font-variation-settings: 'opsz' 32;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.t2 {
+  color: var(--text-2);
+}
+
+.t3 {
+  color: var(--text-3);
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

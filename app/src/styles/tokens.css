@@ -1,0 +1,109 @@
+/* Ledger design tokens. Dark is the reference; light mirrors it.
+   --accent can be overridden at runtime from the GNOME accent colour
+   (org.freedesktop.appearance accent-color) via --accent-system. */
+
+:root {
+  --font-sans: 'Inter Variable', 'Adwaita Sans', 'Cantarell', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Adwaita Mono', ui-monospace, 'SF Mono', monospace;
+
+  --canvas: #101113;
+  --surface: #16171a;
+  --raised: #1c1d21;
+  --hairline: #26282d;
+  --border-strong: #33363c;
+  --text: #ecedee;
+  --text-2: #a1a4ab;
+  --text-3: #6b6f77;
+  --accent-default: #56c2e6;
+  --capturing: #4cc38a;
+  --paused: #e5a23c;
+  --destructive: #e5484d;
+
+  --accent: var(--accent-system, var(--accent-default));
+  --accent-text: #0b1418;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --hover: rgb(255 255 255 / 0.035);
+  --selected: rgb(255 255 255 / 0.06);
+  --pressed: rgb(255 255 255 / 0.09);
+  --scrim: rgb(6 7 8 / 0.62);
+  --ring: 0 0 0 1px var(--hairline);
+  --ring-strong: 0 0 0 1px var(--border-strong);
+  --overlay-ring: 0 0 0 1px var(--border-strong), 0 18px 48px -12px rgb(0 0 0 / 0.55);
+  --code-bg: rgb(255 255 255 / 0.04);
+
+  --r-row: 6px;
+  --r-panel: 10px;
+  --r-overlay: 12px;
+  --r-pill: 999px;
+
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 120ms;
+  --t-med: 160ms;
+  --t-slow: 180ms;
+
+  --row-h: 36px;
+  --fs-row: 13px;
+  --fs-meta: 12px;
+  --fs-small: 12px;
+  --fs-title: 15px;
+  --fs-headline: 20px;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --canvas: #fafaf9;
+    --surface: #ffffff;
+    --raised: #f3f2f0;
+    --hairline: #e7e5e2;
+    --border-strong: #d4d1cc;
+    --text: #1a1a19;
+    --text-2: #5c5b57;
+    --text-3: #8d8b86;
+    --accent-default: #0b7fab;
+    --accent-text: #ffffff;
+    --capturing: #1f9d63;
+    --paused: #b7791f;
+    --destructive: #d1343a;
+    --hover: rgb(26 26 25 / 0.035);
+    --selected: rgb(26 26 25 / 0.055);
+    --pressed: rgb(26 26 25 / 0.08);
+    --scrim: rgb(250 250 249 / 0.6);
+    --overlay-ring: 0 0 0 1px var(--border-strong), 0 18px 44px -14px rgb(30 28 24 / 0.22);
+    --code-bg: rgb(26 26 25 / 0.04);
+    color-scheme: light;
+  }
+}
+
+:root[data-theme='light'] {
+  --canvas: #fafaf9;
+  --surface: #ffffff;
+  --raised: #f3f2f0;
+  --hairline: #e7e5e2;
+  --border-strong: #d4d1cc;
+  --text: #1a1a19;
+  --text-2: #5c5b57;
+  --text-3: #8d8b86;
+  --accent-default: #0b7fab;
+  --accent-text: #ffffff;
+  --capturing: #1f9d63;
+  --paused: #b7791f;
+  --destructive: #d1343a;
+  --hover: rgb(26 26 25 / 0.035);
+  --selected: rgb(26 26 25 / 0.055);
+  --pressed: rgb(26 26 25 / 0.08);
+  --scrim: rgb(250 250 249 / 0.6);
+  --overlay-ring: 0 0 0 1px var(--border-strong), 0 18px 44px -14px rgb(30 28 24 / 0.22);
+  --code-bg: rgb(26 26 25 / 0.04);
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}
