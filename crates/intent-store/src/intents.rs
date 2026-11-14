@@ -230,11 +230,9 @@ impl Store {
         self.write(|tx| {
             // Old rows to replace: this date's rows plus any row reusing a new id.
             let mut old: HashMap<String, (i64, String)> = HashMap::new();
-            for (id, pk, text) in collect_id_pk(
-                tx,
-                "SELECT id, pk, label || char(31) || summary FROM intents WHERE date = ?1",
-                [date],
-            )? {
+            for (id, pk, text) in
+                collect_id_pk(tx, "SELECT id, pk, label || char(31) || summary FROM intents WHERE date = ?1", [date])?
+            {
                 old.insert(id, (pk, text));
             }
             for n in &nodes {
@@ -291,7 +289,9 @@ impl Store {
         validate_date(date)?;
         self.read(|c| {
             let run: Option<(String, Option<i64>)> = c
-                .prepare_cached("SELECT warnings_json, completed_at FROM pipeline_runs WHERE date = ?1 AND source_hash = ?2")?
+                .prepare_cached(
+                    "SELECT warnings_json, completed_at FROM pipeline_runs WHERE date = ?1 AND source_hash = ?2",
+                )?
                 .query_row([date, source_hash], |r| Ok((r.get(0)?, r.get(1)?)))
                 .optional()?;
             let Some((warnings_json, completed_at)) = run else { return Ok(None) };
@@ -373,8 +373,10 @@ impl Store {
                     "SELECT date, COUNT(*), COALESCE(SUM(duration_seconds), 0) FROM intents WHERE {FILTER}
                      GROUP BY date ORDER BY date"
                 ))?;
-                stmt.query_map(p, |r| Ok(DayBucket { date: r.get(0)?, intent_count: r.get(1)?, duration_seconds: r.get(2)? }))?
-                    .collect::<rusqlite::Result<Vec<_>>>()?
+                stmt.query_map(p, |r| {
+                    Ok(DayBucket { date: r.get(0)?, intent_count: r.get(1)?, duration_seconds: r.get(2)? })
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?
             };
             let top_labels = {
                 let mut stmt = c.prepare_cached(&format!(

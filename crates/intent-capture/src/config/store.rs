@@ -12,8 +12,8 @@ use std::time::SystemTime;
 use serde_json::Value;
 
 use super::{
-    ConfigError, DetailedCaptureConfig, DetailedCaptureUpdate, FilesystemCaptureConfig, JsonConfig,
-    RetentionPolicy, WorkspacesConfig,
+    ConfigError, DetailedCaptureConfig, DetailedCaptureUpdate, FilesystemCaptureConfig, JsonConfig, RetentionPolicy,
+    WorkspacesConfig,
 };
 use crate::admit::AdmissionPolicy;
 use crate::blocklist::Blocklist;
@@ -33,17 +33,10 @@ fn stamp(path: &Path) -> Result<Option<Stamp>, ConfigError> {
             let inode = std::os::unix::fs::MetadataExt::ino(&meta);
             #[cfg(not(unix))]
             let inode = 0;
-            Ok(Some(Stamp {
-                modified: meta.modified().ok(),
-                len: meta.len(),
-                inode,
-            }))
+            Ok(Some(Stamp { modified: meta.modified().ok(), len: meta.len(), inode }))
         }
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(err) => Err(ConfigError::Io(format!(
-            "cannot stat {}: {err}",
-            path.display()
-        ))),
+        Err(err) => Err(ConfigError::Io(format!("cannot stat {}: {err}", path.display()))),
     }
 }
 
@@ -60,23 +53,14 @@ struct Cached<T> {
 
 impl<T> Cached<T> {
     fn new(path: PathBuf, loader: fn(&Path) -> Result<T, ConfigError>) -> Self {
-        Cached {
-            path,
-            loader,
-            entry: Mutex::new(None),
-        }
+        Cached { path, loader, entry: Mutex::new(None) }
     }
 
     fn lock(&self) -> MutexGuard<'_, Option<Entry<T>>> {
-        self.entry
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.entry.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    fn get_locked(
-        &self,
-        guard: &mut MutexGuard<'_, Option<Entry<T>>>,
-    ) -> Result<Arc<T>, ConfigError> {
+    fn get_locked(&self, guard: &mut MutexGuard<'_, Option<Entry<T>>>) -> Result<Arc<T>, ConfigError> {
         let current = stamp(&self.path)?;
         if let Some(entry) = guard.as_ref()
             && entry.stamp == current
@@ -84,10 +68,7 @@ impl<T> Cached<T> {
             return entry.value.clone();
         }
         let value = (self.loader)(&self.path).map(Arc::new);
-        **guard = Some(Entry {
-            stamp: current,
-            value: value.clone(),
-        });
+        **guard = Some(Entry { stamp: current, value: value.clone() });
         value
     }
 
@@ -106,10 +87,7 @@ impl<T> Cached<T> {
         let current = self.get_locked(&mut guard);
         let next = f(current)?;
         let written = Arc::new(next.save(&self.path)?);
-        *guard = Some(Entry {
-            stamp: stamp(&self.path)?,
-            value: Ok(written.clone()),
-        });
+        *guard = Some(Entry { stamp: stamp(&self.path)?, value: Ok(written.clone()) });
         Ok(written)
     }
 
@@ -134,10 +112,7 @@ impl ConfigStore {
         ConfigStore {
             detailed: Cached::new(paths.detailed_capture_config(), DetailedCaptureConfig::load),
             workspaces: Cached::new(paths.workspaces_config(), WorkspacesConfig::load),
-            filesystem: Cached::new(
-                paths.filesystem_capture_config(),
-                FilesystemCaptureConfig::load,
-            ),
+            filesystem: Cached::new(paths.filesystem_capture_config(), FilesystemCaptureConfig::load),
             retention: Cached::new(paths.retention_policy_config(), RetentionPolicy::load),
             blocklist: Cached::new(paths.blocked_domains_config(), Blocklist::load),
         }
@@ -176,10 +151,8 @@ impl ConfigStore {
     /// `GET /v1/detailed-capture/config` body.
     pub fn public_detailed_config(&self) -> Result<Value, ConfigError> {
         let config = self.detailed_capture()?;
-        let retention = self
-            .retention_policy()
-            .map(|policy| policy.public_summary())
-            .unwrap_or_else(|_| "indefinite".into());
+        let retention =
+            self.retention_policy().map(|policy| policy.public_summary()).unwrap_or_else(|_| "indefinite".into());
         Ok(config.public_config(&self.approved_workspaces(), &retention))
     }
 
@@ -189,28 +162,21 @@ impl ConfigStore {
         self.workspaces.get()
     }
 
-    pub fn set_workspaces(
-        &self,
-        config: WorkspacesConfig,
-    ) -> Result<Arc<WorkspacesConfig>, ConfigError> {
+    pub fn set_workspaces(&self, config: WorkspacesConfig) -> Result<Arc<WorkspacesConfig>, ConfigError> {
         self.workspaces.modify(|_| Ok(config))
     }
 
     pub fn add_workspace(&self, path: &str) -> Result<Arc<WorkspacesConfig>, ConfigError> {
-        self.workspaces
-            .modify(|current| Ok(current?.with_added(path)))
+        self.workspaces.modify(|current| Ok(current?.with_added(path)))
     }
 
     pub fn remove_workspace(&self, path: &str) -> Result<Arc<WorkspacesConfig>, ConfigError> {
-        self.workspaces
-            .modify(|current| Ok(current?.with_removed(path)))
+        self.workspaces.modify(|current| Ok(current?.with_removed(path)))
     }
 
     /// Approved workspaces; an unreadable/invalid file means none (1.x behaviour).
     pub fn approved_workspaces(&self) -> Vec<String> {
-        self.workspaces()
-            .map(|config| config.workspaces.clone())
-            .unwrap_or_default()
+        self.workspaces().map(|config| config.workspaces.clone()).unwrap_or_default()
     }
 
     // ---- filesystem -------------------------------------------------------
@@ -232,10 +198,7 @@ impl ConfigStore {
         self.retention.get()
     }
 
-    pub fn set_retention_policy(
-        &self,
-        policy: RetentionPolicy,
-    ) -> Result<Arc<RetentionPolicy>, ConfigError> {
+    pub fn set_retention_policy(&self, policy: RetentionPolicy) -> Result<Arc<RetentionPolicy>, ConfigError> {
         policy.validate()?;
         self.retention.modify(|_| Ok(policy))
     }
@@ -279,14 +242,8 @@ mod tests {
 
     fn store_in(dir: &Path, extra: &[(&str, String)]) -> (ConfigStore, Paths) {
         let mut vars: HashMap<String, String> = HashMap::new();
-        vars.insert(
-            "HOME".into(),
-            dir.join("home").to_string_lossy().into_owned(),
-        );
-        vars.insert(
-            "XDG_CONFIG_HOME".into(),
-            dir.join("cfg").to_string_lossy().into_owned(),
-        );
+        vars.insert("HOME".into(), dir.join("home").to_string_lossy().into_owned());
+        vars.insert("XDG_CONFIG_HOME".into(), dir.join("cfg").to_string_lossy().into_owned());
         for (key, value) in extra {
             vars.insert(key.to_string(), value.clone());
         }
@@ -298,21 +255,12 @@ mod tests {
     fn missing_files_yield_defaults() {
         let dir = tempfile::tempdir().unwrap();
         let (store, _) = store_in(dir.path(), &[]);
-        assert_eq!(
-            *store.detailed_capture().unwrap(),
-            DetailedCaptureConfig::default()
-        );
+        assert_eq!(*store.detailed_capture().unwrap(), DetailedCaptureConfig::default());
         assert!(store.workspaces().unwrap().workspaces.is_empty());
         assert!(!store.filesystem_capture().unwrap().all_accessible);
-        assert_eq!(
-            *store.retention_policy().unwrap(),
-            RetentionPolicy::default()
-        );
+        assert_eq!(*store.retention_policy().unwrap(), RetentionPolicy::default());
         assert!(store.blocklist().unwrap().is_empty());
-        assert_eq!(
-            store.public_detailed_config().unwrap()["retention"],
-            "indefinite"
-        );
+        assert_eq!(store.public_detailed_config().unwrap()["retention"], "indefinite");
     }
 
     #[test]
@@ -323,45 +271,20 @@ mod tests {
         let mut detailed = DetailedCaptureConfig::default();
         detailed.set_enabled(DetailedKind::Editor, true);
         store.set_detailed_capture(detailed.clone()).unwrap();
-        let workspace = crate::paths::resolve_lenient(dir.path())
-            .join("w")
-            .to_string_lossy()
-            .into_owned();
-        store
-            .set_workspaces(WorkspacesConfig {
-                workspaces: vec![workspace.clone()],
-            })
-            .unwrap();
-        store
-            .set_filesystem_capture(FilesystemCaptureConfig {
-                all_accessible: true,
-            })
-            .unwrap();
-        store
-            .set_retention_policy(RetentionPolicy {
-                metadata_days: Some(30),
-                detailed_days: Some(7),
-            })
-            .unwrap();
+        let workspace = crate::paths::resolve_lenient(dir.path()).join("w").to_string_lossy().into_owned();
+        store.set_workspaces(WorkspacesConfig { workspaces: vec![workspace.clone()] }).unwrap();
+        store.set_filesystem_capture(FilesystemCaptureConfig { all_accessible: true }).unwrap();
+        store.set_retention_policy(RetentionPolicy { metadata_days: Some(30), detailed_days: Some(7) }).unwrap();
 
         // A fresh store reads exactly what was written.
         let fresh = ConfigStore::new(&paths);
         assert_eq!(*fresh.detailed_capture().unwrap(), detailed);
-        assert_eq!(
-            fresh.workspaces().unwrap().workspaces,
-            vec![workspace.clone()]
-        );
+        assert_eq!(fresh.workspaces().unwrap().workspaces, vec![workspace.clone()]);
         assert!(fresh.filesystem_capture().unwrap().all_accessible);
-        assert_eq!(
-            fresh.retention_policy().unwrap().public_summary(),
-            "metadata:30d, detailed:7d"
-        );
+        assert_eq!(fresh.retention_policy().unwrap().public_summary(), "metadata:30d, detailed:7d");
 
         let text = std::fs::read_to_string(paths.retention_policy_config()).unwrap();
-        assert_eq!(
-            serde_json::from_str::<Value>(&text).unwrap(),
-            json!({"metadata_days": 30, "detailed_days": 7})
-        );
+        assert_eq!(serde_json::from_str::<Value>(&text).unwrap(), json!({"metadata_days": 30, "detailed_days": 7}));
         assert!(text.ends_with("}\n"));
         let public = fresh.public_detailed_config().unwrap();
         assert_eq!(public["approved_workspaces"], json!([workspace]));
@@ -371,15 +294,9 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            for path in [
-                paths.detailed_capture_config(),
-                paths.workspaces_config(),
-                paths.filesystem_capture_config(),
-            ] {
-                assert_eq!(
-                    std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
-                    0o600
-                );
+            for path in [paths.detailed_capture_config(), paths.workspaces_config(), paths.filesystem_capture_config()]
+            {
+                assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
             }
         }
         let leftovers: Vec<_> = std::fs::read_dir(paths.config_dir())
@@ -398,23 +315,14 @@ mod tests {
         let (store, paths) = store_in(
             dir.path(),
             &[
-                (
-                    ENV_DETAILED_CAPTURE_CONFIG,
-                    detailed_path.to_string_lossy().into_owned(),
-                ),
-                (
-                    ENV_WORKSPACES_CONFIG,
-                    workspaces_path.to_string_lossy().into_owned(),
-                ),
+                (ENV_DETAILED_CAPTURE_CONFIG, detailed_path.to_string_lossy().into_owned()),
+                (ENV_WORKSPACES_CONFIG, workspaces_path.to_string_lossy().into_owned()),
             ],
         );
         assert_eq!(paths.detailed_capture_config(), detailed_path);
         store
             .update_detailed_capture(&DetailedCaptureUpdate {
-                browser: Some(DetailedCaptureBrowserUpdate {
-                    enabled: Some(true),
-                    context_enabled: None,
-                }),
+                browser: Some(DetailedCaptureBrowserUpdate { enabled: Some(true), context_enabled: None }),
                 ..Default::default()
             })
             .unwrap();
@@ -422,14 +330,7 @@ mod tests {
         store.add_workspace("/nonexistent-intent/proj").unwrap();
         assert!(workspaces_path.exists());
         assert!(!paths.config_dir().join("detailed-capture.json").exists());
-        assert_eq!(
-            store
-                .remove_workspace("/nonexistent-intent/proj")
-                .unwrap()
-                .workspaces
-                .len(),
-            0
-        );
+        assert_eq!(store.remove_workspace("/nonexistent-intent/proj").unwrap().workspaces.len(), 0);
     }
 
     #[test]
@@ -438,33 +339,16 @@ mod tests {
         let (store, paths) = store_in(dir.path(), &[]);
         assert!(!store.detailed_capture().unwrap().browser.enabled);
         let first = store.detailed_capture().unwrap();
-        assert!(
-            Arc::ptr_eq(&first, &store.detailed_capture().unwrap()),
-            "unchanged file must be served from cache"
-        );
+        assert!(Arc::ptr_eq(&first, &store.detailed_capture().unwrap()), "unchanged file must be served from cache");
 
-        crate::atomic::write_json_atomic(
-            &paths.detailed_capture_config(),
-            &json!({"browser": {"enabled": true}}),
-        )
-        .unwrap();
+        crate::atomic::write_json_atomic(&paths.detailed_capture_config(), &json!({"browser": {"enabled": true}}))
+            .unwrap();
         assert!(store.detailed_capture().unwrap().browser.enabled);
 
-        std::fs::write(
-            paths.blocked_domains_config(),
-            "blocked_domains:\n  - chase.com\n",
-        )
-        .unwrap();
+        std::fs::write(paths.blocked_domains_config(), "blocked_domains:\n  - chase.com\n").unwrap();
         assert_eq!(store.blocklist().unwrap().patterns(), ["chase.com"]);
-        std::fs::write(
-            paths.blocked_domains_config(),
-            "blocked_domains:\n  - chase.com\n  - bank.org\n",
-        )
-        .unwrap();
-        assert_eq!(
-            store.blocklist().unwrap().patterns(),
-            ["chase.com", "bank.org"]
-        );
+        std::fs::write(paths.blocked_domains_config(), "blocked_domains:\n  - chase.com\n  - bank.org\n").unwrap();
+        assert_eq!(store.blocklist().unwrap().patterns(), ["chase.com", "bank.org"]);
         std::fs::remove_file(paths.blocked_domains_config()).unwrap();
         assert!(store.blocklist().unwrap().is_empty());
     }
@@ -477,28 +361,16 @@ mod tests {
         std::fs::write(paths.detailed_capture_config(), "{not json").unwrap();
         assert_eq!(
             store.detailed_capture().unwrap_err().to_string(),
-            format!(
-                "invalid detailed-capture config: {}",
-                paths.detailed_capture_config().display()
-            )
+            format!("invalid detailed-capture config: {}", paths.detailed_capture_config().display())
         );
         std::fs::write(paths.workspaces_config(), "[]").unwrap();
         assert!(store.workspaces().is_err());
         assert!(store.approved_workspaces().is_empty());
         std::fs::write(paths.retention_policy_config(), "{\"metadata_days\": 0}").unwrap();
-        assert!(
-            store
-                .public_detailed_config()
-                .unwrap_err()
-                .to_string()
-                .contains("invalid detailed-capture config")
-        );
+        assert!(store.public_detailed_config().unwrap_err().to_string().contains("invalid detailed-capture config"));
 
         std::fs::remove_file(paths.detailed_capture_config()).unwrap();
-        assert_eq!(
-            store.public_detailed_config().unwrap()["retention"],
-            "indefinite"
-        );
+        assert_eq!(store.public_detailed_config().unwrap()["retention"], "indefinite");
 
         let bad = DetailedCaptureUpdate {
             editor: Some(crate::config::DetailedCaptureEditorUpdate {
@@ -509,14 +381,7 @@ mod tests {
         };
         assert!(store.update_detailed_capture(&bad).is_err());
         assert!(!paths.detailed_capture_config().exists());
-        assert!(
-            store
-                .set_retention_policy(RetentionPolicy {
-                    metadata_days: Some(0),
-                    detailed_days: None
-                })
-                .is_err()
-        );
+        assert!(store.set_retention_policy(RetentionPolicy { metadata_days: Some(0), detailed_days: None }).is_err());
     }
 
     #[test]
@@ -524,18 +389,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (store, paths) = store_in(dir.path(), &[]);
         std::fs::create_dir_all(paths.config_dir()).unwrap();
-        std::fs::write(
-            paths.blocked_domains_config(),
-            "blocked_domains: [chase.com]\n",
-        )
-        .unwrap();
+        std::fs::write(paths.blocked_domains_config(), "blocked_domains: [chase.com]\n").unwrap();
         store.add_workspace("/nonexistent-intent/w").unwrap();
         let policy = store.admission_policy().unwrap();
         assert_eq!(policy.blocklist.patterns(), ["chase.com"]);
-        assert_eq!(
-            *policy.approved_workspaces,
-            vec!["/nonexistent-intent/w".to_string()]
-        );
+        assert_eq!(*policy.approved_workspaces, vec!["/nonexistent-intent/w".to_string()]);
         store.invalidate_all();
         assert!(store.admission_policy().is_ok());
     }

@@ -7,13 +7,13 @@ use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use intent_capture::ConfigError;
 use intent_capture::config::{
     DetailedCaptureUpdate, FilesystemCaptureConfig, FilesystemCaptureUpdate, RetentionPolicy, RetentionPurge,
     WorkspacesConfig, WorkspacesUpdate,
 };
 use intent_capture::preview::build_preview_sample;
 use intent_capture::restore::{self, RestoreRequest, RestoreResult};
-use intent_capture::ConfigError;
 use intent_store::{RetentionCutoffs, now_ts};
 use intent_types::{EventCursor, IngestResult};
 use serde::Deserialize;
@@ -117,7 +117,10 @@ pub struct DateQuery {
     date: String,
 }
 
-pub async fn export_day_meta(State(state): State<AppState>, QueryParams(q): QueryParams<DateQuery>) -> ApiResult<Response> {
+pub async fn export_day_meta(
+    State(state): State<AppState>,
+    QueryParams(q): QueryParams<DateQuery>,
+) -> ApiResult<Response> {
     let store = state.store.clone();
     let meta = blocking(move || store.day_meta(&q.date)).await?.map_err(|e| ApiError::store(e, UNPROCESSABLE))?;
     Ok(Json(meta).into_response())
@@ -193,7 +196,8 @@ pub async fn workspaces_put(
     State(state): State<AppState>,
     JsonBody(update): JsonBody<WorkspacesUpdate>,
 ) -> ApiResult<Json<WorkspacesConfig>> {
-    let saved = state.config.set_workspaces(WorkspacesConfig { workspaces: update.workspaces }).map_err(config_write)?;
+    let saved =
+        state.config.set_workspaces(WorkspacesConfig { workspaces: update.workspaces }).map_err(config_write)?;
     state.refresh_watcher();
     Ok(Json((*saved).clone()))
 }
@@ -241,7 +245,8 @@ pub async fn public_config(State(state): State<AppState>) -> ApiResult<Json<Valu
 
 pub async fn purge_detailed(State(state): State<AppState>) -> ApiResult<Json<Value>> {
     let store = state.store.clone();
-    let report = blocking(move || store.purge_detailed_events()).await?.map_err(|e| ApiError::store(e, UNPROCESSABLE))?;
+    let report =
+        blocking(move || store.purge_detailed_events()).await?.map_err(|e| ApiError::store(e, UNPROCESSABLE))?;
     Ok(Json(json!({"ok": true, "deleted": report.deleted.detailed, "affected_days": report.affected_days})))
 }
 
@@ -282,7 +287,10 @@ pub async fn retention_preview(
     Ok(Json(preview_body(q.detailed_days, q.metadata_days, now, json!(counts))))
 }
 
-pub async fn retention_purge(State(state): State<AppState>, JsonBody(body): JsonBody<RetentionPurge>) -> ApiResult<Json<Value>> {
+pub async fn retention_purge(
+    State(state): State<AppState>,
+    JsonBody(body): JsonBody<RetentionPurge>,
+) -> ApiResult<Json<Value>> {
     body.validate().map_err(config_write)?;
     if !body.confirm {
         return Err(ApiError::new(StatusCode::CONFLICT, "set confirm=true after reviewing retention preview"));
@@ -308,7 +316,10 @@ pub async fn retention_purge(State(state): State<AppState>, JsonBody(body): Json
 // Restore and pause
 // ---------------------------------------------------------------------------
 
-pub async fn restore(State(state): State<AppState>, JsonBody(body): JsonBody<RestoreRequest>) -> ApiResult<Json<RestoreResult>> {
+pub async fn restore(
+    State(state): State<AppState>,
+    JsonBody(body): JsonBody<RestoreRequest>,
+) -> ApiResult<Json<RestoreResult>> {
     let (payload, mode) = body.validate().map_err(|e| ApiError::unprocessable(e.message))?;
     let probe = state.restore_probe.clone();
     let spawner = state.restore_spawner.clone();
@@ -359,7 +370,11 @@ pub async fn pause(State(state): State<AppState>, JsonBody(mut body): JsonBody<P
 const SOURCES: &[&str] = &["vscode", "firefox", "shell", "linux", "filesystem"];
 
 fn stale_after() -> i64 {
-    std::env::var("INTENT_SOURCE_STALE_AFTER_SECONDS").ok().and_then(|v| v.parse().ok()).filter(|v| *v > 0).unwrap_or(1800)
+    std::env::var("INTENT_SOURCE_STALE_AFTER_SECONDS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(1800)
 }
 
 pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
@@ -380,8 +395,11 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
     let mut sources: BTreeMap<String, Value> = SOURCES
         .iter()
         .map(|s| {
-            (s.to_string(), json!({"event_count": 0, "last_event_ts": null, "last_ingested_at": null,
-                                   "last_ingest_lag_seconds": null, "healthy": false}))
+            (
+                s.to_string(),
+                json!({"event_count": 0, "last_event_ts": null, "last_ingested_at": null,
+                                   "last_ingest_lag_seconds": null, "healthy": false}),
+            )
         })
         .collect();
     for s in stats {
@@ -401,7 +419,8 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
         );
     }
 
-    let collectors: Vec<_> = state.collectors.lock().unwrap_or_else(|e| e.into_inner()).iter().map(|h| h.snapshot()).collect();
+    let collectors: Vec<_> =
+        state.collectors.lock().unwrap_or_else(|e| e.into_inner()).iter().map(|h| h.snapshot()).collect();
     let collector_running = |name: &str| collectors.iter().any(|c| c.name == name && c.running);
     let healthy = |name: &str| sources.get(name).and_then(|v| v["healthy"].as_bool()).unwrap_or(false);
 

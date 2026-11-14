@@ -54,22 +54,21 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         ],
     )?;
 
-    let mut builder = TrayIconBuilder::with_id("intent")
-        .tooltip("Intent")
-        .menu(&menu)
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| {
-            let app = app.clone();
-            match event.id().as_ref() {
-                "open" => show_main(&app, Some("today".into())),
-                "now" => show_main(&app, Some("today".into())),
-                "pause15" => spawn_pause(app, Some(15 * 60)),
-                "pause60" => spawn_pause(app, Some(60 * 60)),
-                "resume" => spawn_pause(app, None),
-                "quit" => app.exit(0),
-                _ => {}
-            }
-        });
+    let mut builder =
+        TrayIconBuilder::with_id("intent").tooltip("Intent").menu(&menu).show_menu_on_left_click(true).on_menu_event(
+            |app, event| {
+                let app = app.clone();
+                match event.id().as_ref() {
+                    "open" => show_main(&app, Some("today".into())),
+                    "now" => show_main(&app, Some("today".into())),
+                    "pause15" => spawn_pause(app, Some(15 * 60)),
+                    "pause60" => spawn_pause(app, Some(60 * 60)),
+                    "resume" => spawn_pause(app, None),
+                    "quit" => app.exit(0),
+                    _ => {}
+                }
+            },
+        );
     if let Some(icon) = app.default_window_icon().cloned() {
         builder = builder.icon(icon);
     }
@@ -153,9 +152,5 @@ pub async fn refresh(app: &AppHandle) {
 }
 
 fn ellipsize(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", s.chars().take(max - 1).collect::<String>())
-    }
+    if s.chars().count() <= max { s.to_string() } else { format!("{}…", s.chars().take(max - 1).collect::<String>()) }
 }

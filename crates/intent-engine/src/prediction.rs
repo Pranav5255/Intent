@@ -138,7 +138,8 @@ mod tests {
 
     #[test]
     fn predicts_from_two_matches_and_caches_by_revision() {
-        let recent = seq(vec![edit("a", 0, "/p/a.py", "/p"), edit("b", 1, "/p/a.py", "/p"), cmd("c", 2, "pytest", "/p", 1)]);
+        let recent =
+            seq(vec![edit("a", 0, "/p/a.py", "/p"), edit("b", 1, "/p/a.py", "/p"), cmd("c", 2, "pytest", "/p", 1)]);
         let tail: Vec<&NormalizedEvent> = recent.iter().collect();
         let prefix = event_prefix(&tail).unwrap();
         assert_eq!(prefix, ("editor".into(), "document_change".into(), "pytest".into()));

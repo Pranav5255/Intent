@@ -1,0 +1,62 @@
+# Weekly dependency updates, grouped so a routine week is one PR per ecosystem.
+# Every update goes through the same CI gate as any other change.
+#
+# Version updates wait 7 days after a release (cooldown): compromised patch releases
+# are usually pulled from the registry within days. Security updates don't wait.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /app/src-tauri
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    # Moves together with @tauri-apps/api (see the npm /app entry), by hand.
+    ignore:
+      - dependency-name: tauri
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /app
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    # The JS API must match the tauri crate's minor version (`tauri build` refuses a
+    # mismatch), so it moves together with app/src-tauri, by hand.
+    ignore:
+      - dependency-name: '@tauri-apps/api'
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: '@tauri-apps/cli'
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
+  - package-ecosystem: npm
+    directories: [/integrations/firefox-extension, /integrations/vscode-extension]
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 3
+    groups:
+      companions:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types: [minor, patch]

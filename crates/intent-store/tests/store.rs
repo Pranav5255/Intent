@@ -8,7 +8,8 @@ use std::time::Instant;
 
 use intent_store::{DayZone, EmbedderSpec, FactInput, FactQuery, RetentionCutoffs, Store, StoreError, StoreOptions};
 use intent_types::{
-    EventCursor, Intent, IntentInsights, IntentStats, PipelineResult, PipelineWarning, RawEvent, ResumePayload, WarningLevel,
+    EventCursor, Intent, IntentInsights, IntentStats, PipelineResult, PipelineWarning, RawEvent, ResumePayload,
+    WarningLevel,
 };
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -32,7 +33,15 @@ fn open_with(dir: &TempDir, embedder: Option<EmbedderSpec>) -> Store {
 
 fn ev(id: &str, ts: i64, source: &str, kind: &str) -> RawEvent {
     let payload = json!({ "n": id }).as_object().unwrap().clone();
-    RawEvent { id: id.into(), ts, source: source.into(), kind: kind.into(), payload, schema_version: 1, ingested_at: None }
+    RawEvent {
+        id: id.into(),
+        ts,
+        source: source.into(),
+        kind: kind.into(),
+        payload,
+        schema_version: 1,
+        ingested_at: None,
+    }
 }
 
 fn ev_at(id: &str, ts: i64, ingested_at: i64) -> RawEvent {
@@ -78,7 +87,8 @@ fn result(intents: Vec<Intent>, hash: &str) -> PipelineResult {
 
 /// root(a) -> [child(b) -> [grandchild(c)], child(d)]
 fn sample_tree() -> Vec<Intent> {
-    let mut root = intent("a", None, 0, "Rust store work", "Implemented the sqlite store with FTS5", &["project:intent"]);
+    let mut root =
+        intent("a", None, 0, "Rust store work", "Implemented the sqlite store with FTS5", &["project:intent"]);
     let mut b = intent("b", Some("a"), 1, "Schema", "Wrote migrations", &["project:intent"]);
     b.children.push(intent("c", Some("b"), 2, "Triggers", "FTS triggers", &["project:intent"]));
     root.children.push(b);
@@ -91,7 +101,11 @@ fn sample_tree() -> Vec<Intent> {
 fn idempotent_insert_and_day_stats() {
     let dir = TempDir::new().unwrap();
     let store = open(&dir);
-    let batch = vec![ev("1", T0 + 10, "shell", "command"), ev("2", T0 + 20, "shell", "command"), ev("3", T0 + DAY + 5, "vscode", "save")];
+    let batch = vec![
+        ev("1", T0 + 10, "shell", "command"),
+        ev("2", T0 + 20, "shell", "command"),
+        ev("3", T0 + DAY + 5, "vscode", "save"),
+    ];
     let r = store.insert_events(&batch).unwrap();
     assert_eq!(r.inserted_ids().collect::<Vec<_>>(), vec!["1", "2", "3"]);
     assert_eq!(r.days.len(), 2);
@@ -507,26 +521,29 @@ fn make_legacy(dir: &Path) -> (std::path::PathBuf, std::path::PathBuf) {
          CREATE VIRTUAL TABLE intent_search USING fts5(id UNINDEXED, label, summary, insights, tags);",
     )
     .unwrap();
-    c.execute(
-        "INSERT INTO pipeline_runs VALUES ('2024-01-01', 'lh', 'complete', '[]', ?1, ?1)",
-        [T0],
-    )
-    .unwrap();
+    c.execute("INSERT INTO pipeline_runs VALUES ('2024-01-01', 'lh', 'complete', '[]', ?1, ?1)", [T0]).unwrap();
     for node in sample_tree().iter().flat_map(|r| r.walk()) {
         // Python stored nodes with children emptied, plus unknown extra fields.
         let mut v = serde_json::to_value(Intent { children: vec![], ..node.clone() }).unwrap();
         v["python_only_field"] = json!(true);
         c.execute(
             "INSERT INTO intents VALUES (?1, '2024-01-01', ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'lh', ?9)",
-            params![node.id, node.parent_id, node.start_ts, node.end_ts, node.label, node.summary, node.depth, v.to_string(), T0],
+            params![
+                node.id,
+                node.parent_id,
+                node.start_ts,
+                node.end_ts,
+                node.label,
+                node.summary,
+                node.depth,
+                v.to_string(),
+                T0
+            ],
         )
         .unwrap();
     }
-    c.execute(
-        "INSERT INTO intents VALUES ('broken', '2024-01-02', NULL, 0, 0, 'x', 'y', 0, '{oops', 'lh', 0)",
-        [],
-    )
-    .unwrap();
+    c.execute("INSERT INTO intents VALUES ('broken', '2024-01-02', NULL, 0, 0, 'x', 'y', 0, '{oops', 'lh', 0)", [])
+        .unwrap();
     (events, intents)
 }
 
@@ -597,8 +614,9 @@ fn concurrent_writer_and_readers() {
             let store = store.clone();
             thread::spawn(move || {
                 for b in 0..50 {
-                    let batch: Vec<RawEvent> =
-                        (0..20).map(|i| ev(&format!("w{w}-{b}-{i}"), T0 + (b * 20 + i) as i64, "shell", "command")).collect();
+                    let batch: Vec<RawEvent> = (0..20)
+                        .map(|i| ev(&format!("w{w}-{b}-{i}"), T0 + (b * 20 + i) as i64, "shell", "command"))
+                        .collect();
                     store.insert_events(&batch).unwrap();
                 }
             })
@@ -639,6 +657,13 @@ fn bench_insert_100k() {
     let n = store.events_for_day("2024-01-02").unwrap().len();
     println!("events_for_day ({n} rows) in {:.1} ms", start.elapsed().as_secs_f64() * 1e3);
     let start = Instant::now();
-    let r = store.purge_retention(&RetentionCutoffs { detailed_before: Some(T0 + 150_000), metadata_before: None }).unwrap();
-    println!("purged {} rows across {} days in {:.1} ms", r.deleted.total, r.affected_days.len(), start.elapsed().as_secs_f64() * 1e3);
+    let r = store
+        .purge_retention(&RetentionCutoffs { detailed_before: Some(T0 + 150_000), metadata_before: None })
+        .unwrap();
+    println!(
+        "purged {} rows across {} days in {:.1} ms",
+        r.deleted.total,
+        r.affected_days.len(),
+        start.elapsed().as_secs_f64() * 1e3
+    );
 }

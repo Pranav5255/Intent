@@ -47,43 +47,28 @@ async fn install(proxy: &IdleMonitorProxy<'_>, threshold_ms: u64) -> zbus::Resul
     Ok(Watches { idle, active: None })
 }
 
-pub(super) async fn run(
-    threshold_ms: u64,
-    feed: &ActivityFeed,
-    ctx: &CollectorContext,
-) -> BackendEnd {
+pub(super) async fn run(threshold_ms: u64, feed: &ActivityFeed, ctx: &CollectorContext) -> BackendEnd {
     let conn = match Connection::session().await {
         Ok(c) => c,
         Err(e) => return BackendEnd::NotAvailable(format!("mutter: no session bus: {e}")),
     };
-    let proxy = match IdleMonitorProxy::builder(&conn)
-        .cache_properties(CacheProperties::No)
-        .build()
-        .await
-    {
+    let proxy = match IdleMonitorProxy::builder(&conn).cache_properties(CacheProperties::No).build().await {
         Ok(p) => p,
         Err(e) => return BackendEnd::NotAvailable(format!("mutter: proxy: {e}")),
     };
-    let (mut owners, mut fired) = match (
-        proxy.inner().receive_owner_changed().await,
-        proxy.receive_watch_fired().await,
-    ) {
+    let (mut owners, mut fired) = match (proxy.inner().receive_owner_changed().await, proxy.receive_watch_fired().await)
+    {
         (Ok(o), Ok(f)) => (o, f),
         (Err(e), _) | (_, Err(e)) => {
             return BackendEnd::NotAvailable(format!("mutter: subscribe: {e}"));
         }
     };
     let has_owner = match zbus::fdo::DBusProxy::new(&conn).await {
-        Ok(dbus) => dbus
-            .name_has_owner(NAME.try_into().expect("valid bus name"))
-            .await
-            .unwrap_or(false),
+        Ok(dbus) => dbus.name_has_owner(NAME.try_into().expect("valid bus name")).await.unwrap_or(false),
         Err(_) => false,
     };
     if !has_owner {
-        return BackendEnd::NotAvailable(format!(
-            "{NAME} is not on the session bus (not a GNOME session)"
-        ));
+        return BackendEnd::NotAvailable(format!("{NAME} is not on the session bus (not a GNOME session)"));
     }
 
     let mut tracker = IdleTracker::new(threshold_ms);
@@ -108,10 +93,7 @@ pub(super) async fn run(
                         return BackendEnd::Stopped;
                     }
                 }
-                Err(e) => ctx.status.set_waiting(
-                    Some(BACKEND.into()),
-                    format!("mutter: add watches failed: {e}"),
-                ),
+                Err(e) => ctx.status.set_waiting(Some(BACKEND.into()), format!("mutter: add watches failed: {e}")),
             }
         }
         tokio::select! {

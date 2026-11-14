@@ -58,7 +58,9 @@ pub fn build_resume_payload(cluster: &[&NormalizedEvent]) -> ResumePayload {
                     urls.push(url.to_owned());
                 }
             }
-            Family::Command if shell.is_none() && (event.entities.cwd.is_some() || event.entities.command.is_some()) => {
+            Family::Command
+                if shell.is_none() && (event.entities.cwd.is_some() || event.entities.command.is_some()) =>
+            {
                 shell = Some(ShellResume { cwd: event.entities.cwd.clone(), last_cmd: event.entities.command.clone() });
             }
             _ => {}
@@ -152,7 +154,8 @@ mod tests {
 
     #[test]
     fn caps_files_and_takes_newest_shell() {
-        let mut events: Vec<NormalizedEvent> = (0..7).map(|i| edit(&format!("e{i}"), i, &format!("/p/f{i}.py"), "/p")).collect();
+        let mut events: Vec<NormalizedEvent> =
+            (0..7).map(|i| edit(&format!("e{i}"), i, &format!("/p/f{i}.py"), "/p")).collect();
         events.push(cmd("c1", 10, "pytest", "/p", 1));
         events.push(cmd("c2", 11, "git status", "/p/sub", 0));
         let refs: Vec<&NormalizedEvent> = events.iter().collect();
@@ -164,15 +167,24 @@ mod tests {
 
     #[test]
     fn url_cap() {
-        let events: Vec<NormalizedEvent> = (0..12).map(|i| tab(&format!("t{i}"), i, "tab_change", &format!("https://s{i}.com/"), i)).collect();
+        let events: Vec<NormalizedEvent> =
+            (0..12).map(|i| tab(&format!("t{i}"), i, "tab_change", &format!("https://s{i}.com/"), i)).collect();
         let refs: Vec<&NormalizedEvent> = events.iter().collect();
         assert_eq!(build_resume_payload(&refs).urls.len(), RESUME_MAX_URLS);
     }
 
     #[test]
     fn merge_newest_first() {
-        let a = ResumePayload { files: vec!["/a".into()], urls: vec!["https://a.com/".into()], shell: ShellResume { cwd: Some("/a".into()), last_cmd: None } };
-        let b = ResumePayload { files: vec!["/b".into(), "/a".into()], urls: vec![], shell: ShellResume { cwd: None, last_cmd: Some("ls".into()) } };
+        let a = ResumePayload {
+            files: vec!["/a".into()],
+            urls: vec!["https://a.com/".into()],
+            shell: ShellResume { cwd: Some("/a".into()), last_cmd: None },
+        };
+        let b = ResumePayload {
+            files: vec!["/b".into(), "/a".into()],
+            urls: vec![],
+            shell: ShellResume { cwd: None, last_cmd: Some("ls".into()) },
+        };
         let m = merge_resume_payloads(&[a, b]);
         assert_eq!(m.files, vec!["/b", "/a"]);
         assert_eq!(m.shell.cwd.as_deref(), Some("/a"));

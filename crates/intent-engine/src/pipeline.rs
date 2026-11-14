@@ -173,7 +173,11 @@ fn fallback_name(reason: SemanticFallback) -> &'static str {
 }
 
 /// Sort indices inside clusters and clusters by first event; then validate.
-fn normalise_outcome(session: &[NormalizedEvent], mut clusters: Vec<Vec<usize>>, semantics: Vec<ClusterSemantics>) -> Result<(Vec<Vec<usize>>, Vec<ClusterSemantics>), String> {
+fn normalise_outcome(
+    session: &[NormalizedEvent],
+    mut clusters: Vec<Vec<usize>>,
+    semantics: Vec<ClusterSemantics>,
+) -> Result<(Vec<Vec<usize>>, Vec<ClusterSemantics>), String> {
     if clusters.len() != semantics.len() {
         return Err(format!("{} clusters but {} semantic records", clusters.len(), semantics.len()));
     }
@@ -187,7 +191,12 @@ fn normalise_outcome(session: &[NormalizedEvent], mut clusters: Vec<Vec<usize>>,
     if problems.is_empty() { Ok((clusters, semantics)) } else { Err(problems.join("; ")) }
 }
 
-fn merge_semantics(a: Option<ClusterSemantics>, b: Option<ClusterSemantics>, na: usize, nb: usize) -> Option<ClusterSemantics> {
+fn merge_semantics(
+    a: Option<ClusterSemantics>,
+    b: Option<ClusterSemantics>,
+    na: usize,
+    nb: usize,
+) -> Option<ClusterSemantics> {
     match (a, b) {
         (None, other) | (other, None) => other,
         (Some(a), Some(b)) => {
@@ -205,15 +214,19 @@ fn merge_semantics(a: Option<ClusterSemantics>, b: Option<ClusterSemantics>, na:
     }
 }
 
-async fn plan_session(index: usize, range: Range<usize>, events: &[NormalizedEvent], deps: &PipelineDeps) -> SessionPlan {
+async fn plan_session(
+    index: usize,
+    range: Range<usize>,
+    events: &[NormalizedEvent],
+    deps: &PipelineDeps,
+) -> SessionPlan {
     let session = &events[range.clone()];
     let deterministic = cluster_session(session);
     let mut warnings = deterministic.warnings;
     let mut clusters = deterministic.clusters;
 
     if deps.config.correlate.enabled {
-        let correlated =
-            merge_by_similarity(clusters, session, deps.embedder.as_deref(), &deps.config.correlate).await;
+        let correlated = merge_by_similarity(clusters, session, deps.embedder.as_deref(), &deps.config.correlate).await;
         warnings.extend(correlated.warnings);
         clusters = correlated.clusters;
     }
@@ -291,7 +304,11 @@ fn cluster_prefix(cluster: &[&NormalizedEvent]) -> Option<(String, String, Strin
     crate::prediction::event_prefix(&cluster[cluster.len() - 3..])
 }
 
-fn cluster_semantic(sem: &ClusterSemantics, cluster: &[&NormalizedEvent], provider: &str) -> Option<SemanticIntentMetadata> {
+fn cluster_semantic(
+    sem: &ClusterSemantics,
+    cluster: &[&NormalizedEvent],
+    provider: &str,
+) -> Option<SemanticIntentMetadata> {
     if sem.confidence.is_none() && sem.roles.is_empty() && sem.topic.is_none() {
         return None;
     }
@@ -300,7 +317,12 @@ fn cluster_semantic(sem: &ClusterSemantics, cluster: &[&NormalizedEvent], provid
         refined: true,
         confidence: sem.confidence,
         event_roles: sem.roles.clone(),
-        topic: sem.topic.as_deref().map(str::trim).filter(|t| !t.is_empty() && !t.eq_ignore_ascii_case("unknown")).map(str::to_owned),
+        topic: sem
+            .topic
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty() && !t.eq_ignore_ascii_case("unknown"))
+            .map(str::to_owned),
         workspace_root: if roots.len() == 1 { roots.into_iter().next() } else { None },
         provider_identity: Some(provider.to_owned()),
     })
@@ -338,13 +360,21 @@ struct ChildDraft {
     command_family: Option<String>,
 }
 
-fn build_child(date: &str, hash: &str, plan: &SessionPlan, j: usize, cluster: &[&NormalizedEvent], max_evidence: usize) -> ChildDraft {
+fn build_child(
+    date: &str,
+    hash: &str,
+    plan: &SessionPlan,
+    j: usize,
+    cluster: &[&NormalizedEvent],
+    max_evidence: usize,
+) -> ChildDraft {
     let semantic = match (&plan.semantics[j], &plan.refined_by) {
         (Some(sem), Some(provider)) => cluster_semantic(sem, cluster, provider),
         _ => None,
     };
     let tag = derive_project_tag(cluster);
-    let features = build_safe_cluster_features(cluster, semantic.as_ref().and_then(|s| s.topic.as_deref()), tag.as_deref());
+    let features =
+        build_safe_cluster_features(cluster, semantic.as_ref().and_then(|s| s.topic.as_deref()), tag.as_deref());
     let intent = Intent {
         id: intent_id(date, hash, &format!("session:{}:cluster:{j}", plan.index)),
         parent_id: Some(intent_id(date, hash, &format!("session:{}", plan.index))),
@@ -370,10 +400,21 @@ fn build_child(date: &str, hash: &str, plan: &SessionPlan, j: usize, cluster: &[
         privacy_policy_version: SAFE_FEATURE_POLICY_VERSION.into(),
         children: Vec::new(),
     };
-    ChildDraft { intent, features, command_family: Topic::of(cluster.iter().copied()).command_family().map(str::to_owned) }
+    ChildDraft {
+        intent,
+        features,
+        command_family: Topic::of(cluster.iter().copied()).command_family().map(str::to_owned),
+    }
 }
 
-fn build_parent(date: &str, hash: &str, plan: &SessionPlan, session: &[NormalizedEvent], children: Vec<Intent>, max_evidence: usize) -> Intent {
+fn build_parent(
+    date: &str,
+    hash: &str,
+    plan: &SessionPlan,
+    session: &[NormalizedEvent],
+    children: Vec<Intent>,
+    max_evidence: usize,
+) -> Intent {
     let all: Vec<&NormalizedEvent> = session.iter().collect();
     Intent {
         id: intent_id(date, hash, &format!("session:{}", plan.index)),
@@ -416,10 +457,8 @@ pub async fn run(input: PipelineInput, deps: &PipelineDeps) -> PipelineResult {
         .enumerate()
         .map(|(index, range)| -> BoxFuture<'_, SessionPlan> { Box::pin(plan_session(index, range, &events, deps)) })
         .collect();
-    let plans: Vec<SessionPlan> = stream::iter(session_futures)
-        .buffered(config.session_concurrency.max(1))
-        .collect()
-        .await;
+    let plans: Vec<SessionPlan> =
+        stream::iter(session_futures).buffered(config.session_concurrency.max(1)).collect().await;
 
     // Stage 2: build children and label every cluster concurrently (bounded).
     let mut drafts: Vec<Vec<ChildDraft>> = Vec::with_capacity(plans.len());
@@ -472,13 +511,15 @@ pub async fn run(input: PipelineInput, deps: &PipelineDeps) -> PipelineResult {
                 for problem in validate_intent_tree(&parent) {
                     warnings.push(warning(WarningLevel::Error, format!("Intent tree invariant violated: {problem}")));
                 }
-                let features = build_safe_parent_features(&parent.children, &families, parent.tags.first().map(String::as_str));
+                let features =
+                    build_safe_parent_features(&parent.children, &families, parent.tags.first().map(String::as_str));
                 parents.push((roots.len(), parent, features));
                 roots.push(None);
             }
         }
     }
-    let parent_labels = label_all(deps, parents.iter().map(|(_, _, f)| f).collect(), LabelLevel::Parent, &mut fallbacks).await;
+    let parent_labels =
+        label_all(deps, parents.iter().map(|(_, _, f)| f).collect(), LabelLevel::Parent, &mut fallbacks).await;
     for ((slot, mut parent, _), label) in parents.into_iter().zip(parent_labels) {
         parent.label = label.label;
         parent.summary = label.summary;
@@ -517,10 +558,7 @@ async fn label_all(
             Box::pin(label_with_fallback(provider, &deps.fallback, features, level, deps.config.label_timeout))
         })
         .collect();
-    let results: Vec<_> = stream::iter(futures)
-        .buffered(deps.config.label_concurrency.max(1))
-        .collect()
-        .await;
+    let results: Vec<_> = stream::iter(futures).buffered(deps.config.label_concurrency.max(1)).collect().await;
     results
         .into_iter()
         .map(|(label, reason)| {
@@ -545,7 +583,13 @@ mod tests {
         let mut events = Vec::new();
         let mut ts = 1_000_000;
         for i in 0..4 {
-            events.push(raw(&format!("e{i}"), ts, "vscode", "document_change", json!({"path": "/p/a.py", "workspace": "/p"})));
+            events.push(raw(
+                &format!("e{i}"),
+                ts,
+                "vscode",
+                "document_change",
+                json!({"path": "/p/a.py", "workspace": "/p"}),
+            ));
             ts += 30;
         }
         events.push(raw("c0", ts, "shell", "command", json!({"cmd": "pytest", "cwd": "/p", "exit_code": 1})));
@@ -589,7 +633,12 @@ mod tests {
         let b = source_hash(&day(), &PipelineDeps::template_only());
         assert_ne!(a, b);
         let mut deps = parity_deps();
-        deps.label_provider = Arc::new(Slow { delay: Duration::ZERO, inflight: Default::default(), max: Default::default(), fail: false });
+        deps.label_provider = Arc::new(Slow {
+            delay: Duration::ZERO,
+            inflight: Default::default(),
+            max: Default::default(),
+            fail: false,
+        });
         assert_ne!(a, source_hash(&day(), &deps));
     }
 
@@ -621,16 +670,39 @@ mod tests {
         let mut events = Vec::new();
         for s in 0..6 {
             let base = 2_000_000 + s * 7200;
-            events.push(raw(&format!("s{s}a"), base, "vscode", "document_change", json!({"path": format!("/p{s}/a.py"), "workspace": format!("/p{s}")})));
-            events.push(raw(&format!("s{s}b"), base + 10, "vscode", "document_change", json!({"path": format!("/p{s}/a.py"), "workspace": format!("/p{s}")})));
-            events.push(raw(&format!("s{s}c"), base + 20, "shell", "command", json!({"cmd": "git status", "cwd": format!("/p{s}")})));
+            events.push(raw(
+                &format!("s{s}a"),
+                base,
+                "vscode",
+                "document_change",
+                json!({"path": format!("/p{s}/a.py"), "workspace": format!("/p{s}")}),
+            ));
+            events.push(raw(
+                &format!("s{s}b"),
+                base + 10,
+                "vscode",
+                "document_change",
+                json!({"path": format!("/p{s}/a.py"), "workspace": format!("/p{s}")}),
+            ));
+            events.push(raw(
+                &format!("s{s}c"),
+                base + 20,
+                "shell",
+                "command",
+                json!({"cmd": "git status", "cwd": format!("/p{s}")}),
+            ));
         }
         PipelineInput { date: "d".into(), events }
     }
 
     #[tokio::test]
     async fn labels_run_concurrently_but_bounded() {
-        let provider = Arc::new(Slow { delay: Duration::from_millis(40), inflight: Default::default(), max: Default::default(), fail: false });
+        let provider = Arc::new(Slow {
+            delay: Duration::from_millis(40),
+            inflight: Default::default(),
+            max: Default::default(),
+            fail: false,
+        });
         let mut deps = parity_deps();
         deps.label_provider = provider.clone();
         let started = std::time::Instant::now();
@@ -646,12 +718,18 @@ mod tests {
     async fn timeouts_and_errors_fall_back_to_template() {
         let mut deps = parity_deps();
         deps.config.label_timeout = Duration::from_millis(10);
-        deps.label_provider = Arc::new(Slow { delay: Duration::from_millis(200), inflight: Default::default(), max: Default::default(), fail: false });
+        deps.label_provider = Arc::new(Slow {
+            delay: Duration::from_millis(200),
+            inflight: Default::default(),
+            max: Default::default(),
+            fail: false,
+        });
         let result = run(day(), &deps).await;
         assert_eq!(result.intents[0].label, "Work on p");
         assert!(result.warnings.iter().any(|w| w.message.contains("template fallback")));
 
-        deps.label_provider = Arc::new(Slow { delay: Duration::ZERO, inflight: Default::default(), max: Default::default(), fail: true });
+        deps.label_provider =
+            Arc::new(Slow { delay: Duration::ZERO, inflight: Default::default(), max: Default::default(), fail: true });
         let result = run(day(), &deps).await;
         assert_eq!(result.intents[0].children[1].label, "Run Pytest");
     }
@@ -663,14 +741,22 @@ mod tests {
         fn cache_identity(&self) -> String {
             "refiner-test".into()
         }
-        async fn refine(&self, session: &[NormalizedEvent], _d: &[Vec<usize>]) -> Result<SemanticOutcome, SemanticFallback> {
+        async fn refine(
+            &self,
+            session: &[NormalizedEvent],
+            _d: &[Vec<usize>],
+        ) -> Result<SemanticOutcome, SemanticFallback> {
             match &self.0 {
                 Ok(o) if o.clusters.is_empty() => {
                     // One cluster per event: exercises the post-refinement cap.
                     Ok(SemanticOutcome {
                         clusters: (0..session.len()).map(|i| vec![i]).collect(),
                         semantics: (0..session.len())
-                            .map(|i| ClusterSemantics { confidence: Some(0.5 + i as f64 / 100.0), roles: [("task".to_owned(), 1)].into(), topic: Some("refunds".into()) })
+                            .map(|i| ClusterSemantics {
+                                confidence: Some(0.5 + i as f64 / 100.0),
+                                roles: [("task".to_owned(), 1)].into(),
+                                topic: Some("refunds".into()),
+                            })
                             .collect(),
                     })
                 }
@@ -714,7 +800,8 @@ mod tests {
 
     #[test]
     fn evidence_is_round_robin_capped_and_truncated() {
-        let a: Vec<ContextEvidence> = (0..50).map(|i| ContextEvidence { field: "a".into(), value: format!("{i}") }).collect();
+        let a: Vec<ContextEvidence> =
+            (0..50).map(|i| ContextEvidence { field: "a".into(), value: format!("{i}") }).collect();
         let b = vec![ContextEvidence { field: "b".into(), value: "x".repeat(1000) }];
         let out = capped_evidence([a.as_slice(), b.as_slice()], 40);
         assert_eq!(out.len(), 40);

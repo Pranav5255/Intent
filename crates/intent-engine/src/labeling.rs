@@ -20,7 +20,8 @@ pub const SAFE_FEATURE_POLICY_VERSION: &str = SAFE_INTENT_PRIVACY_POLICY_VERSION
 const LEGACY_POLICY_VERSION: &str = "safe-intent-features-v1";
 pub const TEMPLATE_IDENTITY: &str = "template-v3";
 
-const SAFE_BOUNDARY_REASONS: &[&str] = &["raw_event_content_omitted", "child_evidence_omitted", "untrusted_input_omitted"];
+const SAFE_BOUNDARY_REASONS: &[&str] =
+    &["raw_event_content_omitted", "child_evidence_omitted", "untrusted_input_omitted"];
 const MAX_DURATION: i64 = 86_400;
 const MAX_CHILDREN: i64 = 1_000;
 const MAX_EVENT_COUNT: i64 = 100_000;
@@ -160,10 +161,11 @@ pub fn build_safe_parent_features(
             topics.push(topic);
         }
     }
-    let command_families: Vec<String> = unique(child_command_families.iter().filter(|f| is_safe_command_family(f)).cloned())
-        .into_iter()
-        .take(MAX_FAMILIES)
-        .collect();
+    let command_families: Vec<String> =
+        unique(child_command_families.iter().filter(|f| is_safe_command_family(f)).cloned())
+            .into_iter()
+            .take(MAX_FAMILIES)
+            .collect();
     SafeIntentFeatures {
         policy_version: SAFE_FEATURE_POLICY_VERSION.into(),
         project_key: safe_project_key(project_tag),
@@ -173,7 +175,10 @@ pub fn build_safe_parent_features(
         file_names,
         dominant_family: counts.top().and_then(parse_family),
         semantic_topic: if topics.len() == 1 { topics.pop() } else { None },
-        event_counts: counts.keys().map(|k| (k.to_owned(), counts.count(k).min(MAX_EVENT_COUNT as usize) as i64)).collect(),
+        event_counts: counts
+            .keys()
+            .map(|k| (k.to_owned(), counts.count(k).min(MAX_EVENT_COUNT as usize) as i64))
+            .collect(),
         duration_seconds: duration.min(MAX_DURATION),
         child_count: (children.len() as i64).min(MAX_CHILDREN),
         boundary_reasons: vec!["child_evidence_omitted".into()],
@@ -190,10 +195,11 @@ pub fn sanitize_features(f: &SafeIntentFeatures) -> SafeIntentFeatures {
             ..Default::default()
         };
     }
-    let boundary_reasons: Vec<String> = unique(f.boundary_reasons.iter().filter(|r| SAFE_BOUNDARY_REASONS.contains(&r.as_str())).cloned())
-        .into_iter()
-        .take(4)
-        .collect();
+    let boundary_reasons: Vec<String> =
+        unique(f.boundary_reasons.iter().filter(|r| SAFE_BOUNDARY_REASONS.contains(&r.as_str())).cloned())
+            .into_iter()
+            .take(4)
+            .collect();
     SafeIntentFeatures {
         policy_version: SAFE_FEATURE_POLICY_VERSION.into(),
         project_key: safe_project_key(f.project_key.as_deref()),
@@ -214,7 +220,11 @@ pub fn sanitize_features(f: &SafeIntentFeatures) -> SafeIntentFeatures {
             .collect(),
         duration_seconds: f.duration_seconds.clamp(0, MAX_DURATION),
         child_count: f.child_count.clamp(0, MAX_CHILDREN),
-        boundary_reasons: if boundary_reasons.is_empty() { vec!["untrusted_input_omitted".into()] } else { boundary_reasons },
+        boundary_reasons: if boundary_reasons.is_empty() {
+            vec!["untrusted_input_omitted".into()]
+        } else {
+            boundary_reasons
+        },
     }
 }
 
@@ -664,10 +674,15 @@ mod tests {
         assert_eq!(ok.summary, "Fixed rounding. Then pushed.");
         assert_eq!(ok.confidence, 1.0);
 
-        let one_word = validate_label_result(LabelResult { label: "Debugging".into(), summary: "x".into(), confidence: 0.5 });
+        let one_word =
+            validate_label_result(LabelResult { label: "Debugging".into(), summary: "x".into(), confidence: 0.5 });
         assert_eq!(one_word.unwrap().summary, "x.");
 
-        let long = LabelResult { label: "one two three four five six seven eight".into(), summary: "s.".into(), confidence: 0.5 };
+        let long = LabelResult {
+            label: "one two three four five six seven eight".into(),
+            summary: "s.".into(),
+            confidence: 0.5,
+        };
         assert!(matches!(validate_label_result(long), Err(LabelRejection::LabelTooLong { words: 8, .. })));
         let empty = LabelResult { label: " ".into(), summary: "s.".into(), confidence: 0.5 };
         assert_eq!(validate_label_result(empty), Err(LabelRejection::EmptyLabel));
@@ -679,7 +694,10 @@ mod tests {
 
     #[test]
     fn sentence_split_matches_1x_rules() {
-        assert_eq!(split_sentences("Browsed docs.python.org and fixed it."), vec!["Browsed docs.python.org and fixed it."]);
+        assert_eq!(
+            split_sentences("Browsed docs.python.org and fixed it."),
+            vec!["Browsed docs.python.org and fixed it."]
+        );
         assert_eq!(split_sentences("A b. C d! e"), vec!["A b.", "C d!", "e"]);
         assert_eq!(split_sentences("v1.2. ok"), vec!["v1.2. ok"]);
         assert!(split_sentences("").is_empty());
@@ -703,7 +721,10 @@ mod tests {
         assert_eq!(r.label, "Research python.org");
 
         let s = seq(vec![focus("a", 0, "x")]);
-        assert_eq!(t.label_sync(&build_safe_cluster_features(&refs(&s), None, None), LabelLevel::Cluster).label, "Work Session");
+        assert_eq!(
+            t.label_sync(&build_safe_cluster_features(&refs(&s), None, None), LabelLevel::Cluster).label,
+            "Work Session"
+        );
     }
 
     #[test]

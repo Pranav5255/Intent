@@ -17,39 +17,15 @@ pub const EVENT_PAYLOAD_FIELDS: &[((&str, &str), &[&str])] = &[
     (("linux", "idle_end"), &[]),
     (("firefox", "tab_change"), &["url", "title"]),
     (("firefox", "tab_close"), &["url"]),
-    (
-        ("firefox", "user_action"),
-        &[
-            "url",
-            "tab_id",
-            "window_id",
-            "action",
-            "target",
-            "sensitive_page",
-        ],
-    ),
+    (("firefox", "user_action"), &["url", "tab_id", "window_id", "action", "target", "sensitive_page"]),
     (("vscode", "workspace_open"), &["folder"]),
     (("vscode", "file_open"), &["path"]),
     (("vscode", "file_edit"), &["path"]),
     (("vscode", "file_save"), &["path"]),
-    (
-        ("vscode", "document_change"),
-        &["path", "workspace", "changes"],
-    ),
+    (("vscode", "document_change"), &["path", "workspace", "changes"]),
     (("filesystem", "file_modify"), &["path", "workspace"]),
     (("filesystem", "workspace_seen"), &["workspace"]),
-    (
-        ("filesystem", "file_content"),
-        &[
-            "path",
-            "workspace",
-            "kind",
-            "mime",
-            "size_bytes",
-            "sha256",
-            "excerpt",
-        ],
-    ),
+    (("filesystem", "file_content"), &["path", "workspace", "kind", "mime", "size_bytes", "sha256", "excerpt"]),
     (("shell", "command"), &["cmd", "cwd", "exit_code"]),
 ];
 
@@ -106,10 +82,7 @@ fn lax_int<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> 
                 _ => Err(D::Error::custom("value is not a valid integer")),
             }
         }
-        Value::String(text) => text
-            .trim()
-            .parse::<i64>()
-            .map_err(|_| D::Error::custom("value is not a valid integer")),
+        Value::String(text) => text.trim().parse::<i64>().map_err(|_| D::Error::custom("value is not a valid integer")),
         _ => Err(D::Error::custom("value is not a valid integer")),
     }
 }
@@ -122,9 +95,7 @@ pub struct ValidationError {
 
 impl ValidationError {
     pub fn new(message: impl Into<String>) -> Self {
-        ValidationError {
-            message: message.into(),
-        }
+        ValidationError { message: message.into() }
     }
 }
 
@@ -144,10 +115,7 @@ fn fail<T>(message: impl Into<String>) -> Result<T, ValidationError> {
 
 /// Required payload fields for a supported event kind.
 pub fn required_fields(source: &str, kind: &str) -> Option<&'static [&'static str]> {
-    EVENT_PAYLOAD_FIELDS
-        .iter()
-        .find(|((s, k), _)| *s == source && *k == kind)
-        .map(|(_, fields)| *fields)
+    EVENT_PAYLOAD_FIELDS.iter().find(|((s, k), _)| *s == source && *k == kind).map(|(_, fields)| *fields)
 }
 
 /// Validate and normalise a posted event into the stored shape.
@@ -155,8 +123,7 @@ pub fn required_fields(source: &str, kind: &str) -> Option<&'static [&'static st
 /// `source`/`type` are trimmed and lower-cased; `id` is canonicalised to the
 /// hyphenated lower-case UUID form.
 pub fn validate_event(event: EventIn) -> Result<RawEvent, ValidationError> {
-    let id = Uuid::try_parse(event.id.trim())
-        .map_err(|_| ValidationError::new("id must be a valid UUID"))?;
+    let id = Uuid::try_parse(event.id.trim()).map_err(|_| ValidationError::new("id must be a valid UUID"))?;
     if !(1..=99).contains(&event.schema_version) {
         return fail("schema_version must be between 1 and 99");
     }
@@ -188,25 +155,12 @@ pub fn validate_event(event: EventIn) -> Result<RawEvent, ValidationError> {
 /// Validate a payload for an already-normalised `(source, kind)`.
 pub fn validate_payload(source: &str, kind: &str, payload: &Payload) -> VResult {
     let Some(required) = required_fields(source, kind) else {
-        let supported: Vec<String> = EVENT_PAYLOAD_FIELDS
-            .iter()
-            .map(|((s, k), _)| format!("{s}/{k}"))
-            .collect();
-        return fail(format!(
-            "unsupported event kind {source}/{kind}; supported: {}",
-            supported.join(", ")
-        ));
+        let supported: Vec<String> = EVENT_PAYLOAD_FIELDS.iter().map(|((s, k), _)| format!("{s}/{k}")).collect();
+        return fail(format!("unsupported event kind {source}/{kind}; supported: {}", supported.join(", ")));
     };
-    let missing: Vec<&str> = required
-        .iter()
-        .copied()
-        .filter(|field| !payload.contains_key(*field))
-        .collect();
+    let missing: Vec<&str> = required.iter().copied().filter(|field| !payload.contains_key(*field)).collect();
     if !missing.is_empty() {
-        return fail(format!(
-            "payload missing required fields: {}",
-            missing.join(", ")
-        ));
+        return fail(format!("payload missing required fields: {}", missing.join(", ")));
     }
     for field in required {
         if payload[*field].is_null() {
@@ -242,9 +196,7 @@ fn bounded_string(value: Option<&Value>, field: &str, maximum: usize) -> VResult
     match value {
         Some(Value::String(text)) if !text.is_empty() => {
             if text.chars().count() > maximum {
-                fail(format!(
-                    "payload {field} must be at most {maximum} characters"
-                ))
+                fail(format!("payload {field} must be at most {maximum} characters"))
             } else {
                 Ok(())
             }
@@ -266,9 +218,7 @@ fn position(value: Option<&Value>, field: &str) -> VResult {
         return fail(format!("payload {field} must contain line and character"));
     }
     if !object.values().all(|item| is_non_negative_int(Some(item))) {
-        return fail(format!(
-            "payload {field} coordinates must be non-negative integers"
-        ));
+        return fail(format!("payload {field} coordinates must be non-negative integers"));
     }
     Ok(())
 }
@@ -289,9 +239,7 @@ fn validate_document_change(payload: &Payload) -> VResult {
     let changes = match payload.get("changes") {
         Some(Value::Array(items)) if (1..=MAX_DOCUMENT_CHANGES).contains(&items.len()) => items,
         _ => {
-            return fail(format!(
-                "payload changes must contain 1 to {MAX_DOCUMENT_CHANGES} items"
-            ));
+            return fail(format!("payload changes must contain 1 to {MAX_DOCUMENT_CHANGES} items"));
         }
     };
     let mut total_bytes = 0usize;
@@ -300,14 +248,7 @@ fn validate_document_change(payload: &Payload) -> VResult {
             return fail(format!("payload changes[{index}] must be an object"));
         };
         let required = ["kind", "range", "removed_characters"];
-        let allowed = [
-            "kind",
-            "range",
-            "removed_characters",
-            "text",
-            "text_length",
-            "redacted",
-        ];
+        let allowed = ["kind", "range", "removed_characters", "text", "text_length", "redacted"];
         if !required.iter().all(|key| change.contains_key(*key)) || !has_only(change, &allowed) {
             return fail(format!("payload changes[{index}] has invalid fields"));
         }
@@ -318,24 +259,18 @@ fn validate_document_change(payload: &Payload) -> VResult {
         let range = match change.get("range") {
             Some(Value::Object(range)) if keys_exactly(range, &["start", "end"]) => range,
             _ => {
-                return fail(format!(
-                    "payload changes[{index}].range must contain start and end"
-                ));
+                return fail(format!("payload changes[{index}].range must contain start and end"));
             }
         };
         position(range.get("start"), &format!("changes[{index}].range.start"))?;
         position(range.get("end"), &format!("changes[{index}].range.end"))?;
         if !is_non_negative_int(change.get("removed_characters")) {
-            return fail(format!(
-                "payload changes[{index}].removed_characters must be a non-negative integer"
-            ));
+            return fail(format!("payload changes[{index}].removed_characters must be a non-negative integer"));
         }
         // An explicit `"text": null` is treated like an absent text (1.x `dict.get`).
         let text = change.get("text").filter(|value| !value.is_null());
         if matches!(kind, Some("insert" | "replace")) && !matches!(text, Some(Value::String(_))) {
-            return fail(format!(
-                "payload changes[{index}].text is required for insert and replace"
-            ));
+            return fail(format!("payload changes[{index}].text is required for insert and replace"));
         }
         match text {
             Some(Value::String(text)) => total_bytes += text.len(),
@@ -343,52 +278,28 @@ fn validate_document_change(payload: &Payload) -> VResult {
             None => {}
         }
         if change.contains_key("text_length") && !is_non_negative_int(change.get("text_length")) {
-            return fail(format!(
-                "payload changes[{index}].text_length must be a non-negative integer"
-            ));
+            return fail(format!("payload changes[{index}].text_length must be a non-negative integer"));
         }
-        if change.contains_key("redacted")
-            && !matches!(change.get("redacted"), Some(Value::Bool(_)))
-        {
-            return fail(format!(
-                "payload changes[{index}].redacted must be a boolean"
-            ));
+        if change.contains_key("redacted") && !matches!(change.get("redacted"), Some(Value::Bool(_))) {
+            return fail(format!("payload changes[{index}].redacted must be a boolean"));
         }
     }
     if total_bytes > MAX_DOCUMENT_TEXT_BYTES {
-        return fail(format!(
-            "payload changes text must be at most {MAX_DOCUMENT_TEXT_BYTES} bytes"
-        ));
+        return fail(format!("payload changes text must be at most {MAX_DOCUMENT_TEXT_BYTES} bytes"));
     }
     Ok(())
 }
 
-fn optional_bounded_target_field(
-    target: &Map<String, Value>,
-    field: &str,
-    maximum: usize,
-) -> VResult {
+fn optional_bounded_target_field(target: &Map<String, Value>, field: &str, maximum: usize) -> VResult {
     match target.get(field) {
         None => Ok(()),
         Some(Value::String(text)) if text.chars().count() <= maximum => Ok(()),
-        Some(_) => fail(format!(
-            "payload target.{field} must be a string of at most {maximum} characters"
-        )),
+        Some(_) => fail(format!("payload target.{field} must be a string of at most {maximum} characters")),
     }
 }
 
 fn validate_user_action(payload: &Payload) -> VResult {
-    let allowed = [
-        "url",
-        "tab_id",
-        "window_id",
-        "action",
-        "target",
-        "sensitive_page",
-        "scroll",
-        "context",
-        "blocked",
-    ];
+    let allowed = ["url", "tab_id", "window_id", "action", "target", "sensitive_page", "scroll", "context", "blocked"];
     if !has_only(payload, &allowed) {
         return fail("user_action payload contains unsupported fields");
     }
@@ -399,10 +310,7 @@ fn validate_user_action(payload: &Payload) -> VResult {
     if !is_non_negative_int(payload.get("window_id")) {
         return fail("payload window_id must be a non-negative integer");
     }
-    let action = payload
-        .get("action")
-        .and_then(Value::as_str)
-        .filter(|action| USER_ACTIONS.contains(action));
+    let action = payload.get("action").and_then(Value::as_str).filter(|action| USER_ACTIONS.contains(action));
     let Some(action) = action else {
         return fail("payload action is invalid");
     };
@@ -413,17 +321,10 @@ fn validate_user_action(payload: &Payload) -> VResult {
         return fail("payload blocked must be a boolean");
     }
     let target = match payload.get("target") {
-        Some(Value::Object(target))
-            if target.contains_key("tag") && target.contains_key("role") =>
-        {
-            target
-        }
+        Some(Value::Object(target)) if target.contains_key("tag") && target.contains_key("role") => target,
         _ => return fail("payload target must contain tag and role"),
     };
-    if !has_only(
-        target,
-        &["tag", "role", "label", "input_type", "href", "checked"],
-    ) {
+    if !has_only(target, &["tag", "role", "label", "input_type", "href", "checked"]) {
         return fail("payload target contains unsupported fields");
     }
     bounded_string(target.get("tag"), "target.tag", 64)?;
@@ -455,24 +356,14 @@ fn validate_user_action(payload: &Payload) -> VResult {
             return fail("scroll target must be the document");
         }
         let scroll = match payload.get("scroll") {
-            Some(Value::Object(scroll))
-                if keys_exactly(scroll, &["direction", "position_bucket"]) =>
-            {
-                scroll
-            }
+            Some(Value::Object(scroll)) if keys_exactly(scroll, &["direction", "position_bucket"]) => scroll,
             _ => return fail("payload scroll must contain direction and position_bucket"),
         };
-        if !matches!(
-            scroll.get("direction").and_then(Value::as_str),
-            Some("up" | "down")
-        ) {
+        if !matches!(scroll.get("direction").and_then(Value::as_str), Some("up" | "down")) {
             return fail("payload scroll.direction is invalid");
         }
         let bucket_ok = is_non_negative_int(scroll.get("position_bucket"))
-            && scroll
-                .get("position_bucket")
-                .and_then(Value::as_u64)
-                .is_some_and(|bucket| bucket <= 10);
+            && scroll.get("position_bucket").and_then(Value::as_u64).is_some_and(|bucket| bucket <= 10);
         if !bucket_ok {
             return fail("payload scroll.position_bucket must be an integer from 0 to 10");
         }
@@ -490,9 +381,7 @@ fn validate_user_action(payload: &Payload) -> VResult {
     }
     if let Some(context) = payload.get("context") {
         let context = match context {
-            Value::Object(context) if has_only(context, &["kind", "author", "text_excerpt"]) => {
-                context
-            }
+            Value::Object(context) if has_only(context, &["kind", "author", "text_excerpt"]) => context,
             _ => return fail("payload context has invalid fields"),
         };
         bounded_string(context.get("kind"), "context.kind", 32)?;
@@ -505,33 +394,16 @@ fn validate_user_action(payload: &Payload) -> VResult {
 }
 
 fn validate_file_content(payload: &Payload) -> VResult {
-    let allowed = [
-        "path",
-        "workspace",
-        "kind",
-        "mime",
-        "size_bytes",
-        "sha256",
-        "excerpt",
-    ];
+    let allowed = ["path", "workspace", "kind", "mime", "size_bytes", "sha256", "excerpt"];
     if !has_only(payload, &allowed) {
         return fail("file_content payload contains unsupported fields");
     }
-    for (field, maximum) in [
-        ("path", 4096),
-        ("workspace", 4096),
-        ("kind", 16),
-        ("mime", 128),
-        ("sha256", 64),
-        ("excerpt", 4000),
-    ] {
+    for (field, maximum) in
+        [("path", 4096), ("workspace", 4096), ("kind", 16), ("mime", 128), ("sha256", 64), ("excerpt", 4000)]
+    {
         bounded_string(payload.get(field), field, maximum)?;
     }
-    if !payload
-        .get("kind")
-        .and_then(Value::as_str)
-        .is_some_and(|kind| FILE_CONTENT_KINDS.contains(&kind))
-    {
+    if !payload.get("kind").and_then(Value::as_str).is_some_and(|kind| FILE_CONTENT_KINDS.contains(&kind)) {
         return fail("file_content payload kind is invalid");
     }
     if !is_non_negative_int(payload.get("size_bytes")) {
@@ -571,9 +443,7 @@ mod tests {
     }
 
     fn err(source: &str, kind: &str, payload: Value) -> String {
-        validate_event(event(source, kind, payload))
-            .unwrap_err()
-            .message
+        validate_event(event(source, kind, payload)).unwrap_err().message
     }
 
     fn ok(source: &str, kind: &str, payload: Value) -> RawEvent {
@@ -608,10 +478,7 @@ mod tests {
         e.id = "{2f1c1c1e-6c3a-4c1e-9d6e-6f1f2a3b4c5d}".into();
         assert_eq!(validate_event(e.clone()).unwrap().id, ID);
         e.id = "not-a-uuid".into();
-        assert_eq!(
-            validate_event(e).unwrap_err().message,
-            "id must be a valid UUID"
-        );
+        assert_eq!(validate_event(e).unwrap_err().message, "id must be a valid UUID");
     }
 
     #[test]
@@ -629,84 +496,42 @@ mod tests {
         e.ts = 0;
         assert!(validate_event(e.clone()).is_ok());
         e.ts = -1;
-        assert!(
-            validate_event(e)
-                .unwrap_err()
-                .message
-                .starts_with("ts must be")
-        );
+        assert!(validate_event(e).unwrap_err().message.starts_with("ts must be"));
     }
 
     #[test]
     fn source_and_type_lengths_and_normalisation() {
         let raw = ok(" Linux ", "IDLE_START", json!({}));
-        assert_eq!(
-            (raw.source.as_str(), raw.kind.as_str()),
-            ("linux", "idle_start")
-        );
-        assert_eq!(
-            err("", "idle_start", json!({})),
-            "source must be 1 to 32 characters"
-        );
-        assert_eq!(
-            err(&"a".repeat(33), "x", json!({})),
-            "source must be 1 to 32 characters"
-        );
-        assert_eq!(
-            err("linux", "", json!({})),
-            "type must be 1 to 64 characters"
-        );
-        assert_eq!(
-            err("linux", &"a".repeat(65), json!({})),
-            "type must be 1 to 64 characters"
-        );
-        assert!(
-            err(&"a".repeat(32), &"b".repeat(64), json!({})).starts_with("unsupported event kind")
-        );
+        assert_eq!((raw.source.as_str(), raw.kind.as_str()), ("linux", "idle_start"));
+        assert_eq!(err("", "idle_start", json!({})), "source must be 1 to 32 characters");
+        assert_eq!(err(&"a".repeat(33), "x", json!({})), "source must be 1 to 32 characters");
+        assert_eq!(err("linux", "", json!({})), "type must be 1 to 64 characters");
+        assert_eq!(err("linux", &"a".repeat(65), json!({})), "type must be 1 to 64 characters");
+        assert!(err(&"a".repeat(32), &"b".repeat(64), json!({})).starts_with("unsupported event kind"));
     }
 
     #[test]
     fn unsupported_kind_lists_supported() {
         let message = err("chrome", "tab_change", json!({}));
-        assert!(message.starts_with(
-            "unsupported event kind chrome/tab_change; supported: linux/app_focus, linux/idle_start"
-        ));
+        assert!(
+            message
+                .starts_with("unsupported event kind chrome/tab_change; supported: linux/app_focus, linux/idle_start")
+        );
         assert!(message.ends_with("shell/command"));
     }
 
     #[test]
     fn required_and_null_fields() {
-        assert_eq!(
-            err("linux", "app_focus", json!({"app": "x"})),
-            "payload missing required fields: title"
-        );
-        assert_eq!(
-            err("linux", "app_focus", json!({})),
-            "payload missing required fields: app, title"
-        );
-        assert_eq!(
-            err("linux", "app_focus", json!({"app": null, "title": "t"})),
-            "payload field app cannot be null"
-        );
-        let raw = ok(
-            "linux",
-            "app_focus",
-            json!({"app": "x", "title": "", "extra": 1}),
-        );
+        assert_eq!(err("linux", "app_focus", json!({"app": "x"})), "payload missing required fields: title");
+        assert_eq!(err("linux", "app_focus", json!({})), "payload missing required fields: app, title");
+        assert_eq!(err("linux", "app_focus", json!({"app": null, "title": "t"})), "payload field app cannot be null");
+        let raw = ok("linux", "app_focus", json!({"app": "x", "title": "", "extra": 1}));
         assert_eq!(raw.payload["extra"], 1);
-        ok(
-            "firefox",
-            "tab_change",
-            json!({"url": "https://a/", "title": "t"}),
-        );
+        ok("firefox", "tab_change", json!({"url": "https://a/", "title": "t"}));
         ok("firefox", "tab_close", json!({"url": "https://a/"}));
         ok("vscode", "workspace_open", json!({"folder": "/w"}));
         ok("vscode", "file_save", json!({"path": "/w/a"}));
-        ok(
-            "filesystem",
-            "file_modify",
-            json!({"path": "/w/a", "workspace": "/w"}),
-        );
+        ok("filesystem", "file_modify", json!({"path": "/w/a", "workspace": "/w"}));
         ok("filesystem", "workspace_seen", json!({"workspace": "/w"}));
     }
 
@@ -722,25 +547,13 @@ mod tests {
 
     #[test]
     fn shell_command_requires_string_cmd_and_cwd() {
-        ok(
-            "shell",
-            "command",
-            json!({"cmd": "ls", "cwd": "/", "exit_code": 0, "duration_ms": 3}),
-        );
+        ok("shell", "command", json!({"cmd": "ls", "cwd": "/", "exit_code": 0, "duration_ms": 3}));
         assert_eq!(
-            err(
-                "shell",
-                "command",
-                json!({"cmd": ["ls"], "cwd": "/", "exit_code": 0})
-            ),
+            err("shell", "command", json!({"cmd": ["ls"], "cwd": "/", "exit_code": 0})),
             "payload cmd must be a string"
         );
         assert_eq!(
-            err(
-                "shell",
-                "command",
-                json!({"cmd": "ls", "cwd": 1, "exit_code": 0})
-            ),
+            err("shell", "command", json!({"cmd": "ls", "cwd": 1, "exit_code": 0})),
             "payload cwd must be a string"
         );
     }
@@ -772,11 +585,7 @@ mod tests {
         ok(
             "vscode",
             "document_change",
-            doc(vec![
-                change("insert", Some("x")),
-                change("delete", None),
-                change("replace", Some("")),
-            ]),
+            doc(vec![change("insert", Some("x")), change("delete", None), change("replace", Some(""))]),
         );
         let mut c = change("insert", Some("x"));
         c["text_length"] = json!(1);
@@ -791,34 +600,19 @@ mod tests {
     fn document_change_payload_fields() {
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload["extra"] = json!(1);
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "document_change payload contains unsupported fields"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "document_change payload contains unsupported fields");
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload["path"] = json!("");
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "payload path must be a non-empty string"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "payload path must be a non-empty string");
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload["path"] = json!("a".repeat(4097));
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "payload path must be at most 4096 characters"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "payload path must be at most 4096 characters");
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload["workspace"] = json!(5);
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "payload workspace must be a non-empty string"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "payload workspace must be a non-empty string");
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload["language"] = json!("l".repeat(65));
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "payload language must be at most 64 characters"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "payload language must be at most 64 characters");
         let mut payload = doc(vec![change("insert", Some("x"))]);
         payload.as_object_mut().unwrap().remove("language");
         ok("vscode", "document_change", payload);
@@ -826,86 +620,43 @@ mod tests {
 
     #[test]
     fn document_change_counts() {
-        assert_eq!(
-            doc_err(vec![]),
-            "payload changes must contain 1 to 25 items"
-        );
-        assert_eq!(
-            doc_err(vec![change("delete", None); 26]),
-            "payload changes must contain 1 to 25 items"
-        );
-        ok(
-            "vscode",
-            "document_change",
-            doc(vec![change("delete", None); 25]),
-        );
+        assert_eq!(doc_err(vec![]), "payload changes must contain 1 to 25 items");
+        assert_eq!(doc_err(vec![change("delete", None); 26]), "payload changes must contain 1 to 25 items");
+        ok("vscode", "document_change", doc(vec![change("delete", None); 25]));
         let mut payload = doc(vec![]);
         payload["changes"] = json!({"kind": "insert"});
-        assert_eq!(
-            err("vscode", "document_change", payload),
-            "payload changes must contain 1 to 25 items"
-        );
+        assert_eq!(err("vscode", "document_change", payload), "payload changes must contain 1 to 25 items");
     }
 
     #[test]
     fn document_change_items() {
-        assert_eq!(
-            doc_err(vec![json!("x")]),
-            "payload changes[0] must be an object"
-        );
+        assert_eq!(doc_err(vec![json!("x")]), "payload changes[0] must be an object");
         let mut c = change("insert", Some("x"));
         c.as_object_mut().unwrap().remove("range");
         assert_eq!(doc_err(vec![c]), "payload changes[0] has invalid fields");
         let mut c = change("insert", Some("x"));
         c["other"] = json!(1);
-        assert_eq!(
-            doc_err(vec![change("delete", None), c]),
-            "payload changes[1] has invalid fields"
-        );
-        assert_eq!(
-            doc_err(vec![change("move", None)]),
-            "payload changes[0].kind is invalid"
-        );
+        assert_eq!(doc_err(vec![change("delete", None), c]), "payload changes[1] has invalid fields");
+        assert_eq!(doc_err(vec![change("move", None)]), "payload changes[0].kind is invalid");
         let mut c = change("insert", Some("x"));
         c["range"] = json!({"start": {"line": 0, "character": 0}});
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].range must contain start and end"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].range must contain start and end");
         let mut c = change("insert", Some("x"));
         c["range"]["start"] = json!({"line": 0});
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].range.start must contain line and character"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].range.start must contain line and character");
         let mut c = change("insert", Some("x"));
         c["range"]["end"] = json!({"line": -1, "character": 0});
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].range.end coordinates must be non-negative integers"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].range.end coordinates must be non-negative integers");
         let mut c = change("insert", Some("x"));
         c["range"]["end"] = json!({"line": 1.0, "character": 0});
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].range.end coordinates must be non-negative integers"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].range.end coordinates must be non-negative integers");
         let mut c = change("insert", Some("x"));
         c["range"]["end"] = json!({"line": true, "character": 0});
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].range.end coordinates must be non-negative integers"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].range.end coordinates must be non-negative integers");
         let mut c = change("insert", Some("x"));
         c["removed_characters"] = json!(-1);
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].removed_characters must be a non-negative integer"
-        );
-        assert_eq!(
-            doc_err(vec![change("insert", None)]),
-            "payload changes[0].text is required for insert and replace"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].removed_characters must be a non-negative integer");
+        assert_eq!(doc_err(vec![change("insert", None)]), "payload changes[0].text is required for insert and replace");
         assert_eq!(
             doc_err(vec![change("replace", None)]),
             "payload changes[0].text is required for insert and replace"
@@ -915,35 +666,18 @@ mod tests {
         assert_eq!(doc_err(vec![c]), "payload changes[0].text must be a string");
         let mut c = change("insert", Some("x"));
         c["text_length"] = json!("1");
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].text_length must be a non-negative integer"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].text_length must be a non-negative integer");
         let mut c = change("insert", Some("x"));
         c["redacted"] = json!(1);
-        assert_eq!(
-            doc_err(vec![c]),
-            "payload changes[0].redacted must be a boolean"
-        );
+        assert_eq!(doc_err(vec![c]), "payload changes[0].redacted must be a boolean");
     }
 
     #[test]
     fn document_change_text_byte_limit() {
         let half = "é".repeat(2048); // 4096 bytes
-        ok(
-            "vscode",
-            "document_change",
-            doc(vec![
-                change("insert", Some(&half)),
-                change("insert", Some(&half)),
-            ]),
-        );
+        ok("vscode", "document_change", doc(vec![change("insert", Some(&half)), change("insert", Some(&half))]));
         assert_eq!(
-            doc_err(vec![
-                change("insert", Some(&half)),
-                change("insert", Some(&half)),
-                change("insert", Some("x"))
-            ]),
+            doc_err(vec![change("insert", Some(&half)), change("insert", Some(&half)), change("insert", Some("x"))]),
             "payload changes text must be at most 8192 bytes"
         );
     }
@@ -994,10 +728,7 @@ mod tests {
             assert_eq!(ua_err(p), "payload tab_id must be a non-negative integer");
             let mut p = action("click");
             p["window_id"] = bad;
-            assert_eq!(
-                ua_err(p),
-                "payload window_id must be a non-negative integer"
-            );
+            assert_eq!(ua_err(p), "payload window_id must be a non-negative integer");
         }
         assert_eq!(ua_err(action("hover")), "payload action is invalid");
         let mut p = action("click");
@@ -1027,35 +758,20 @@ mod tests {
         assert_eq!(ua_err(p), "payload target.tag must be a non-empty string");
         let mut p = action("click");
         p["target"] = json!({"tag": "t".repeat(65), "role": ""});
-        assert_eq!(
-            ua_err(p),
-            "payload target.tag must be at most 64 characters"
-        );
+        assert_eq!(ua_err(p), "payload target.tag must be at most 64 characters");
         let mut p = action("click");
         p["target"] = json!({"tag": "a", "role": "r".repeat(65)});
-        assert_eq!(
-            ua_err(p),
-            "payload target.role must be a string of at most 64 characters"
-        );
+        assert_eq!(ua_err(p), "payload target.role must be a string of at most 64 characters");
         let mut p = action("click");
         p["target"] = json!({"tag": "a", "role": null});
-        assert_eq!(
-            ua_err(p),
-            "payload target.role must be a string of at most 64 characters"
-        );
+        assert_eq!(ua_err(p), "payload target.role must be a string of at most 64 characters");
         for (field, max) in [("label", 160), ("input_type", 64), ("href", 4096)] {
             let mut p = action("click");
             p["target"][field] = json!("x".repeat(max + 1));
-            assert_eq!(
-                ua_err(p),
-                format!("payload target.{field} must be a string of at most {max} characters")
-            );
+            assert_eq!(ua_err(p), format!("payload target.{field} must be a string of at most {max} characters"));
             let mut p = action("click");
             p["target"][field] = json!(1);
-            assert_eq!(
-                ua_err(p),
-                format!("payload target.{field} must be a string of at most {max} characters")
-            );
+            assert_eq!(ua_err(p), format!("payload target.{field} must be a string of at most {max} characters"));
         }
         let mut p = action("click");
         p["target"]["checked"] = json!("yes");
@@ -1071,22 +787,13 @@ mod tests {
         p["action"] = json!("form_submit");
         ok("firefox", "user_action", p.clone());
         p["action"] = json!("toggle");
-        assert_eq!(
-            ua_err(p.clone()),
-            "sensitive-page actions must be click or form_submit"
-        );
+        assert_eq!(ua_err(p.clone()), "sensitive-page actions must be click or form_submit");
         p["action"] = json!("click");
         p["target"]["label"] = json!("Password");
-        assert_eq!(
-            ua_err(p.clone()),
-            "sensitive-page targets may contain only tag and role"
-        );
+        assert_eq!(ua_err(p.clone()), "sensitive-page targets may contain only tag and role");
         p["target"] = json!({"tag": "input", "role": "textbox"});
         p["context"] = json!({"kind": "k", "text_excerpt": "t"});
-        assert_eq!(
-            ua_err(p.clone()),
-            "sensitive-page payload may not include context"
-        );
+        assert_eq!(ua_err(p.clone()), "sensitive-page payload may not include context");
         p.as_object_mut().unwrap().remove("context");
         p["scroll"] = json!({"direction": "up", "position_bucket": 1});
         assert_eq!(ua_err(p), "payload scroll is valid only for scroll actions");
@@ -1110,26 +817,17 @@ mod tests {
         assert_eq!(ua_err(p), "scroll target must be the document");
         let mut p = scroll();
         p.as_object_mut().unwrap().remove("scroll");
-        assert_eq!(
-            ua_err(p),
-            "payload scroll must contain direction and position_bucket"
-        );
+        assert_eq!(ua_err(p), "payload scroll must contain direction and position_bucket");
         let mut p = scroll();
         p["scroll"]["extra"] = json!(1);
-        assert_eq!(
-            ua_err(p),
-            "payload scroll must contain direction and position_bucket"
-        );
+        assert_eq!(ua_err(p), "payload scroll must contain direction and position_bucket");
         let mut p = scroll();
         p["scroll"]["direction"] = json!("left");
         assert_eq!(ua_err(p), "payload scroll.direction is invalid");
         for bad in [json!(11), json!(-1), json!(1.0), json!(true)] {
             let mut p = scroll();
             p["scroll"]["position_bucket"] = bad;
-            assert_eq!(
-                ua_err(p),
-                "payload scroll.position_bucket must be an integer from 0 to 10"
-            );
+            assert_eq!(ua_err(p), "payload scroll.position_bucket must be an integer from 0 to 10");
         }
         let mut p = scroll();
         p["scroll"]["position_bucket"] = json!(0);
@@ -1149,47 +847,30 @@ mod tests {
             p["context"] = context;
             p
         };
-        assert_eq!(
-            ua_err(with(json!("x"))),
-            "payload context has invalid fields"
-        );
+        assert_eq!(ua_err(with(json!("x"))), "payload context has invalid fields");
         assert_eq!(
             ua_err(with(json!({"kind": "k", "text_excerpt": "t", "x": 1}))),
             "payload context has invalid fields"
         );
-        assert_eq!(
-            ua_err(with(json!({"text_excerpt": "t"}))),
-            "payload context.kind must be a non-empty string"
-        );
+        assert_eq!(ua_err(with(json!({"text_excerpt": "t"}))), "payload context.kind must be a non-empty string");
         assert_eq!(
             ua_err(with(json!({"kind": "k".repeat(33), "text_excerpt": "t"}))),
             "payload context.kind must be at most 32 characters"
         );
         assert_eq!(
-            ua_err(with(
-                json!({"kind": "k", "author": "", "text_excerpt": "t"})
-            )),
+            ua_err(with(json!({"kind": "k", "author": "", "text_excerpt": "t"}))),
             "payload context.author must be a non-empty string"
         );
         assert_eq!(
-            ua_err(with(
-                json!({"kind": "k", "author": "a".repeat(161), "text_excerpt": "t"})
-            )),
+            ua_err(with(json!({"kind": "k", "author": "a".repeat(161), "text_excerpt": "t"}))),
             "payload context.author must be at most 160 characters"
         );
-        assert_eq!(
-            ua_err(with(json!({"kind": "k"}))),
-            "payload context.text_excerpt must be a non-empty string"
-        );
+        assert_eq!(ua_err(with(json!({"kind": "k"}))), "payload context.text_excerpt must be a non-empty string");
         assert_eq!(
             ua_err(with(json!({"kind": "k", "text_excerpt": "t".repeat(1001)}))),
             "payload context.text_excerpt must be at most 1000 characters"
         );
-        ok(
-            "firefox",
-            "user_action",
-            with(json!({"kind": "k", "text_excerpt": "t".repeat(1000)})),
-        );
+        ok("firefox", "user_action", with(json!({"kind": "k", "text_excerpt": "t".repeat(1000)})));
     }
 
     // ---- file_content -----------------------------------------------------
@@ -1216,18 +897,10 @@ mod tests {
         }
         let mut p = content();
         p["extra"] = json!(1);
-        assert_eq!(
-            err("filesystem", "file_content", p),
-            "file_content payload contains unsupported fields"
-        );
-        for (field, max) in [
-            ("path", 4096),
-            ("workspace", 4096),
-            ("kind", 16),
-            ("mime", 128),
-            ("sha256", 64),
-            ("excerpt", 4000),
-        ] {
+        assert_eq!(err("filesystem", "file_content", p), "file_content payload contains unsupported fields");
+        for (field, max) in
+            [("path", 4096), ("workspace", 4096), ("kind", 16), ("mime", 128), ("sha256", 64), ("excerpt", 4000)]
+        {
             let mut p = content();
             p[field] = json!("x".repeat(max + 1));
             assert_eq!(
@@ -1236,17 +909,11 @@ mod tests {
             );
             let mut p = content();
             p[field] = json!("");
-            assert_eq!(
-                err("filesystem", "file_content", p),
-                format!("payload {field} must be a non-empty string")
-            );
+            assert_eq!(err("filesystem", "file_content", p), format!("payload {field} must be a non-empty string"));
         }
         let mut p = content();
         p["kind"] = json!("video");
-        assert_eq!(
-            err("filesystem", "file_content", p),
-            "file_content payload kind is invalid"
-        );
+        assert_eq!(err("filesystem", "file_content", p), "file_content payload kind is invalid");
         for bad in [json!(-1), json!("10"), json!(false)] {
             let mut p = content();
             p["size_bytes"] = bad;

@@ -58,19 +58,11 @@ impl Paths {
     where
         F: Fn(&str) -> Option<OsString>,
     {
-        let non_empty =
-            |key: &str| lookup(key).filter(|value| !value.to_string_lossy().trim().is_empty());
-        let home = non_empty("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/"));
+        let non_empty = |key: &str| lookup(key).filter(|value| !value.to_string_lossy().trim().is_empty());
+        let home = non_empty("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"));
         // XDG spec: relative or empty values are invalid and must be ignored.
-        let xdg = |key: &str| {
-            non_empty(key)
-                .map(PathBuf::from)
-                .filter(|path| path.is_absolute())
-        };
-        let over =
-            |key: &str| non_empty(key).map(|value| expand_user_with(Path::new(&value), &home));
+        let xdg = |key: &str| non_empty(key).map(PathBuf::from).filter(|path| path.is_absolute());
+        let over = |key: &str| non_empty(key).map(|value| expand_user_with(Path::new(&value), &home));
         Paths {
             config_home: xdg("XDG_CONFIG_HOME").unwrap_or_else(|| home.join(".config")),
             data_home: xdg("XDG_DATA_HOME").unwrap_or_else(|| home.join(".local").join("share")),
@@ -93,9 +85,7 @@ impl Paths {
 
     /// `$INTENT_CONFIG_DIR` or `$XDG_CONFIG_HOME/intent`.
     pub fn config_dir(&self) -> PathBuf {
-        self.config_dir_override
-            .clone()
-            .unwrap_or_else(|| self.config_home.join("intent"))
+        self.config_dir_override.clone().unwrap_or_else(|| self.config_home.join("intent"))
     }
 
     /// `$XDG_DATA_HOME/intent`.
@@ -145,9 +135,7 @@ impl Paths {
 
     /// 1.x capture database (`$INTENT_DATABASE` or `$XDG_DATA_HOME/intent/events.db`).
     pub fn legacy_events_db(&self) -> PathBuf {
-        self.legacy_database_override
-            .clone()
-            .unwrap_or_else(|| self.data_dir().join("events.db"))
+        self.legacy_database_override.clone().unwrap_or_else(|| self.data_dir().join("events.db"))
     }
 
     /// Log directory (`$XDG_DATA_HOME/intent/logs`).
@@ -157,23 +145,17 @@ impl Paths {
 
     /// API bearer token: `$XDG_RUNTIME_DIR/intent/token`, falling back to the data dir.
     pub fn token(&self) -> PathBuf {
-        self.runtime_dir()
-            .unwrap_or_else(|| self.data_dir())
-            .join(TOKEN_FILE)
+        self.runtime_dir().unwrap_or_else(|| self.data_dir()).join(TOKEN_FILE)
     }
 
     fn file(&self, override_path: &Option<PathBuf>, name: &str) -> PathBuf {
-        override_path
-            .clone()
-            .unwrap_or_else(|| self.config_dir().join(name))
+        override_path.clone().unwrap_or_else(|| self.config_dir().join(name))
     }
 }
 
 /// Expand a leading `~` / `~/` using `$HOME` (Python `Path.expanduser`).
 pub fn expand_user(path: &Path) -> PathBuf {
-    let home = std::env::var_os("HOME")
-        .filter(|h| !h.is_empty())
-        .map(PathBuf::from);
+    let home = std::env::var_os("HOME").filter(|h| !h.is_empty()).map(PathBuf::from);
     match home {
         Some(home) => expand_user_with(path, &home),
         None => path.to_path_buf(),
@@ -183,9 +165,7 @@ pub fn expand_user(path: &Path) -> PathBuf {
 fn expand_user_with(path: &Path, home: &Path) -> PathBuf {
     let mut components = path.components();
     match components.next() {
-        Some(Component::Normal(first)) if first == OsStr::new("~") => {
-            home.join(components.as_path())
-        }
+        Some(Component::Normal(first)) if first == OsStr::new("~") => home.join(components.as_path()),
         _ => path.to_path_buf(),
     }
 }
@@ -196,9 +176,7 @@ pub fn resolve_lenient(path: &Path) -> PathBuf {
     let absolute = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        std::env::current_dir()
-            .map(|cwd| cwd.join(path))
-            .unwrap_or_else(|_| path.to_path_buf())
+        std::env::current_dir().map(|cwd| cwd.join(path)).unwrap_or_else(|_| path.to_path_buf())
     };
     let mut pending: VecDeque<OsString> = VecDeque::new();
     push_components(&mut pending, &absolute, false);
@@ -226,9 +204,7 @@ pub fn resolve_lenient(path: &Path) -> PathBuf {
 
 /// `expand_user` followed by `resolve_lenient`, rendered as a string.
 pub fn resolve_user_path(raw: &str) -> String {
-    resolve_lenient(&expand_user(Path::new(raw)))
-        .to_string_lossy()
-        .into_owned()
+    resolve_lenient(&expand_user(Path::new(raw))).to_string_lossy().into_owned()
 }
 
 fn push_components(queue: &mut VecDeque<OsString>, path: &Path, front: bool) {
@@ -255,10 +231,7 @@ mod tests {
     use std::collections::HashMap;
 
     fn paths(vars: &[(&str, &str)]) -> Paths {
-        let map: HashMap<String, String> = vars
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
+        let map: HashMap<String, String> = vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         Paths::from_lookup(move |key| map.get(key).map(OsString::from))
     }
 
@@ -266,42 +239,15 @@ mod tests {
     fn defaults_follow_home() {
         let p = paths(&[("HOME", "/home/u")]);
         assert_eq!(p.config_dir(), PathBuf::from("/home/u/.config/intent"));
-        assert_eq!(
-            p.detailed_capture_config(),
-            PathBuf::from("/home/u/.config/intent/detailed-capture.json")
-        );
-        assert_eq!(
-            p.workspaces_config(),
-            PathBuf::from("/home/u/.config/intent/workspaces.json")
-        );
-        assert_eq!(
-            p.filesystem_capture_config(),
-            PathBuf::from("/home/u/.config/intent/filesystem-capture.json")
-        );
-        assert_eq!(
-            p.retention_policy_config(),
-            PathBuf::from("/home/u/.config/intent/retention-policy.json")
-        );
-        assert_eq!(
-            p.blocked_domains_config(),
-            PathBuf::from("/home/u/.config/intent/blocked-domains.yaml")
-        );
-        assert_eq!(
-            p.database(),
-            PathBuf::from("/home/u/.local/share/intent/intent.db")
-        );
-        assert_eq!(
-            p.legacy_events_db(),
-            PathBuf::from("/home/u/.local/share/intent/events.db")
-        );
-        assert_eq!(
-            p.token(),
-            PathBuf::from("/home/u/.local/share/intent/token")
-        );
-        assert_eq!(
-            p.llm_config(),
-            PathBuf::from("/home/u/.config/intent/llm.toml")
-        );
+        assert_eq!(p.detailed_capture_config(), PathBuf::from("/home/u/.config/intent/detailed-capture.json"));
+        assert_eq!(p.workspaces_config(), PathBuf::from("/home/u/.config/intent/workspaces.json"));
+        assert_eq!(p.filesystem_capture_config(), PathBuf::from("/home/u/.config/intent/filesystem-capture.json"));
+        assert_eq!(p.retention_policy_config(), PathBuf::from("/home/u/.config/intent/retention-policy.json"));
+        assert_eq!(p.blocked_domains_config(), PathBuf::from("/home/u/.config/intent/blocked-domains.yaml"));
+        assert_eq!(p.database(), PathBuf::from("/home/u/.local/share/intent/intent.db"));
+        assert_eq!(p.legacy_events_db(), PathBuf::from("/home/u/.local/share/intent/events.db"));
+        assert_eq!(p.token(), PathBuf::from("/home/u/.local/share/intent/token"));
+        assert_eq!(p.llm_config(), PathBuf::from("/home/u/.config/intent/llm.toml"));
         assert_eq!(p.runtime_dir(), None);
     }
 
@@ -313,10 +259,7 @@ mod tests {
             ("XDG_DATA_HOME", "/data"),
             ("XDG_RUNTIME_DIR", "/run/user/1000"),
         ]);
-        assert_eq!(
-            p.blocked_domains_config(),
-            PathBuf::from("/cfg/intent/blocked-domains.yaml")
-        );
+        assert_eq!(p.blocked_domains_config(), PathBuf::from("/cfg/intent/blocked-domains.yaml"));
         assert_eq!(p.database(), PathBuf::from("/data/intent/intent.db"));
         assert_eq!(p.token(), PathBuf::from("/run/user/1000/intent/token"));
         assert_eq!(p.logs_dir(), PathBuf::from("/data/intent/logs"));
@@ -324,11 +267,7 @@ mod tests {
 
     #[test]
     fn empty_or_relative_xdg_values_are_ignored() {
-        let p = paths(&[
-            ("HOME", "/home/u"),
-            ("XDG_CONFIG_HOME", ""),
-            ("XDG_DATA_HOME", "rel/data"),
-        ]);
+        let p = paths(&[("HOME", "/home/u"), ("XDG_CONFIG_HOME", ""), ("XDG_DATA_HOME", "rel/data")]);
         assert_eq!(p.config_dir(), PathBuf::from("/home/u/.config/intent"));
         assert_eq!(p.data_dir(), PathBuf::from("/home/u/.local/share/intent"));
     }
@@ -356,32 +295,17 @@ mod tests {
     #[test]
     fn config_dir_override_moves_all_default_files() {
         let p = paths(&[("HOME", "/home/u"), (ENV_CONFIG_DIR, "/etc/intent-test")]);
-        assert_eq!(
-            p.workspaces_config(),
-            PathBuf::from("/etc/intent-test/workspaces.json")
-        );
-        assert_eq!(
-            p.legacy_llm_env(),
-            PathBuf::from("/etc/intent-test/llm.env")
-        );
+        assert_eq!(p.workspaces_config(), PathBuf::from("/etc/intent-test/workspaces.json"));
+        assert_eq!(p.legacy_llm_env(), PathBuf::from("/etc/intent-test/llm.env"));
     }
 
     #[test]
     fn expand_user_only_touches_leading_tilde() {
         let home = Path::new("/h");
         assert_eq!(expand_user_with(Path::new("~"), home), PathBuf::from("/h"));
-        assert_eq!(
-            expand_user_with(Path::new("~/a/b"), home),
-            PathBuf::from("/h/a/b")
-        );
-        assert_eq!(
-            expand_user_with(Path::new("/a/~"), home),
-            PathBuf::from("/a/~")
-        );
-        assert_eq!(
-            expand_user_with(Path::new("~x/a"), home),
-            PathBuf::from("~x/a")
-        );
+        assert_eq!(expand_user_with(Path::new("~/a/b"), home), PathBuf::from("/h/a/b"));
+        assert_eq!(expand_user_with(Path::new("/a/~"), home), PathBuf::from("/a/~"));
+        assert_eq!(expand_user_with(Path::new("~x/a"), home), PathBuf::from("~x/a"));
     }
 
     #[test]
@@ -400,10 +324,7 @@ mod tests {
         let real = resolve_lenient(dir.path());
         std::fs::create_dir(real.join("target")).unwrap();
         std::os::unix::fs::symlink(real.join("target"), real.join("link")).unwrap();
-        assert_eq!(
-            resolve_lenient(&real.join("link/missing.txt")),
-            real.join("target/missing.txt")
-        );
+        assert_eq!(resolve_lenient(&real.join("link/missing.txt")), real.join("target/missing.txt"));
         std::os::unix::fs::symlink("target", real.join("rel")).unwrap();
         assert_eq!(resolve_lenient(&real.join("rel/../x")), real.join("x"));
     }

@@ -69,10 +69,7 @@ pub use status::{CollectorState, CollectorStatus, StatusHandle};
 
 /// Current wall-clock time in unix seconds.
 pub fn now_ts() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 
 /// Build a `RawEvent` with a fresh uuid v4 id and the current unix-second timestamp.
@@ -160,27 +157,16 @@ impl CollectorHandle {
 
 /// Spawn `collector` on the current tokio runtime. Panics inside the collector
 /// are caught and reported as `Failed`; they never take down the daemon.
-pub fn spawn<C: Collector>(
-    collector: C,
-    tx: mpsc::Sender<RawEvent>,
-    cancel: CancellationToken,
-) -> CollectorHandle {
+pub fn spawn<C: Collector>(collector: C, tx: mpsc::Sender<RawEvent>, cancel: CancellationToken) -> CollectorHandle {
     let name = collector.name();
     let status = StatusHandle::new(name);
-    let ctx = CollectorContext {
-        sink: EventSink::new(tx, status.clone()),
-        status: status.clone(),
-        cancel,
-    };
+    let ctx = CollectorContext { sink: EventSink::new(tx, status.clone()), status: status.clone(), cancel };
     let inner = tokio::spawn(collector.run(ctx));
     let st = status.clone();
     let join = tokio::spawn(async move {
         match inner.await {
             Ok(()) => st.update(|s| {
-                if matches!(
-                    s.state,
-                    CollectorState::Running | CollectorState::Waiting | CollectorState::Starting
-                ) {
+                if matches!(s.state, CollectorState::Running | CollectorState::Waiting | CollectorState::Starting) {
                     s.state = CollectorState::Stopped;
                 }
             }),
@@ -205,10 +191,7 @@ mod tests {
         }
         async fn run(self, ctx: CollectorContext) {
             ctx.status.set_running("test");
-            ctx.sink
-                .emit("linux", "idle_start", Payload::new())
-                .await
-                .unwrap();
+            ctx.sink.emit("linux", "idle_start", Payload::new()).await.unwrap();
             panic!("boom");
         }
     }

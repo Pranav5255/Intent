@@ -33,11 +33,7 @@ pub fn classify_batch(events: &[DebouncedEvent]) -> Vec<FsAction> {
             EventKind::Create(_)
             | EventKind::Modify(ModifyKind::Data(_) | ModifyKind::Any | ModifyKind::Other)
             | EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
-                paths
-                    .iter()
-                    .cloned()
-                    .map(FsAction::Touched)
-                    .for_each(&mut push);
+                paths.iter().cloned().map(FsAction::Touched).for_each(&mut push);
             }
             EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
                 if let [from, to, ..] = paths.as_slice() {
@@ -47,22 +43,11 @@ pub fn classify_batch(events: &[DebouncedEvent]) -> Vec<FsAction> {
             }
             EventKind::Modify(ModifyKind::Name(_)) => {
                 // `From`, `Any`, `Other`: the path no longer exists under that name.
-                paths
-                    .iter()
-                    .cloned()
-                    .map(FsAction::Removed)
-                    .for_each(&mut push);
+                paths.iter().cloned().map(FsAction::Removed).for_each(&mut push);
             }
-            EventKind::Remove(_) => paths
-                .iter()
-                .cloned()
-                .map(FsAction::Removed)
-                .for_each(&mut push),
+            EventKind::Remove(_) => paths.iter().cloned().map(FsAction::Removed).for_each(&mut push),
             // Metadata-only changes and reads are noise.
-            EventKind::Modify(ModifyKind::Metadata(_))
-            | EventKind::Access(_)
-            | EventKind::Any
-            | EventKind::Other => {}
+            EventKind::Modify(ModifyKind::Metadata(_)) | EventKind::Access(_) | EventKind::Any | EventKind::Other => {}
         }
     }
     out
@@ -79,11 +64,7 @@ pub struct Coalescer {
 
 impl Coalescer {
     pub fn new(interval: Duration) -> Self {
-        Self {
-            interval,
-            last: HashMap::new(),
-            dirty: HashSet::new(),
-        }
+        Self { interval, last: HashMap::new(), dirty: HashSet::new() }
     }
 
     /// Returns true if the path should be reported now.
@@ -107,11 +88,7 @@ impl Coalescer {
     }
 
     pub fn next_deadline(&self) -> Option<Instant> {
-        self.dirty
-            .iter()
-            .filter_map(|p| self.last.get(p))
-            .map(|t| *t + self.interval)
-            .min()
+        self.dirty.iter().filter_map(|p| self.last.get(p)).map(|t| *t + self.interval).min()
     }
 
     /// Paths whose window has elapsed and that were written during it.
@@ -120,11 +97,7 @@ impl Coalescer {
         let ready: Vec<PathBuf> = self
             .dirty
             .iter()
-            .filter(|p| {
-                self.last
-                    .get(*p)
-                    .is_none_or(|t| now.saturating_duration_since(*t) >= interval)
-            })
+            .filter(|p| self.last.get(*p).is_none_or(|t| now.saturating_duration_since(*t) >= interval))
             .cloned()
             .collect();
         for p in &ready {
@@ -134,8 +107,7 @@ impl Coalescer {
         // Keep memory bounded: forget clean paths whose window is over.
         if self.last.len() > 4096 {
             let dirty = &self.dirty;
-            self.last
-                .retain(|p, t| dirty.contains(p) || now.saturating_duration_since(*t) < interval);
+            self.last.retain(|p, t| dirty.contains(p) || now.saturating_duration_since(*t) < interval);
         }
         ready
     }
@@ -167,34 +139,13 @@ mod tests {
     fn batch_classification_dedupes() {
         let batch = vec![
             ev(EventKind::Create(CreateKind::File), &["/w/a.rs"]),
-            ev(
-                EventKind::Modify(ModifyKind::Data(DataChange::Content)),
-                &["/w/a.rs"],
-            ),
-            ev(
-                EventKind::Modify(ModifyKind::Data(DataChange::Any)),
-                &["/w/a.rs"],
-            ),
-            ev(
-                EventKind::Modify(ModifyKind::Metadata(MetadataKind::Permissions)),
-                &["/w/b.rs"],
-            ),
-            ev(
-                EventKind::Access(notify::event::AccessKind::Any),
-                &["/w/c.rs"],
-            ),
-            ev(
-                EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
-                &["/w/.a.rs.tmp", "/w/d.rs"],
-            ),
-            ev(
-                EventKind::Modify(ModifyKind::Name(RenameMode::To)),
-                &["/w/e.rs"],
-            ),
-            ev(
-                EventKind::Modify(ModifyKind::Name(RenameMode::From)),
-                &["/w/old"],
-            ),
+            ev(EventKind::Modify(ModifyKind::Data(DataChange::Content)), &["/w/a.rs"]),
+            ev(EventKind::Modify(ModifyKind::Data(DataChange::Any)), &["/w/a.rs"]),
+            ev(EventKind::Modify(ModifyKind::Metadata(MetadataKind::Permissions)), &["/w/b.rs"]),
+            ev(EventKind::Access(notify::event::AccessKind::Any), &["/w/c.rs"]),
+            ev(EventKind::Modify(ModifyKind::Name(RenameMode::Both)), &["/w/.a.rs.tmp", "/w/d.rs"]),
+            ev(EventKind::Modify(ModifyKind::Name(RenameMode::To)), &["/w/e.rs"]),
+            ev(EventKind::Modify(ModifyKind::Name(RenameMode::From)), &["/w/old"]),
             ev(EventKind::Remove(RemoveKind::Folder), &["/w/gone"]),
             ev(EventKind::Create(CreateKind::Folder), &["/w/newdir"]),
         ];
@@ -226,25 +177,11 @@ mod tests {
         assert!(!c.touch(a.clone(), s(4)));
         assert_eq!(c.next_deadline(), Some(s(10)));
         assert!(c.due(s(9)).is_empty());
-        assert_eq!(
-            c.due(s(10)),
-            vec![a.clone()],
-            "burst collapsed into one trailing report"
-        );
+        assert_eq!(c.due(s(10)), vec![a.clone()], "burst collapsed into one trailing report");
         assert_eq!(c.next_deadline(), None);
-        assert!(
-            !c.touch(a.clone(), s(15)),
-            "window restarts at the trailing report"
-        );
-        assert!(
-            c.touch(a.clone(), s(21)),
-            "write after the window is reported directly"
-        );
-        assert_eq!(
-            c.next_deadline(),
-            None,
-            "and clears the pending trailing report"
-        );
+        assert!(!c.touch(a.clone(), s(15)), "window restarts at the trailing report");
+        assert!(c.touch(a.clone(), s(21)), "write after the window is reported directly");
+        assert_eq!(c.next_deadline(), None, "and clears the pending trailing report");
         let b = PathBuf::from("/w/b");
         assert!(c.touch(b.clone(), s(22)));
         c.forget(&b);

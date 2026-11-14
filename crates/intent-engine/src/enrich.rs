@@ -78,7 +78,9 @@ pub fn validate_intent_tree(root: &Intent) -> Vec<String> {
     if root.children.iter().any(|c| c.parent_id.as_deref() != Some(root.id.as_str())) {
         problems.push("children must reference root".into());
     }
-    if !root.children.is_empty() && root.children.iter().map(|c| c.stats.event_count).sum::<i64>() != root.stats.event_count {
+    if !root.children.is_empty()
+        && root.children.iter().map(|c| c.stats.event_count).sum::<i64>() != root.stats.event_count
+    {
         problems.push("event counts must aggregate".into());
     }
     if root.children.iter().any(|c| c.start_ts < root.start_ts) {
@@ -115,11 +117,8 @@ pub fn compute_insight_editor(cluster: &[&NormalizedEvent]) -> Vec<Map<String, V
 
 /// Top three browser domains by visits (ties: first seen).
 pub fn compute_insight_browser(cluster: &[&NormalizedEvent]) -> Vec<Map<String, Value>> {
-    let domains: OrderedCounter = cluster
-        .iter()
-        .filter(|e| e.family == Family::Browser)
-        .filter_map(|e| e.entities.domain.as_deref())
-        .collect();
+    let domains: OrderedCounter =
+        cluster.iter().filter(|e| e.family == Family::Browser).filter_map(|e| e.entities.domain.as_deref()).collect();
     domains.by_frequency().into_iter().take(3).map(|(d, n)| object(json!({"domain": d, "visits": n}))).collect()
 }
 
@@ -244,7 +243,13 @@ mod tests {
     #[test]
     fn todo_marker_comes_from_inserted_text() {
         let e = normalize_event(
-            &raw("t", 5, "vscode", "document_change", serde_json::json!({"path": "/p/a.rs", "changes": [{"text": "// xxx: later; FIXME"}]})),
+            &raw(
+                "t",
+                5,
+                "vscode",
+                "document_change",
+                serde_json::json!({"path": "/p/a.rs", "changes": [{"text": "// xxx: later; FIXME"}]}),
+            ),
             0,
         );
         let todos = detect_todos(&[&e]);

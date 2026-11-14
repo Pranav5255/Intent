@@ -25,9 +25,7 @@ impl JsonConfig for FilesystemCaptureConfig {
         };
         match raw.get("all_accessible") {
             None => Ok(FilesystemCaptureConfig::default()),
-            Some(Value::Bool(all_accessible)) => Ok(FilesystemCaptureConfig {
-                all_accessible: *all_accessible,
-            }),
+            Some(Value::Bool(all_accessible)) => Ok(FilesystemCaptureConfig { all_accessible: *all_accessible }),
             Some(_) => Err(invalid()),
         }
     }
@@ -37,10 +35,7 @@ impl JsonConfig for FilesystemCaptureConfig {
     }
 
     fn decode_error(path: &Path) -> String {
-        format!(
-            "invalid filesystem capture configuration: {}",
-            path.display()
-        )
+        format!("invalid filesystem capture configuration: {}", path.display())
     }
 
     fn load(path: &Path) -> Result<Self, ConfigError> {
@@ -50,10 +45,7 @@ impl JsonConfig for FilesystemCaptureConfig {
                 return Ok(Self::default_config());
             }
             Err(err) => {
-                return Err(ConfigError::Io(format!(
-                    "cannot read {}: {err}",
-                    path.display()
-                )));
+                return Err(ConfigError::Io(format!("cannot read {}: {err}", path.display())));
             }
         };
         serde_json::from_slice::<Value>(&bytes)
@@ -75,16 +67,8 @@ mod tests {
 
     #[test]
     fn parse_rules() {
-        assert!(
-            !FilesystemCaptureConfig::from_json(&json!({}))
-                .unwrap()
-                .all_accessible
-        );
-        assert!(
-            FilesystemCaptureConfig::from_json(&json!({"all_accessible": true, "x": 1}))
-                .unwrap()
-                .all_accessible
-        );
+        assert!(!FilesystemCaptureConfig::from_json(&json!({})).unwrap().all_accessible);
+        assert!(FilesystemCaptureConfig::from_json(&json!({"all_accessible": true, "x": 1})).unwrap().all_accessible);
         assert!(FilesystemCaptureConfig::from_json(&json!({"all_accessible": 1})).is_err());
         assert!(FilesystemCaptureConfig::from_json(&json!(true)).is_err());
     }
@@ -95,13 +79,8 @@ mod tests {
         let path = dir.path().join("filesystem-capture.json");
         std::fs::write(&path, "{\"all_accessible\": \"yes\"}").unwrap();
         assert_eq!(
-            FilesystemCaptureConfig::load(&path)
-                .unwrap_err()
-                .to_string(),
-            format!(
-                "invalid filesystem capture configuration: {}",
-                path.display()
-            )
+            FilesystemCaptureConfig::load(&path).unwrap_err().to_string(),
+            format!("invalid filesystem capture configuration: {}", path.display())
         );
     }
 }

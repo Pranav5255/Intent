@@ -29,14 +29,8 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
         _ => Path::new("."),
     };
     ensure_private_dir(parent)?;
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let mut temporary = tempfile::Builder::new()
-        .prefix(&format!(".{name}."))
-        .suffix(".tmp")
-        .tempfile_in(parent)?;
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let mut temporary = tempfile::Builder::new().prefix(&format!(".{name}.")).suffix(".tmp").tempfile_in(parent)?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
     temporary.persist(path).map_err(|err| err.error)?;
@@ -81,11 +75,7 @@ mod tests {
         write_atomic(&path, b"secret").unwrap();
         let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
-        let dir_mode = fs::metadata(path.parent().unwrap())
-            .unwrap()
-            .permissions()
-            .mode()
-            & 0o777;
+        let dir_mode = fs::metadata(path.parent().unwrap()).unwrap().permissions().mode() & 0o777;
         assert_eq!(dir_mode, 0o700);
     }
 }

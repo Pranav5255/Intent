@@ -34,10 +34,7 @@ pub(super) async fn run(
     ctx.status.set_running(BACKEND);
     let mut tracker = IdleTracker::new(threshold_ms);
     loop {
-        let idle_ms = match screensaver::query_info(&conn, root)
-            .map_err(ReplyError::from)
-            .and_then(|c| c.reply())
-        {
+        let idle_ms = match screensaver::query_info(&conn, root).map_err(ReplyError::from).and_then(|c| c.reply()) {
             Ok(info) => u64::from(info.ms_since_user_input),
             Err(e) => return BackendEnd::Lost(format!("x11 connection lost: {e}")),
         };
@@ -65,10 +62,7 @@ mod tests {
     fn x11_idle_live() {
         let (conn, screen) = x11rb::connect(None).expect("DISPLAY");
         let root = conn.setup().roots[screen].root;
-        let info = screensaver::query_info(&conn, root)
-            .unwrap()
-            .reply()
-            .unwrap();
+        let info = screensaver::query_info(&conn, root).unwrap().reply().unwrap();
         println!("ms_since_user_input = {}", info.ms_since_user_input);
     }
 }

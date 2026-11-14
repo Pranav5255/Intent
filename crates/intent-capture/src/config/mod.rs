@@ -15,8 +15,8 @@ mod workspaces;
 
 pub use detailed::{
     BrowserConfig, DEFAULT_EXCLUDED_PATTERNS, DETAILED_EVENT_KINDS, DetailedCaptureBrowserUpdate,
-    DetailedCaptureConfig, DetailedCaptureEditorUpdate, DetailedCaptureFilesystemUpdate,
-    DetailedCaptureUpdate, DetailedKind, EditorConfig, FilesystemDetailConfig, is_detailed_event,
+    DetailedCaptureConfig, DetailedCaptureEditorUpdate, DetailedCaptureFilesystemUpdate, DetailedCaptureUpdate,
+    DetailedKind, EditorConfig, FilesystemDetailConfig, is_detailed_event,
 };
 pub use filesystem::{FilesystemCaptureConfig, FilesystemCaptureUpdate};
 pub use retention::{MAX_RETENTION_DAYS, RetentionPolicy, RetentionPurge};
@@ -57,14 +57,11 @@ pub trait JsonConfig: Sized {
                 return Ok(Self::default_config());
             }
             Err(err) => {
-                return Err(ConfigError::Io(format!(
-                    "cannot read {}: {err}",
-                    path.display()
-                )));
+                return Err(ConfigError::Io(format!("cannot read {}: {err}", path.display())));
             }
         };
-        let value: Value = serde_json::from_slice(&bytes)
-            .map_err(|_| ConfigError::Invalid(Self::decode_error(path)))?;
+        let value: Value =
+            serde_json::from_slice(&bytes).map_err(|_| ConfigError::Invalid(Self::decode_error(path)))?;
         Self::from_json(&value)
     }
 

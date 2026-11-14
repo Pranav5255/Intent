@@ -130,9 +130,8 @@ fn content_hash(revision: i64, count: i64, last_id: Option<&str>) -> String {
 
 pub(crate) fn event_from_row(row: &Row<'_>) -> rusqlite::Result<RawEvent> {
     let payload_text: String = row.get(5)?;
-    let payload: Payload = serde_json::from_str(&payload_text).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, Box::new(e))
-    })?;
+    let payload: Payload = serde_json::from_str(&payload_text)
+        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, Box::new(e)))?;
     Ok(RawEvent {
         id: row.get(0)?,
         schema_version: row.get(1)?,
@@ -172,7 +171,16 @@ pub(crate) fn insert_tx<'a>(
             let ingested_at = ev.ingested_at.unwrap_or(now);
             let day = zone.day_for_ts(ev.ts);
             let payload = serde_json::to_string(&ev.payload)?;
-            let n = insert.execute(params![ev.id, ev.schema_version, ev.ts, ev.source, ev.kind, payload, ingested_at, day])?;
+            let n = insert.execute(params![
+                ev.id,
+                ev.schema_version,
+                ev.ts,
+                ev.source,
+                ev.kind,
+                payload,
+                ingested_at,
+                day
+            ])?;
             if n == 0 {
                 let stored = existing.query_row([&ev.id], event_from_row)?;
                 outcomes.push(InsertOutcome { inserted: false, event: stored });
@@ -281,7 +289,9 @@ type DayStatsRow = (i64, Option<i64>, Option<i64>, Option<String>, i64);
 
 fn day_meta_on(conn: &Connection, date: &str) -> Result<DayExportMeta> {
     let row: Option<DayStatsRow> = conn
-        .prepare_cached("SELECT event_count, first_ts, last_ts, last_event_id, revision FROM day_stats WHERE date = ?1")?
+        .prepare_cached(
+            "SELECT event_count, first_ts, last_ts, last_event_id, revision FROM day_stats WHERE date = ?1",
+        )?
         .query_row([date], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))
         .optional()?;
     let checked_at = now_ts();
@@ -338,12 +348,16 @@ impl Store {
     /// All events bucketed into `date`, in export order `(ts, ingested_at, id)`.
     pub fn events_for_day(&self, date: &str) -> Result<Vec<RawEvent>> {
         validate_date(date)?;
-        self.read(|c| query_events(c, &format!("SELECT {EVENT_COLUMNS} FROM events WHERE day = ?1 {EVENT_ORDER}"), [date]))
+        self.read(|c| {
+            query_events(c, &format!("SELECT {EVENT_COLUMNS} FROM events WHERE day = ?1 {EVENT_ORDER}"), [date])
+        })
     }
 
     /// Events with `ts >= since`, in export order.
     pub fn events_since(&self, since: i64) -> Result<Vec<RawEvent>> {
-        self.read(|c| query_events(c, &format!("SELECT {EVENT_COLUMNS} FROM events WHERE ts >= ?1 {EVENT_ORDER}"), [since]))
+        self.read(|c| {
+            query_events(c, &format!("SELECT {EVENT_COLUMNS} FROM events WHERE ts >= ?1 {EVENT_ORDER}"), [since])
+        })
     }
 
     /// `/v1/export/day` payload (events + meta read from one snapshot).

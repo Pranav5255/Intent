@@ -23,9 +23,7 @@ pub struct Blocklist {
 impl Blocklist {
     /// Build from raw patterns (validated and normalised).
     pub fn new<S: AsRef<str>>(patterns: &[S]) -> Result<Self, ConfigError> {
-        Ok(Blocklist {
-            patterns: normalise_patterns(patterns)?,
-        })
+        Ok(Blocklist { patterns: normalise_patterns(patterns)? })
     }
 
     /// The normalised patterns (what `GET /v1/config` reports as `blocked_domains`).
@@ -58,10 +56,7 @@ impl Blocklist {
         match std::fs::read_to_string(path) {
             Ok(text) => Blocklist::parse_yaml_named(&text, Some(path)),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Blocklist::default()),
-            Err(err) => Err(ConfigError::Io(format!(
-                "cannot read {}: {err}",
-                path.display()
-            ))),
+            Err(err) => Err(ConfigError::Io(format!("cannot read {}: {err}", path.display()))),
         }
     }
 
@@ -84,10 +79,7 @@ impl Blocklist {
         };
         self.patterns.iter().any(|pattern| {
             let matches = |candidate: &str| {
-                host == candidate
-                    || host
-                        .strip_suffix(candidate)
-                        .is_some_and(|prefix| prefix.ends_with('.'))
+                host == candidate || host.strip_suffix(candidate).is_some_and(|prefix| prefix.ends_with('.'))
             };
             matches(pattern) || (!pattern.contains('.') && matches(&format!("{pattern}.com")))
         })
@@ -104,12 +96,7 @@ enum YamlError {
 pub fn normalise_patterns<S: AsRef<str>>(patterns: &[S]) -> Result<Vec<String>, ConfigError> {
     let mut out: Vec<String> = Vec::new();
     for pattern in patterns {
-        let mut value = pattern
-            .as_ref()
-            .trim()
-            .to_lowercase()
-            .trim_end_matches('.')
-            .to_string();
+        let mut value = pattern.as_ref().trim().to_lowercase().trim_end_matches('.').to_string();
         if let Some(rest) = value.strip_prefix("*.") {
             value = rest.to_string();
         }
@@ -117,9 +104,7 @@ pub fn normalise_patterns<S: AsRef<str>>(patterns: &[S]) -> Result<Vec<String>, 
             || value.contains(['/', ':', '@', '?', '#', '[', '*'])
             || value.contains(char::is_whitespace)
         {
-            return Err(ConfigError::Invalid(
-                "blocked-domains entries must be host patterns".into(),
-            ));
+            return Err(ConfigError::Invalid("blocked-domains entries must be host patterns".into()));
         }
         if !out.contains(&value) {
             out.push(value);
@@ -205,10 +190,7 @@ fn strip_comment(line: &str) -> &str {
 
 fn unquote(value: &str) -> &str {
     for quote in ['"', '\''] {
-        if let Some(inner) = value
-            .strip_prefix(quote)
-            .and_then(|v| v.strip_suffix(quote))
-        {
+        if let Some(inner) = value.strip_prefix(quote).and_then(|v| v.strip_suffix(quote)) {
             return inner;
         }
     }
@@ -246,11 +228,7 @@ pub fn apply_block(mut event: RawEvent, blocklist: &Blocklist) -> RawEvent {
     if event.source != "firefox" || !BLOCKABLE_KINDS.contains(&event.kind.as_str()) {
         return event;
     }
-    let blocked = event
-        .payload
-        .get("url")
-        .and_then(Value::as_str)
-        .is_some_and(|url| blocklist.is_url_blocked(url));
+    let blocked = event.payload.get("url").and_then(Value::as_str).is_some_and(|url| blocklist.is_url_blocked(url));
     if blocked {
         event.payload = redact_blocked_browser_payload(&event.payload);
     }
@@ -294,19 +272,9 @@ mod tests {
     fn patterns_are_normalised() {
         let b = list(&[" *.Example.COM. ", "example.com", "bank"]);
         assert_eq!(b.patterns(), ["example.com", "bank"]);
-        for bad in [
-            "",
-            "  ",
-            "*.",
-            "http://x.com",
-            "x.com/path",
-            "user@x.com",
-            "x.com:443",
-            "x?y",
-            "x#y",
-            "[::1]",
-            "a b",
-        ] {
+        for bad in
+            ["", "  ", "*.", "http://x.com", "x.com/path", "user@x.com", "x.com:443", "x?y", "x#y", "[::1]", "a b"]
+        {
             assert!(Blocklist::new(&[bad]).is_err(), "{bad:?}");
         }
     }
@@ -322,21 +290,10 @@ mod tests {
 
     #[test]
     fn yaml_variants() {
-        let b = Blocklist::parse_yaml(
-            "---\r\nblocked_domains: # c\r\n- \"a.com\" # x\r\n-   'B.com'\r\n\r\n",
-        )
-        .unwrap();
+        let b = Blocklist::parse_yaml("---\r\nblocked_domains: # c\r\n- \"a.com\" # x\r\n-   'B.com'\r\n\r\n").unwrap();
         assert_eq!(b.patterns(), ["a.com", "b.com"]);
-        assert!(
-            Blocklist::parse_yaml("blocked_domains: []\n")
-                .unwrap()
-                .is_empty()
-        );
-        assert!(
-            Blocklist::parse_yaml("blocked_domains:\n")
-                .unwrap()
-                .is_empty()
-        );
+        assert!(Blocklist::parse_yaml("blocked_domains: []\n").unwrap().is_empty());
+        assert!(Blocklist::parse_yaml("blocked_domains:\n").unwrap().is_empty());
         let b = Blocklist::parse_yaml("blocked_domains: [a.com, \"b.com\", 'c']").unwrap();
         assert_eq!(b.patterns(), ["a.com", "b.com", "c"]);
     }
@@ -344,22 +301,10 @@ mod tests {
     #[test]
     fn yaml_errors() {
         let err = |text: &str| Blocklist::parse_yaml(text).unwrap_err().to_string();
-        assert_eq!(
-            err(""),
-            "blocked-domains config must contain blocked_domains"
-        );
-        assert_eq!(
-            err("# only comments\n"),
-            "blocked-domains config must contain blocked_domains"
-        );
-        assert_eq!(
-            err("blocked_domains:\n  -\n"),
-            "blocked-domains entries must be non-empty strings"
-        );
-        assert_eq!(
-            err("blocked_domains:\n  - https://x.com/\n"),
-            "blocked-domains entries must be host patterns"
-        );
+        assert_eq!(err(""), "blocked-domains config must contain blocked_domains");
+        assert_eq!(err("# only comments\n"), "blocked-domains config must contain blocked_domains");
+        assert_eq!(err("blocked_domains:\n  -\n"), "blocked-domains entries must be non-empty strings");
+        assert_eq!(err("blocked_domains:\n  - https://x.com/\n"), "blocked-domains entries must be host patterns");
         assert!(Blocklist::parse_yaml("- a.com\nblocked_domains:\n").is_err());
         assert!(Blocklist::parse_yaml("other: 1\nblocked_domains:\n").is_err());
         assert!(Blocklist::parse_yaml("blocked_domains: a.com\n").is_err());
@@ -413,29 +358,14 @@ mod tests {
     #[test]
     fn apply_block_tab_events() {
         let b = list(&["chase.com"]);
-        let out = apply_block(
-            firefox(
-                "tab_change",
-                json!({"url": "https://chase.com/x", "title": "Accounts"}),
-            ),
-            &b,
-        );
+        let out = apply_block(firefox("tab_change", json!({"url": "https://chase.com/x", "title": "Accounts"})), &b);
         assert_eq!(
             out.payload,
-            json!({"url": "[blocked]", "title": "[blocked]", "blocked": true})
-                .as_object()
-                .cloned()
-                .unwrap()
+            json!({"url": "[blocked]", "title": "[blocked]", "blocked": true}).as_object().cloned().unwrap()
         );
-        let out = apply_block(
-            firefox("tab_close", json!({"url": "https://chase.com/x"})),
-            &b,
-        );
+        let out = apply_block(firefox("tab_close", json!({"url": "https://chase.com/x"})), &b);
         assert_eq!(out.payload["url"], "[blocked]");
-        let untouched = firefox(
-            "tab_change",
-            json!({"url": "https://example.com/", "title": "t"}),
-        );
+        let untouched = firefox("tab_change", json!({"url": "https://example.com/", "title": "t"}));
         assert_eq!(apply_block(untouched.clone(), &b), untouched);
         let mut other = firefox("tab_change", json!({"url": "https://chase.com/"}));
         other.source = "linux".into();

@@ -74,7 +74,12 @@ impl CurrentIntentEngine {
     }
 
     /// Uncached inference over `events` (only those at or after `since_ts` count).
-    pub async fn infer(&self, events: &[RawEvent], since_ts: i64, provider: &dyn LabelProvider) -> Option<CurrentIntent> {
+    pub async fn infer(
+        &self,
+        events: &[RawEvent],
+        since_ts: i64,
+        provider: &dyn LabelProvider,
+    ) -> Option<CurrentIntent> {
         let window: Vec<RawEvent> = events.iter().filter(|e| e.ts >= since_ts).cloned().collect();
         let (normalized, _) = normalize_events(&window);
         let last_session = sessionize(&normalized, DEFAULT_SESSION_GAP_MINUTES).pop()?;
@@ -123,7 +128,13 @@ mod tests {
     fn events(now: i64) -> Vec<RawEvent> {
         let mut v = vec![raw("old", now - 3600, "shell", "command", json!({"cmd": "git status", "cwd": "/p"}))];
         for i in 0..6 {
-            v.push(raw(&format!("c{i}"), now - 300 + i * 10, "shell", "command", json!({"cmd": "cargo test", "cwd": "/p"})));
+            v.push(raw(
+                &format!("c{i}"),
+                now - 300 + i * 10,
+                "shell",
+                "command",
+                json!({"cmd": "cargo test", "cwd": "/p"}),
+            ));
         }
         v
     }

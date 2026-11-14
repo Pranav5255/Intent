@@ -11,21 +11,11 @@ use std::path::Path;
 pub const SENSITIVE_TERMS: &[&str] = &["secret", "credential", "password", "token"];
 
 /// Exact basenames that are always sensitive.
-pub const SENSITIVE_NAMES: &[&str] = &[
-    ".env",
-    "shadow",
-    "gshadow",
-    "passwd",
-    "known_hosts",
-    "authorized_keys",
-    ".netrc",
-    ".pgpass",
-    ".htpasswd",
-];
+pub const SENSITIVE_NAMES: &[&str] =
+    &[".env", "shadow", "gshadow", "passwd", "known_hosts", "authorized_keys", ".netrc", ".pgpass", ".htpasswd"];
 
 /// Basename prefixes of private-key style files.
-pub const SENSITIVE_NAME_PREFIXES: &[&str] =
-    &[".env.", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"];
+pub const SENSITIVE_NAME_PREFIXES: &[&str] = &[".env.", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"];
 
 /// Basename suffixes of key / certificate-bundle files.
 pub const SENSITIVE_SUFFIXES: &[&str] = &[".pem", ".key", ".p12", ".pfx"];
@@ -45,23 +35,12 @@ pub const VIRTUAL_ROOTS: &[&str] = &["/proc", "/sys", "/dev", "/run"];
 /// Purely lexical (no filesystem access); callers that care about symlinks should
 /// resolve first (see [`crate::paths::resolve_lenient`]).
 pub fn is_sensitive_path(path: impl AsRef<Path>) -> bool {
-    let normalised = path
-        .as_ref()
-        .to_string_lossy()
-        .replace('\\', "/")
-        .to_lowercase();
-    let components: Vec<&str> = normalised
-        .split('/')
-        .filter(|part| !part.is_empty())
-        .collect();
+    let normalised = path.as_ref().to_string_lossy().replace('\\', "/").to_lowercase();
+    let components: Vec<&str> = normalised.split('/').filter(|part| !part.is_empty()).collect();
     let basename = components.last().copied().unwrap_or("");
     if SENSITIVE_NAMES.contains(&basename)
-        || SENSITIVE_NAME_PREFIXES
-            .iter()
-            .any(|prefix| basename.starts_with(prefix))
-        || SENSITIVE_SUFFIXES
-            .iter()
-            .any(|suffix| basename.ends_with(suffix))
+        || SENSITIVE_NAME_PREFIXES.iter().any(|prefix| basename.starts_with(prefix))
+        || SENSITIVE_SUFFIXES.iter().any(|suffix| basename.ends_with(suffix))
     {
         return true;
     }
@@ -70,9 +49,7 @@ pub fn is_sensitive_path(path: impl AsRef<Path>) -> bool {
     }
     if SENSITIVE_DIR_PATHS.iter().any(|dir| {
         let wanted: Vec<&str> = dir.split('/').collect();
-        components
-            .windows(wanted.len())
-            .any(|window| window == wanted.as_slice())
+        components.windows(wanted.len()).any(|window| window == wanted.as_slice())
     }) {
         return true;
     }
@@ -82,12 +59,9 @@ pub fn is_sensitive_path(path: impl AsRef<Path>) -> bool {
 /// `true` for paths under `/proc`, `/sys`, `/dev` or `/run`.
 pub fn is_virtual_fs_path(path: impl AsRef<Path>) -> bool {
     let value = path.as_ref().to_string_lossy().to_lowercase();
-    VIRTUAL_ROOTS.iter().any(|root| {
-        value == *root
-            || value
-                .strip_prefix(root)
-                .is_some_and(|rest| rest.starts_with('/'))
-    })
+    VIRTUAL_ROOTS
+        .iter()
+        .any(|root| value == *root || value.strip_prefix(root).is_some_and(|rest| rest.starts_with('/')))
 }
 
 /// Content extraction exclusion (1.x `collectors/content.py::excluded`).
@@ -137,18 +111,10 @@ mod tests {
     fn sensitive_directories() {
         assert!(is_sensitive_path("/home/u/.ssh/config"));
         assert!(is_sensitive_path("/home/u/.gnupg/pubring.kbx"));
-        assert!(is_sensitive_path(
-            "/home/u/.mozilla/firefox/x/places.sqlite"
-        ));
-        assert!(is_sensitive_path(
-            "/home/u/.config/google-chrome/Default/Cookies"
-        ));
-        assert!(is_sensitive_path(
-            "/home/u/.config/chromium/Default/History"
-        ));
-        assert!(!is_sensitive_path(
-            "/home/u/.config/chromium-notes/readme.md"
-        ));
+        assert!(is_sensitive_path("/home/u/.mozilla/firefox/x/places.sqlite"));
+        assert!(is_sensitive_path("/home/u/.config/google-chrome/Default/Cookies"));
+        assert!(is_sensitive_path("/home/u/.config/chromium/Default/History"));
+        assert!(!is_sensitive_path("/home/u/.config/chromium-notes/readme.md"));
     }
 
     #[test]

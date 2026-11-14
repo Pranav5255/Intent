@@ -26,25 +26,16 @@ impl RetentionPolicy {
         if let Some(days) = self.detailed_days {
             parts.push(format!("detailed:{days}d"));
         }
-        if parts.is_empty() {
-            "indefinite".to_string()
-        } else {
-            parts.join(", ")
-        }
+        if parts.is_empty() { "indefinite".to_string() } else { parts.join(", ") }
     }
 
     /// Range check for both windows (also used by `PUT /v1/retention/policy`).
     pub fn validate(&self) -> Result<(), ConfigError> {
-        for (key, value) in [
-            ("metadata_days", self.metadata_days),
-            ("detailed_days", self.detailed_days),
-        ] {
+        for (key, value) in [("metadata_days", self.metadata_days), ("detailed_days", self.detailed_days)] {
             if let Some(days) = value
                 && !(1..=MAX_RETENTION_DAYS).contains(&days)
             {
-                return Err(ConfigError::invalid(format!(
-                    "{key} must be a positive integer or null"
-                )));
+                return Err(ConfigError::invalid(format!("{key} must be a positive integer or null")));
             }
         }
         Ok(())
@@ -65,19 +56,12 @@ impl JsonConfig for RetentionPolicy {
                 None | Some(Value::Null) => Ok(None),
                 Some(Value::Number(number)) => match number.as_i64() {
                     Some(days) if (1..=MAX_RETENTION_DAYS).contains(&days) => Ok(Some(days)),
-                    _ => Err(ConfigError::invalid(format!(
-                        "{key} must be a positive integer or null"
-                    ))),
+                    _ => Err(ConfigError::invalid(format!("{key} must be a positive integer or null"))),
                 },
-                Some(_) => Err(ConfigError::invalid(format!(
-                    "{key} must be a positive integer or null"
-                ))),
+                Some(_) => Err(ConfigError::invalid(format!("{key} must be a positive integer or null"))),
             }
         };
-        Ok(RetentionPolicy {
-            metadata_days: field("metadata_days")?,
-            detailed_days: field("detailed_days")?,
-        })
+        Ok(RetentionPolicy { metadata_days: field("metadata_days")?, detailed_days: field("detailed_days")? })
     }
 
     fn to_json(&self) -> Value {
@@ -100,15 +84,9 @@ pub struct RetentionPurge {
 
 impl RetentionPurge {
     pub fn validate(&self) -> Result<(), ConfigError> {
-        RetentionPolicy {
-            metadata_days: self.metadata_days,
-            detailed_days: self.detailed_days,
-        }
-        .validate()?;
+        RetentionPolicy { metadata_days: self.metadata_days, detailed_days: self.detailed_days }.validate()?;
         if self.detailed_days.is_none() && self.metadata_days.is_none() {
-            return Err(ConfigError::invalid(
-                "at least one retention window must be provided",
-            ));
+            return Err(ConfigError::invalid("at least one retention window must be provided"));
         }
         Ok(())
     }
@@ -134,59 +112,27 @@ mod tests {
             let result = RetentionPolicy::from_json(&json!({"metadata_days": value}));
             assert_eq!(result.is_ok(), ok, "{value}");
             if !ok {
-                assert_eq!(
-                    result.unwrap_err().to_string(),
-                    "metadata_days must be a positive integer or null"
-                );
+                assert_eq!(result.unwrap_err().to_string(), "metadata_days must be a positive integer or null");
             }
         }
         assert_eq!(
-            RetentionPolicy::from_json(&json!({"detailed_days": 0}))
-                .unwrap_err()
-                .to_string(),
+            RetentionPolicy::from_json(&json!({"detailed_days": 0})).unwrap_err().to_string(),
             "detailed_days must be a positive integer or null"
         );
         assert_eq!(
-            RetentionPolicy::from_json(&json!(1))
-                .unwrap_err()
-                .to_string(),
+            RetentionPolicy::from_json(&json!(1)).unwrap_err().to_string(),
             "retention policy must be an object"
         );
-        assert!(
-            RetentionPolicy {
-                metadata_days: Some(0),
-                detailed_days: None
-            }
-            .validate()
-            .is_err()
-        );
+        assert!(RetentionPolicy { metadata_days: Some(0), detailed_days: None }.validate().is_err());
     }
 
     #[test]
     fn summary_labels() {
         assert_eq!(RetentionPolicy::default().public_summary(), "indefinite");
+        assert_eq!(RetentionPolicy { metadata_days: Some(30), detailed_days: None }.public_summary(), "metadata:30d");
+        assert_eq!(RetentionPolicy { metadata_days: None, detailed_days: Some(7) }.public_summary(), "detailed:7d");
         assert_eq!(
-            RetentionPolicy {
-                metadata_days: Some(30),
-                detailed_days: None
-            }
-            .public_summary(),
-            "metadata:30d"
-        );
-        assert_eq!(
-            RetentionPolicy {
-                metadata_days: None,
-                detailed_days: Some(7)
-            }
-            .public_summary(),
-            "detailed:7d"
-        );
-        assert_eq!(
-            RetentionPolicy {
-                metadata_days: Some(30),
-                detailed_days: Some(7)
-            }
-            .public_summary(),
+            RetentionPolicy { metadata_days: Some(30), detailed_days: Some(7) }.public_summary(),
             "metadata:30d, detailed:7d"
         );
     }
@@ -194,27 +140,10 @@ mod tests {
     #[test]
     fn purge_requires_a_window() {
         assert_eq!(
-            RetentionPurge::default()
-                .validate()
-                .unwrap_err()
-                .to_string(),
+            RetentionPurge::default().validate().unwrap_err().to_string(),
             "at least one retention window must be provided"
         );
-        assert!(
-            RetentionPurge {
-                detailed_days: Some(7),
-                ..Default::default()
-            }
-            .validate()
-            .is_ok()
-        );
-        assert!(
-            RetentionPurge {
-                metadata_days: Some(0),
-                ..Default::default()
-            }
-            .validate()
-            .is_err()
-        );
+        assert!(RetentionPurge { detailed_days: Some(7), ..Default::default() }.validate().is_ok());
+        assert!(RetentionPurge { metadata_days: Some(0), ..Default::default() }.validate().is_err());
     }
 }

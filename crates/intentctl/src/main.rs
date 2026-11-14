@@ -150,7 +150,8 @@ fn run(cli: Cli) -> Result<()> {
         Cmd::Disable => systemctl(&["disable", "--now", SERVICE]),
         Cmd::Pause { duration } => {
             let seconds = duration.as_deref().map(parse_duration).transpose()?;
-            let res = api.send("POST", "/v1/capture/pause", Some(json!({ "paused": true, "duration_seconds": seconds })))?;
+            let res =
+                api.send("POST", "/v1/capture/pause", Some(json!({ "paused": true, "duration_seconds": seconds })))?;
             print_json(&res);
             Ok(())
         }
@@ -267,9 +268,7 @@ fn send_shell(base: &str, cmd: &str, cwd: &str, exit_code: i64, duration_ms: Opt
         "payload": payload,
     });
     // Redaction happens server-side; this sender stays dumb and fast.
-    agent(Duration::from_millis(300))
-        .post(&format!("{}/v1/event", base.trim_end_matches('/')))
-        .send_json(event)?;
+    agent(Duration::from_millis(300)).post(&format!("{}/v1/event", base.trim_end_matches('/'))).send_json(event)?;
     Ok(())
 }
 
@@ -332,7 +331,10 @@ fn uninstall(keep_data: bool) -> Result<()> {
             }
         }
     }
-    println!("Intent services and hooks removed{}.", if keep_data { "; data kept" } else { " along with captured data" });
+    println!(
+        "Intent services and hooks removed{}.",
+        if keep_data { "; data kept" } else { " along with captured data" }
+    );
     Ok(())
 }
 
@@ -367,10 +369,7 @@ fn install_shell_hook(shell: ShellKind) -> Result<()> {
     let rc = shell.rc_file();
     let existing = fs::read_to_string(&rc).unwrap_or_default();
     let cleaned = strip_block(&existing);
-    let block = format!(
-        "{SHELL_BLOCK_START}\n[ -r \"{0}\" ] && . \"{0}\"\n{SHELL_BLOCK_END}\n",
-        hook.display()
-    );
+    let block = format!("{SHELL_BLOCK_START}\n[ -r \"{0}\" ] && . \"{0}\"\n{SHELL_BLOCK_END}\n", hook.display());
     let mut next = cleaned.trim_end().to_string();
     if !next.is_empty() {
         next.push_str("\n\n");

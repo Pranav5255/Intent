@@ -115,7 +115,9 @@ async fn firefox_and_vscode_payloads_are_accepted() {
     assert_eq!(cfg["editor"]["enabled"], true);
     assert_eq!(cfg["approved_workspaces"], json!([ws]));
 
-    for event in [doc_change(), firefox_user_action_click(), firefox_user_action_scroll(), firefox_user_action_sensitive()] {
+    for event in
+        [doc_change(), firefox_user_action_click(), firefox_user_action_scroll(), firefox_user_action_sensitive()]
+    {
         let (s, body) = d.post_event(&event).await;
         assert_eq!(s, StatusCode::CREATED, "{event} -> {body}");
     }

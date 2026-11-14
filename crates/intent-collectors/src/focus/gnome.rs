@@ -55,11 +55,7 @@ fn to_sample(window_id: &str, app_id: &str, wm_class: &str, title: &str) -> Opti
     if window_id.is_empty() {
         return None;
     }
-    Some(FocusSample::new(
-        window_id,
-        app_from_gnome(app_id, wm_class),
-        title,
-    ))
+    Some(FocusSample::new(window_id, app_from_gnome(app_id, wm_class), title))
 }
 
 async fn current(proxy: &IntentFocusProxy<'_>) -> Option<FocusSample> {
@@ -83,29 +79,20 @@ pub(super) async fn run(
         Ok(c) => c,
         Err(e) => return BackendEnd::NotAvailable(format!("gnome: no session bus: {e}")),
     };
-    let proxy = match IntentFocusProxy::builder(&conn)
-        .cache_properties(CacheProperties::No)
-        .build()
-        .await
-    {
+    let proxy = match IntentFocusProxy::builder(&conn).cache_properties(CacheProperties::No).build().await {
         Ok(p) => p,
         Err(e) => return BackendEnd::NotAvailable(format!("gnome: proxy: {e}")),
     };
     // Subscribe before checking the owner so no transition is missed.
-    let (mut owners, mut signals) = match (
-        proxy.inner().receive_owner_changed().await,
-        proxy.receive_focus_changed().await,
-    ) {
-        (Ok(o), Ok(s)) => (o, s),
-        (Err(e), _) | (_, Err(e)) => {
-            return BackendEnd::NotAvailable(format!("gnome: subscribe: {e}"));
-        }
-    };
+    let (mut owners, mut signals) =
+        match (proxy.inner().receive_owner_changed().await, proxy.receive_focus_changed().await) {
+            (Ok(o), Ok(s)) => (o, s),
+            (Err(e), _) | (_, Err(e)) => {
+                return BackendEnd::NotAvailable(format!("gnome: subscribe: {e}"));
+            }
+        };
     let has_owner = match zbus::fdo::DBusProxy::new(&conn).await {
-        Ok(dbus) => dbus
-            .name_has_owner(DBUS_NAME.try_into().expect("valid bus name"))
-            .await
-            .unwrap_or(false),
+        Ok(dbus) => dbus.name_has_owner(DBUS_NAME.try_into().expect("valid bus name")).await.unwrap_or(false),
         Err(_) => false,
     };
 
@@ -119,9 +106,7 @@ pub(super) async fn run(
     } else if wait {
         status.set_waiting(Some(BACKEND.into()), waiting_reason());
     } else {
-        return BackendEnd::NotAvailable(format!(
-            "GNOME Shell extension {EXTENSION_UUID} is not running"
-        ));
+        return BackendEnd::NotAvailable(format!("GNOME Shell extension {EXTENSION_UUID} is not running"));
     }
 
     loop {
@@ -162,10 +147,7 @@ mod tests {
     fn empty_window_is_ignored() {
         assert!(to_sample("", "firefox.desktop", "firefox", "x").is_none());
         let s = to_sample("42", "firefox_firefox.desktop", "firefox_firefox", "Docs").unwrap();
-        assert_eq!(
-            (s.window_id.as_str(), s.app.as_str(), s.title.as_str()),
-            ("42", "firefox", "Docs")
-        );
+        assert_eq!((s.window_id.as_str(), s.app.as_str(), s.title.as_str()), ("42", "firefox", "Docs"));
     }
 
     /// Run in a GNOME session with the extension enabled:
