@@ -1,0 +1,15 @@
+{
+  "name": "ops_incident",
+  "description": "Debugging an API latency incident with kubectl and dashboards, a detour through email, then the follow-up fix.",
+  "events": [
+    {"id": "k1", "t": 0, "source": "shell", "type": "command", "task": "incident", "project": "/home/u/platform", "command": "kubectl get pods -n api"},
+    {"id": "k2", "t": 20, "source": "shell", "type": "command", "task": "incident", "project": "/home/u/platform", "command": "kubectl logs api-7d9 -n api"},
+    {"id": "g1", "t": 50, "source": "firefox", "type": "navigation", "task": "incident", "domain": "grafana.example.com", "title": "API latency dashboard"},
+    {"id": "g2", "t": 80, "source": "firefox", "type": "navigation", "task": "incident", "domain": "github.com", "title": "platform issue 412 api latency"},
+    {"id": "k3", "t": 110, "source": "shell", "type": "command", "task": "incident", "project": "/home/u/platform", "command": "kubectl rollout restart deploy/api"},
+    {"id": "e1", "t": 600, "source": "firefox", "type": "navigation", "task": "email", "domain": "mail.google.com", "title": "Inbox"},
+    {"id": "e2", "t": 630, "source": "firefox", "type": "navigation", "task": "email", "domain": "calendar.google.com", "title": "Calendar"},
+    {"id": "k4", "t": 1000, "source": "vscode", "type": "document_change", "task": "incident", "project": "/home/u/platform", "file": "deploy.yaml"},
+    {"id": "k5", "t": 1030, "source": "shell", "type": "command", "task": "incident", "project": "/home/u/platform", "command": "git commit -m raise-api-limits"}
+  ]
+}

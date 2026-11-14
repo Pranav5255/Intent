@@ -1,0 +1,16 @@
+{
+  "name": "interleaved_projects",
+  "description": "Alternating between infrastructure (terraform) and a web frontend, each with its own docs; workspaces must never merge.",
+  "events": [
+    {"id": "i1", "t": 0, "source": "vscode", "type": "document_change", "task": "infra", "project": "/home/u/infra", "file": "main.tf"},
+    {"id": "i2", "t": 40, "source": "shell", "type": "command", "task": "infra", "project": "/home/u/infra", "command": "terraform plan"},
+    {"id": "w1", "t": 400, "source": "vscode", "type": "document_change", "task": "web", "project": "/home/u/web", "file": "App.tsx"},
+    {"id": "w2", "t": 430, "source": "shell", "type": "command", "task": "web", "project": "/home/u/web", "command": "npm test"},
+    {"id": "d1", "t": 800, "source": "firefox", "type": "navigation", "task": "infra", "domain": "registry.terraform.io", "title": "aws_vpc resource"},
+    {"id": "i3", "t": 830, "source": "vscode", "type": "document_change", "task": "infra", "project": "/home/u/infra", "file": "main.tf"},
+    {"id": "d2", "t": 1200, "source": "firefox", "type": "navigation", "task": "web", "domain": "react.dev", "title": "useEffect reference"},
+    {"id": "w3", "t": 1230, "source": "vscode", "type": "document_change", "task": "web", "project": "/home/u/web", "file": "App.tsx"},
+    {"id": "w4", "t": 1260, "source": "shell", "type": "command", "task": "web", "project": "/home/u/web", "command": "npm test"},
+    {"id": "i4", "t": 1650, "source": "shell", "type": "command", "task": "infra", "project": "/home/u/infra", "command": "terraform apply"}
+  ]
+}
