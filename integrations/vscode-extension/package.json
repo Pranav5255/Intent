@@ -7,7 +7,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -25,9 +27,9 @@
     }
   },
   "scripts": {
-    "package": "vsce package --out dist/intent-vscode.vsix"
+    "package": "mkdir -p dist && vsce package --out dist/intent-vscode.vsix"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.2.1"
+    "@vscode/vsce": "^4.1.1"
   }
 }
