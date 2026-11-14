@@ -1,0 +1,19 @@
+[Desktop Entry]
+Type=Application
+Name=Intent
+GenericName=Activity memory
+Comment=Remembers what you were working on
+Exec=intent
+TryExec=intent
+Icon=intent
+Terminal=false
+Categories=Utility;
+Keywords=focus;workspace;resume;timeline;productivity;
+StartupNotify=true
+StartupWMClass=intent-app
+SingleMainWindow=true
+Actions=Palette;
+
+[Desktop Action Palette]
+Name=Open the palette
+Exec=intent --toggle

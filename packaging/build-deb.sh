@@ -9,7 +9,8 @@
 #   INTENT_FIREFOX_XPI    Mozilla-signed XPI → release build (installs the Firefox policy);
 #                         otherwise capture/integrations/firefox-extension/dist/*.xpi is
 #                         bundled as a dev build (no policy) if present.
-#   INTENT_BUILD_APP=1    also build and package the Tauri app from app/ (see HOOK below).
+#   INTENT_BUILD_APP=1    also build and package the Tauri app from app/ (needs Node 22 and
+#                         the webkit2gtk-4.1 / appindicator -dev packages; see "App" below).
 set -euo pipefail
 umask 022
 
@@ -24,7 +25,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --output) OUTPUT=$2; shift ;;
     --no-build) BUILD=0 ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
   shift
@@ -81,23 +82,47 @@ echo "$BUILD_MODE" > "$SHARE/BUILD_MODE"
 DEPENDS="libc6 (>= 2.35), libgcc-s1"
 
 # ---------------------------------------------------------------------------
-# HOOK(app): the Tauri desktop app (being built in app/ on another branch).
-# When INTENT_BUILD_APP=1 and app/src-tauri exists, build it and install the
-# binary as /usr/lib/intent/intent-app behind the /usr/bin/intent launcher,
-# plus its desktop entry and icon, and add its runtime libraries to Depends.
+# App: the Tauri desktop app from app/ (INTENT_BUILD_APP=1).
+# Binary in /usr/lib/intent/intent-app behind the /usr/bin/intent launcher, a
+# desktop entry and hicolor icons. No system-wide XDG autostart: it would start
+# the app (and, through the launcher, the capture service) for users who never
+# opted in. "Launch at login" in the app's settings writes the per-user entry.
+# Runtime libraries come from dpkg-shlibdeps; the tray library is dlopen()ed by
+# libappindicator-sys, so it is added explicitly.
 # ---------------------------------------------------------------------------
+app_depends() {
+  local tmp out
+  tmp=$(mktemp -d)
+  mkdir -p "$tmp/debian" && touch "$tmp/debian/control"
+  out=$(cd "$tmp" && dpkg-shlibdeps -O "${@/#/-e}" 2>/dev/null | sed -n 's/^shlibs:Depends=//p') || true
+  rm -rf "$tmp"
+  if [[ -z "$out" ]]; then
+    warn "dpkg-shlibdeps unavailable or failed; using the static app dependency list"
+    out="libc6 (>= 2.39), libgcc-s1, libglib2.0-0t64 | libglib2.0-0, libgtk-3-0t64 | libgtk-3-0, libwebkit2gtk-4.1-0, libjavascriptcoregtk-4.1-0, libsoup-3.0-0, libcairo2, libgdk-pixbuf-2.0-0, libpango-1.0-0, libxdo3"
+  fi
+  echo "$out, libayatana-appindicator3-1 | libappindicator3-1"
+}
+
 if [[ "${INTENT_BUILD_APP:-0}" == "1" ]]; then
   if [[ -d "$ROOT/app/src-tauri" ]]; then
-    (cd "$ROOT/app" && npm ci && npm run tauri build -- --no-bundle)
-    app_bin=$(find "$ROOT/app/src-tauri/target/release" -maxdepth 1 -type f -perm -u+x -name 'intent*' | head -n1)
-    [[ -n "$app_bin" ]] || { echo "Tauri build produced no binary" >&2; exit 2; }
+    if [[ $BUILD -eq 1 ]]; then
+      # tauri runs `npm run build` (beforeBuildCommand), enables the
+      # custom-protocol feature and honours CARGO_TARGET_DIR.
+      (cd "$ROOT/app" && npm ci --no-audit --no-fund && npx tauri build --ci --no-bundle -- --locked)
+    fi
+    app_bin="$TARGET_DIR/release/intent-app"
+    [[ -x "$app_bin" ]] || { echo "missing $app_bin (Tauri build)" >&2; exit 2; }
     install -D -m 0755 "$app_bin" "$STAGE/usr/lib/intent/intent-app"
     install -m 0755 "$ROOT/packaging/debian/intent-launcher" "$STAGE/usr/bin/intent"
-    [[ -f "$ROOT/app/packaging/intent.desktop" ]] &&
-      install -D -m 0644 "$ROOT/app/packaging/intent.desktop" "$STAGE/usr/share/applications/intent.desktop"
-    [[ -f "$ROOT/app/packaging/intent.svg" ]] &&
-      install -D -m 0644 "$ROOT/app/packaging/intent.svg" "$STAGE/usr/share/icons/hicolor/scalable/apps/intent.svg"
-    DEPENDS="$DEPENDS, libgtk-3-0t64 | libgtk-3-0, libwebkit2gtk-4.1-0, libayatana-appindicator3-1"
+    install -D -m 0644 "$ROOT/packaging/debian/intent.desktop" \
+      "$STAGE/usr/share/applications/io.github.pranav5255.Intent.desktop"
+    icons="$ROOT/app/src-tauri/icons"
+    for size in 32 64 128; do
+      install -D -m 0644 "$icons/${size}x${size}.png" "$STAGE/usr/share/icons/hicolor/${size}x${size}/apps/intent.png"
+    done
+    install -D -m 0644 "$icons/128x128@2x.png" "$STAGE/usr/share/icons/hicolor/256x256/apps/intent.png"
+    install -D -m 0644 "$icons/icon.png" "$STAGE/usr/share/icons/hicolor/512x512/apps/intent.png"
+    DEPENDS=$(app_depends "$STAGE/usr/lib/intent/intent-app" "$STAGE/usr/bin/intentd" "$STAGE/usr/bin/intentctl")
   else
     warn "INTENT_BUILD_APP=1 but app/src-tauri is missing; app skipped"
   fi
