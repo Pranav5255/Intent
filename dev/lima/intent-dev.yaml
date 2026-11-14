@@ -1,0 +1,44 @@
+# Ubuntu 24.04 arm64 dev/test VM for Intent.
+#   limactl start --name=intent dev/lima/intent-dev.yaml
+#   limactl shell intent
+# 24.04 still ships both "Ubuntu" (Wayland) and "Ubuntu on Xorg" sessions, so both
+# focus backends can be exercised. The repo is mounted read-write at the same path.
+minimumLimaVersion: 2.0.0
+base: [template:ubuntu-24.04]
+vmType: vz
+cpus: 4
+memory: 6GiB
+disk: 30GiB
+mountType: virtiofs
+mounts:
+  - location: "~/school/Intent"
+    writable: true
+video:
+  display: none   # use `limactl start --video` for a GNOME window
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends \
+        build-essential pkg-config curl ca-certificates git jq \
+        libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
+        xvfb openbox xdotool x11-utils dbus-x11 wmctrl imagemagick \
+        gnome-shell mutter gnome-shell-extension-appindicator \
+        libnotify-bin poppler-utils sqlite3
+      if ! command -v node >/dev/null || ! node --version | grep -q '^v22'; then
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+        apt-get install -y nodejs
+      fi
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      sudo loginctl enable-linger "$USER"
+      if ! command -v cargo >/dev/null; then
+        curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy
+      fi
+      # Keep build output inside the VM disk, not the shared Mac folder.
+      grep -q CARGO_TARGET_DIR ~/.profile || echo 'export CARGO_TARGET_DIR=$HOME/target' >> ~/.profile
