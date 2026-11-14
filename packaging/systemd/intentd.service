@@ -1,0 +1,24 @@
+[Unit]
+Description=Intent activity daemon
+Documentation=https://github.com/Pranav5255/Intent
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/intentd
+Restart=on-failure
+RestartSec=5
+# A missing display/collector is reported in /v1/status, never a crash loop.
+RestartPreventExitStatus=78
+Nice=5
+IOSchedulingClass=idle
+MemoryHigh=150M
+MemoryMax=400M
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=graphical-session.target
