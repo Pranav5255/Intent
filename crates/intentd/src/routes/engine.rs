@@ -52,7 +52,10 @@ pub struct OptDate {
     date: Option<String>,
 }
 
-pub async fn by_date(State(state): State<AppState>, QueryParams(q): QueryParams<OptDate>) -> ApiResult<Json<Vec<Intent>>> {
+pub async fn by_date(
+    State(state): State<AppState>,
+    QueryParams(q): QueryParams<OptDate>,
+) -> ApiResult<Json<Vec<Intent>>> {
     let date = q.date.ok_or_else(|| ApiError::unprocessable("date is required"))?;
     check_date(&date)?;
     Ok(Json(intents_for(&state, date).await?))
@@ -87,7 +90,11 @@ pub async fn search(State(state): State<AppState>, QueryParams(q): QueryParams<S
             blocking(move || {
                 hits.into_iter()
                     .filter(|h| {
-                        store.intent_by_id(&h.id).ok().flatten().is_some_and(|i| i.project_tag() == Some(project.as_str()))
+                        store
+                            .intent_by_id(&h.id)
+                            .ok()
+                            .flatten()
+                            .is_some_and(|i| i.project_tag() == Some(project.as_str()))
                     })
                     .take(limit as usize)
                     .collect::<Vec<_>>()
@@ -190,7 +197,8 @@ pub async fn resume_select(
     .map_err(|e| ApiError::store(e, BAD))?;
     let runtime = state.llm();
     let use_llm = request.query.as_deref().is_some_and(|q| !q.trim().is_empty()) && state.inference_usable().await;
-    let reranker: Option<&dyn Reranker> = if use_llm { runtime.reranker.as_deref().map(|r| r as &dyn Reranker) } else { None };
+    let reranker: Option<&dyn Reranker> =
+        if use_llm { runtime.reranker.as_deref().map(|r| r as &dyn Reranker) } else { None };
     let timeout = if runtime.settings.is_local() { Duration::from_secs(30) } else { Duration::from_secs(8) };
     let response = select_resume_preview(&pool, &request, reranker, RerankOptions { timeout }).await;
     match response {
@@ -230,7 +238,10 @@ async fn run_copilot(state: &AppState, request: CopilotQueryRequest) -> Response
     }
 }
 
-pub async fn copilot_query(State(state): State<AppState>, JsonBody(request): JsonBody<CopilotQueryRequest>) -> Response {
+pub async fn copilot_query(
+    State(state): State<AppState>,
+    JsonBody(request): JsonBody<CopilotQueryRequest>,
+) -> Response {
     if request.mode == CopilotMode::Narrative {
         let (Some(from), Some(to)) = (request.date_from.as_deref(), request.date_to.as_deref()) else {
             return ApiError::bad_request("narrative mode requires date_from and date_to").into_response();
@@ -284,13 +295,20 @@ pub async fn pipeline_run(State(state): State<AppState>, QueryParams(q): QueryPa
     Ok(Json(result).into_response())
 }
 
-pub async fn pipeline_replay(State(state): State<AppState>, JsonBody(export): JsonBody<DayExport>) -> ApiResult<Response> {
+pub async fn pipeline_replay(
+    State(state): State<AppState>,
+    JsonBody(export): JsonBody<DayExport>,
+) -> ApiResult<Response> {
     check_date(&export.date)?;
-    let result = pipeline::run(&state, &export.date, Some(export.events), RunMode::Cached).await.map_err(pipeline_error)?;
+    let result =
+        pipeline::run(&state, &export.date, Some(export.events), RunMode::Cached).await.map_err(pipeline_error)?;
     Ok(Json(result).into_response())
 }
 
-pub async fn pipeline_recompute(State(state): State<AppState>, QueryParams(q): QueryParams<OptDate>) -> ApiResult<Response> {
+pub async fn pipeline_recompute(
+    State(state): State<AppState>,
+    QueryParams(q): QueryParams<OptDate>,
+) -> ApiResult<Response> {
     let date = q.date.ok_or_else(|| ApiError::unprocessable("date is required"))?;
     check_date(&date)?;
     let store = state.store.clone();

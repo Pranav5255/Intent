@@ -10,9 +10,9 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use intent_engine::PipelineDeps;
+use intent_engine::TemplateLabelProvider;
 use intent_engine::current::CurrentIntentEngine;
 use intent_engine::resume_select::{RerankCandidate, Reranker};
-use intent_engine::TemplateLabelProvider;
 use intent_llm::copilot::tools::DayIntentStats;
 use intent_llm::harness::StructuredCall;
 use intent_llm::settings::LocalServerProbe;
@@ -41,7 +41,12 @@ pub struct LlmRuntime {
 }
 
 impl LlmRuntime {
-    pub fn build(settings: LlmSettings, factory: &ProviderFactory, store: &Store, current: &Arc<CurrentIntentEngine>) -> Self {
+    pub fn build(
+        settings: LlmSettings,
+        factory: &ProviderFactory,
+        store: &Store,
+        current: &Arc<CurrentIntentEngine>,
+    ) -> Self {
         let providers = factory(&settings);
         if let Some(reason) = &providers.unavailable_reason {
             tracing::info!(reason = %reason, "LLM unavailable; using template labels");
@@ -172,7 +177,11 @@ pub async fn hybrid_search(
 
 /// Current intent from the last 30 minutes of capture events (template labels: the
 /// copilot asks often and must not queue behind the pipeline on a local model).
-pub async fn current_intent(store: &Store, current: &CurrentIntentEngine, provider: &dyn LabelProvider) -> Option<CurrentIntent> {
+pub async fn current_intent(
+    store: &Store,
+    current: &CurrentIntentEngine,
+    provider: &dyn LabelProvider,
+) -> Option<CurrentIntent> {
     let store = store.clone();
     current
         .get_current(now_ts(), provider, move |since| async move {
@@ -242,7 +251,11 @@ impl CopilotBackend for StoreBackend {
             by_date: report
                 .by_date
                 .into_iter()
-                .map(|d| DayIntentStats { date: d.date, intent_count: d.intent_count, duration_seconds: d.duration_seconds })
+                .map(|d| DayIntentStats {
+                    date: d.date,
+                    intent_count: d.intent_count,
+                    duration_seconds: d.duration_seconds,
+                })
                 .collect(),
         })
     }
@@ -281,7 +294,8 @@ impl Reranker for LlmReranker {
             "properties": {"order": {"type": "array", "items": {"type": "string", "enum": ids},
                                      "minItems": ids.len(), "maxItems": ids.len()}}
         });
-        let mut call = StructuredCall::new("rerank", RERANK_PROMPT_VERSION, RERANK_SYSTEM.into(), user, "rerank", schema);
+        let mut call =
+            StructuredCall::new("rerank", RERANK_PROMPT_VERSION, RERANK_SYSTEM.into(), user, "rerank", schema);
         call.max_output_tokens = 64 * ids.len().max(1) as u32;
         let supplied: Vec<String> = ids.iter().map(|s| s.to_string()).collect();
         let out = self

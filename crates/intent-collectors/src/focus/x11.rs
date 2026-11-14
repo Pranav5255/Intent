@@ -14,9 +14,7 @@ use tokio_util::sync::CancellationToken;
 use x11rb::connection::Connection;
 use x11rb::errors::ReplyError;
 use x11rb::protocol::Event;
-use x11rb::protocol::xproto::{
-    AtomEnum, ChangeWindowAttributesAux, ConnectionExt as _, EventMask, Window,
-};
+use x11rb::protocol::xproto::{AtomEnum, ChangeWindowAttributesAux, ConnectionExt as _, EventMask, Window};
 use x11rb::rust_connection::RustConnection;
 
 use super::{BackendEnd, FocusSample, parse_wm_class};
@@ -49,55 +47,27 @@ impl AsRawFd for Tracker {
 
 impl Tracker {
     fn new(conn: RustConnection, screen: usize) -> Result<Self, String> {
-        let root = conn
-            .setup()
-            .roots
-            .get(screen)
-            .ok_or("x11: screen not found")?
-            .root;
+        let root = conn.setup().roots.get(screen).ok_or("x11: screen not found")?.root;
         let atoms = Atoms::new(&conn)
             .map_err(|e| format!("x11: intern atoms: {e}"))?
             .reply()
             .map_err(|e| format!("x11: intern atoms: {e}"))?;
-        conn.change_window_attributes(
-            root,
-            &ChangeWindowAttributesAux::new().event_mask(EventMask::PROPERTY_CHANGE),
-        )
-        .map_err(|e| format!("x11: select root events: {e}"))?
-        .check()
-        .map_err(|e| format!("x11: select root events: {e}"))?;
-        Ok(Self {
-            conn,
-            root,
-            atoms,
-            active: None,
-        })
+        conn.change_window_attributes(root, &ChangeWindowAttributesAux::new().event_mask(EventMask::PROPERTY_CHANGE))
+            .map_err(|e| format!("x11: select root events: {e}"))?
+            .check()
+            .map_err(|e| format!("x11: select root events: {e}"))?;
+        Ok(Self { conn, root, atoms, active: None })
     }
 
-    fn property(
-        &self,
-        win: Window,
-        atom: impl Into<u32>,
-        long_length: u32,
-    ) -> Result<(u32, Vec<u8>), ReplyError> {
-        let reply = self
-            .conn
-            .get_property(false, win, atom, AtomEnum::ANY, 0, long_length)?
-            .reply()?;
+    fn property(&self, win: Window, atom: impl Into<u32>, long_length: u32) -> Result<(u32, Vec<u8>), ReplyError> {
+        let reply = self.conn.get_property(false, win, atom, AtomEnum::ANY, 0, long_length)?.reply()?;
         Ok((reply.type_, reply.value))
     }
 
     fn active_window(&self) -> Option<Window> {
         let reply = self
             .conn
-            .get_property(
-                false,
-                self.root,
-                self.atoms._NET_ACTIVE_WINDOW,
-                AtomEnum::WINDOW,
-                0,
-                1,
-            )
+            .get_property(false, self.root, self.atoms._NET_ACTIVE_WINDOW, AtomEnum::WINDOW, 0, 1)
             .ok()?
             .reply()
             .ok()?;
@@ -106,9 +76,7 @@ impl Tracker {
 
     fn set_mask(&self, win: Window, mask: EventMask) {
         // Unchecked: a window that vanished just yields an ignored X error event.
-        let _ = self
-            .conn
-            .change_window_attributes(win, &ChangeWindowAttributesAux::new().event_mask(mask));
+        let _ = self.conn.change_window_attributes(win, &ChangeWindowAttributesAux::new().event_mask(mask));
     }
 
     /// Re-read `_NET_ACTIVE_WINDOW`, move the title subscription, return a sample.
@@ -133,9 +101,7 @@ impl Tracker {
         {
             return Some(String::from_utf8_lossy(&bytes).into_owned());
         }
-        let (ty, bytes) = self
-            .property(win, AtomEnum::WM_NAME, TITLE_LONG_LENGTH)
-            .ok()?;
+        let (ty, bytes) = self.property(win, AtomEnum::WM_NAME, TITLE_LONG_LENGTH).ok()?;
         Some(if ty == u32::from(AtomEnum::STRING) {
             // ICCCM STRING is Latin-1.
             bytes.iter().map(|&b| b as char).collect()
@@ -147,18 +113,12 @@ impl Tracker {
     fn sample(&self, win: Window) -> Option<FocusSample> {
         let (_, class) = self.property(win, AtomEnum::WM_CLASS, 256).ok()?;
         let title = self.title(win).unwrap_or_default();
-        Some(FocusSample::new(
-            win.to_string(),
-            parse_wm_class(&class),
-            &title,
-        ))
+        Some(FocusSample::new(win.to_string(), parse_wm_class(&class), &title))
     }
 
     fn handle(&mut self, event: Event) -> Option<FocusSample> {
         match event {
-            Event::PropertyNotify(e)
-                if e.window == self.root && e.atom == self.atoms._NET_ACTIVE_WINDOW =>
-            {
+            Event::PropertyNotify(e) if e.window == self.root && e.atom == self.atoms._NET_ACTIVE_WINDOW => {
                 self.refresh_active()
             }
             Event::PropertyNotify(e)
@@ -198,9 +158,7 @@ pub(super) async fn run(
     status.set_running("x11");
     let tracker = fd.get_mut();
     if tracker.active_window().is_none() {
-        status.set_error(Some(
-            "window manager has not published _NET_ACTIVE_WINDOW yet".into(),
-        ));
+        status.set_error(Some("window manager has not published _NET_ACTIVE_WINDOW yet".into()));
     }
     if let Some(sample) = tracker.refresh_active()
         && tx.send(sample).await.is_err()

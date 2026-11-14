@@ -10,7 +10,8 @@ use crate::util::{truncate_chars, unique};
 pub const MAX_MARKDOWN_CHARS: usize = 2048;
 
 pub fn build_intent_context(intent: &Intent) -> String {
-    let mut lines: Vec<String> = vec![format!("# {}", intent.label), String::new(), intent.summary.trim().to_owned(), String::new()];
+    let mut lines: Vec<String> =
+        vec![format!("# {}", intent.label), String::new(), intent.summary.trim().to_owned(), String::new()];
     lines.extend(resume_section(intent));
     lines.extend(insights_section(intent));
     lines.extend(todos_section(intent));
@@ -93,7 +94,8 @@ fn browser_summary(intent: &Intent) -> Option<String> {
         domains.extend(strings(&child.insights.browser, "domain"));
     }
     let domains = unique(domains);
-    (!domains.is_empty()).then(|| format!("research on {}", domains.iter().take(3).cloned().collect::<Vec<_>>().join(", ")))
+    (!domains.is_empty())
+        .then(|| format!("research on {}", domains.iter().take(3).cloned().collect::<Vec<_>>().join(", ")))
 }
 
 /// How a failure of `family` reads in prose.
@@ -116,7 +118,8 @@ fn shell_summary(intent: &Intent) -> Option<String> {
             let Some(family) = item.get("command_family").and_then(|v| v.as_str()) else { continue };
             let Some(count) = item.get("count").and_then(|v| v.as_i64()).filter(|c| *c > 0) else { continue };
             let times = if count > 1 { format!(" {count} times") } else { String::new() };
-            let exit = item.get("exit_code").and_then(|v| v.as_i64()).map(|c| format!(" (exit {c})")).unwrap_or_default();
+            let exit =
+                item.get("exit_code").and_then(|v| v.as_i64()).map(|c| format!(" (exit {c})")).unwrap_or_default();
             parts.push(format!("{}{times}{exit}", failure_phrase(family)));
         }
     }
@@ -142,7 +145,9 @@ mod tests {
         ];
         i.todos = vec![TodoObservation { path: "/p/a.rs".into(), observed_ts: 1, marker: "FIXME".into() }];
         let md = build_intent_context(&i);
-        assert!(md.starts_with("# Debug Ledger\n\nDebug Ledger.\n\n## Resume\n- File: /p/a.rs\n- Shell: /p (last: cargo test)"));
+        assert!(md.starts_with(
+            "# Debug Ledger\n\nDebug Ledger.\n\n## Resume\n- File: /p/a.rs\n- Shell: /p (last: cargo test)"
+        ));
         assert!(md.contains("- Shell: git command failed (exit 128); pytest tests failed 3 times (exit 1)"));
         assert!(!md.contains("git test failed"));
         assert!(md.contains("## TODOs\n- FIXME in /p/a.rs"));

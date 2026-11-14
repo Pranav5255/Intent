@@ -600,7 +600,8 @@ mod tests {
 
     #[test]
     fn raw_event_round_trips_python_shape() {
-        let json = r#"{"id":"a","ts":1,"source":"shell","type":"command","payload":{"cmd":"ls","cwd":"/","exit_code":0}}"#;
+        let json =
+            r#"{"id":"a","ts":1,"source":"shell","type":"command","payload":{"cmd":"ls","cwd":"/","exit_code":0}}"#;
         let ev: RawEvent = serde_json::from_str(json).unwrap();
         assert_eq!(ev.kind, "command");
         assert_eq!(ev.schema_version, 1);

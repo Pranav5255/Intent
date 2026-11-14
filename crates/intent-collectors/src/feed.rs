@@ -56,9 +56,7 @@ pub struct ActivityFeed {
 
 impl std::fmt::Debug for ActivityFeed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActivityFeed")
-            .field("snapshot", &self.snapshot())
-            .finish()
+        f.debug_struct("ActivityFeed").field("snapshot", &self.snapshot()).finish()
     }
 }
 
@@ -117,17 +115,14 @@ impl ActivityFeed {
         let g = self.lock();
         match g.reported_idle_ms {
             Some(v) => v,
-            None => now
-                .saturating_duration_since(g.last_activity_at)
-                .as_millis() as u64,
+            None => now.saturating_duration_since(g.last_activity_at).as_millis() as u64,
         }
     }
 
     pub fn is_typing(&self) -> bool {
         let now = (self.clock)();
         let g = self.lock();
-        g.last_key_at
-            .is_some_and(|t| now.saturating_duration_since(t) < TYPING_WINDOW)
+        g.last_key_at.is_some_and(|t| now.saturating_duration_since(t) < TYPING_WINDOW)
     }
 
     pub fn is_keyboard_burst(&self) -> bool {
@@ -172,10 +167,7 @@ pub fn recommended_interval_for(idle_ms: u64) -> Duration {
 }
 
 fn prune(keys: &mut VecDeque<Instant>, now: Instant) {
-    while keys
-        .front()
-        .is_some_and(|t| now.saturating_duration_since(*t) > KEY_WINDOW)
-    {
+    while keys.front().is_some_and(|t| now.saturating_duration_since(*t) > KEY_WINDOW) {
         keys.pop_front();
     }
 }
@@ -190,9 +182,7 @@ mod tests {
         let base = Instant::now();
         let offset = Arc::new(AtomicU64::new(0));
         let o = offset.clone();
-        let feed = ActivityFeed::with_clock(Box::new(move || {
-            base + Duration::from_millis(o.load(Ordering::SeqCst))
-        }));
+        let feed = ActivityFeed::with_clock(Box::new(move || base + Duration::from_millis(o.load(Ordering::SeqCst))));
         (feed, offset)
     }
 

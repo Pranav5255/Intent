@@ -57,9 +57,7 @@ impl SessionEnv {
 
     /// `XDG_CURRENT_DESKTOP` is a colon-separated list, e.g. `ubuntu:GNOME`.
     pub fn is_gnome(&self) -> bool {
-        self.current_desktop
-            .as_deref()
-            .is_some_and(|d| d.split(':').any(|p| p.eq_ignore_ascii_case("gnome")))
+        self.current_desktop.as_deref().is_some_and(|d| d.split(':').any(|p| p.eq_ignore_ascii_case("gnome")))
     }
 }
 
@@ -78,35 +76,18 @@ mod tests {
 
     #[test]
     fn wayland_beats_xwayland_display() {
-        let e = env(
-            Some("wayland"),
-            Some("wayland-0"),
-            Some(":0"),
-            Some("ubuntu:GNOME"),
-        );
+        let e = env(Some("wayland"), Some("wayland-0"), Some(":0"), Some("ubuntu:GNOME"));
         assert_eq!(e.kind(), SessionKind::Wayland);
         assert!(e.is_gnome());
-        assert_eq!(
-            env(None, Some("wayland-0"), Some(":0"), None).kind(),
-            SessionKind::Wayland
-        );
-        assert_eq!(
-            env(Some("x11"), Some("wayland-0"), Some(":0"), None).kind(),
-            SessionKind::Wayland
-        );
+        assert_eq!(env(None, Some("wayland-0"), Some(":0"), None).kind(), SessionKind::Wayland);
+        assert_eq!(env(Some("x11"), Some("wayland-0"), Some(":0"), None).kind(), SessionKind::Wayland);
     }
 
     #[test]
     fn x11_and_unknown() {
-        assert_eq!(
-            env(Some("x11"), None, Some(":0"), Some("KDE")).kind(),
-            SessionKind::X11
-        );
+        assert_eq!(env(Some("x11"), None, Some(":0"), Some("KDE")).kind(), SessionKind::X11);
         assert_eq!(env(None, None, Some(":1"), None).kind(), SessionKind::X11);
-        assert_eq!(
-            env(Some("tty"), None, None, None).kind(),
-            SessionKind::Unknown
-        );
+        assert_eq!(env(Some("tty"), None, None, None).kind(), SessionKind::Unknown);
         assert!(!env(None, None, None, Some("KDE")).is_gnome());
     }
 }

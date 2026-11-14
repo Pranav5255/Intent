@@ -110,9 +110,7 @@ fn populated_different(a: Option<&str>, b: Option<&str>) -> bool {
 /// Weighted similarity over the signals both topics actually have
 /// (project 0.4, command 0.3, file 0.2, domains 0.1, context terms 0.15).
 pub fn topic_similarity(a: &Topic, b: &Topic) -> f64 {
-    let set_match = |x: &OrderedCounter, y: &OrderedCounter| {
-        (!x.is_empty() && !y.is_empty()).then(|| x.intersects(y))
-    };
+    let set_match = |x: &OrderedCounter, y: &OrderedCounter| (!x.is_empty() && !y.is_empty()).then(|| x.intersects(y));
     let comparisons = [
         (0.4, values_match(a.project(), b.project())),
         (0.3, values_match(a.command_family(), b.command_family())),
@@ -429,10 +427,16 @@ mod tests {
     #[test]
     fn command_phase_needs_two_meaningful_events() {
         // Focus events do not count as meaningful.
-        let s = seq(vec![focus("f1", 0, "t"), focus("f2", 10, "t"), edit("a", 20, "/p/a.py", "/p"), cmd("c", 30, "pytest", "/p", 0)]);
+        let s = seq(vec![
+            focus("f1", 0, "t"),
+            focus("f2", 10, "t"),
+            edit("a", 20, "/p/a.py", "/p"),
+            cmd("c", 30, "pytest", "/p", 0),
+        ]);
         assert_eq!(cluster_session(&s).clusters.len(), 1);
 
-        let s = seq(vec![edit("a", 0, "/p/a.py", "/p"), edit("b", 10, "/p/a.py", "/p"), cmd("c", 20, "pytest", "/p", 1)]);
+        let s =
+            seq(vec![edit("a", 0, "/p/a.py", "/p"), edit("b", 10, "/p/a.py", "/p"), cmd("c", 20, "pytest", "/p", 1)]);
         let out = cluster_session(&s);
         assert_eq!(ids(&s, &out), vec![vec!["a", "b"], vec!["c"]]);
         assert_eq!(out.boundaries[1], Some(BoundaryReason::CommandPhase));
@@ -473,9 +477,16 @@ mod tests {
         // Six topic-shifted single-project runs alternating projects; cap to four.
         let mut events = Vec::new();
         let mut ts = 0;
-        for (i, (file, ws)) in [("/p/a.py", "/p"), ("/q/b.py", "/q"), ("/p/a.py", "/p"), ("/q/b.py", "/q"), ("/p/a.py", "/p"), ("/q/b.py", "/q")]
-            .iter()
-            .enumerate()
+        for (i, (file, ws)) in [
+            ("/p/a.py", "/p"),
+            ("/q/b.py", "/q"),
+            ("/p/a.py", "/p"),
+            ("/q/b.py", "/q"),
+            ("/p/a.py", "/p"),
+            ("/q/b.py", "/q"),
+        ]
+        .iter()
+        .enumerate()
         {
             for k in 0..(i + 1) {
                 events.push(edit(&format!("e{i}-{k}"), ts, file, ws));
@@ -508,7 +519,13 @@ mod tests {
     fn large_session_is_linear_enough() {
         // 1.x recomputed the run topic per event (O(n²)); 20k events must be quick.
         let events: Vec<NormalizedEvent> = (0..20_000)
-            .map(|i| if i % 50 == 49 { cmd(&format!("c{i}"), i, "git status", "/p", 0) } else { edit(&format!("e{i}"), i, "/p/a.py", "/p") })
+            .map(|i| {
+                if i % 50 == 49 {
+                    cmd(&format!("c{i}"), i, "git status", "/p", 0)
+                } else {
+                    edit(&format!("e{i}"), i, "/p/a.py", "/p")
+                }
+            })
             .collect();
         let s = seq(events);
         let started = std::time::Instant::now();
@@ -517,7 +534,13 @@ mod tests {
         assert!(check_partition(&s, &out.clusters, true).is_empty());
         // Worst case for the cap: thousands of alternating-project runs.
         let events: Vec<NormalizedEvent> = (0..8_000)
-            .map(|i| if (i / 2) % 2 == 0 { edit(&format!("a{i}"), i, "/p/a.py", "/p") } else { edit(&format!("b{i}"), i, "/q/b.py", "/q") })
+            .map(|i| {
+                if (i / 2) % 2 == 0 {
+                    edit(&format!("a{i}"), i, "/p/a.py", "/p")
+                } else {
+                    edit(&format!("b{i}"), i, "/q/b.py", "/q")
+                }
+            })
             .collect();
         let s = seq(events);
         let out = cluster_session(&s);

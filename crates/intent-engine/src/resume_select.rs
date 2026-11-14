@@ -110,7 +110,10 @@ pub fn rank_deterministically<'a>(intents: Vec<&'a Intent>, query: Option<&str>)
         })
         .collect();
     scored.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then(b.0.end_ts.cmp(&a.0.end_ts)).then(a.0.id.cmp(&b.0.id))
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(b.0.end_ts.cmp(&a.0.end_ts))
+            .then(a.0.id.cmp(&b.0.id))
     });
     scored
 }
@@ -261,7 +264,8 @@ mod tests {
         let mut i = intent(id, label, 0, end);
         i.tags = vec![format!("project:{tag}")];
         i.resume_payload.files = vec![format!("/home/u/{tag}/src/a.rs")];
-        i.resume_payload.shell = ShellResume { cwd: Some(format!("/home/u/{tag}")), last_cmd: Some("cargo test".into()) };
+        i.resume_payload.shell =
+            ShellResume { cwd: Some(format!("/home/u/{tag}")), last_cmd: Some("cargo test".into()) };
         i.resume_payload.urls = vec!["https://docs.rs/".into()];
         i
     }
@@ -281,9 +285,10 @@ mod tests {
     #[tokio::test]
     async fn keyword_scoring_selects_clear_winner() {
         let intents = vec![tagged("a", "Fix ledger overdraft", "ledger", 10), tagged("b", "Write docs", "site", 20)];
-        let r = select_resume_preview(&intents, &req(Some("resume the ledger overdraft")), None, RerankOptions::default())
-            .await
-            .unwrap();
+        let r =
+            select_resume_preview(&intents, &req(Some("resume the ledger overdraft")), None, RerankOptions::default())
+                .await
+                .unwrap();
         assert!(!r.needs_picker);
         let selected = r.selected.unwrap();
         assert_eq!(selected.candidate.intent_id, "a");
@@ -304,10 +309,17 @@ mod tests {
     async fn rerank_must_be_a_permutation() {
         let intents = vec![tagged("a", "Fix ledger", "ledger", 10), tagged("b", "Fix site", "site", 20)];
         let good = Fixed(Ok(vec!["a".into(), "b".into()]));
-        let r = select_resume_preview(&intents, &req(Some("fix")), Some(&good), RerankOptions::default()).await.unwrap();
+        let r =
+            select_resume_preview(&intents, &req(Some("fix")), Some(&good), RerankOptions::default()).await.unwrap();
         assert_eq!(r.candidates[0].intent_id, "a");
-        for bad in [Fixed(Ok(vec!["a".into()])), Fixed(Ok(vec!["a".into(), "a".into()])), Fixed(Ok(vec!["a".into(), "zzz".into()])), Fixed(Err(()))] {
-            let r = select_resume_preview(&intents, &req(Some("fix")), Some(&bad), RerankOptions::default()).await.unwrap();
+        for bad in [
+            Fixed(Ok(vec!["a".into()])),
+            Fixed(Ok(vec!["a".into(), "a".into()])),
+            Fixed(Ok(vec!["a".into(), "zzz".into()])),
+            Fixed(Err(())),
+        ] {
+            let r =
+                select_resume_preview(&intents, &req(Some("fix")), Some(&bad), RerankOptions::default()).await.unwrap();
             assert_eq!(r.candidates[0].intent_id, "b");
         }
     }
@@ -317,7 +329,8 @@ mod tests {
         let mut root = tagged("a", "Fix ledger", "ledger", 10);
         let mut child = tagged("a1", "Edit", "ledger", 5);
         child.resume_payload.files.push("/elsewhere/x.rs".into());
-        child.semantic = Some(SemanticIntentMetadata { workspace_root: Some("/home/u/ledger".into()), ..Default::default() });
+        child.semantic =
+            Some(SemanticIntentMetadata { workspace_root: Some("/home/u/ledger".into()), ..Default::default() });
         root.children.push(child);
         let intents = vec![root, tagged("b", "Fix site", "site", 20)];
         let request = ResumeSelectRequest {

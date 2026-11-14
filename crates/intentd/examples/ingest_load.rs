@@ -73,10 +73,14 @@ fn event(i: usize, ts: i64, seed: u64) -> Value {
                     "payload": {"cmd": COMMANDS[p][i / 5 % 4], "cwd": root, "exit_code": if i.is_multiple_of(17) { 1 } else { 0 }}}),
         1 => json!({"id": id, "ts": ts, "source": "linux", "type": "app_focus",
                     "payload": {"app": if i.is_multiple_of(2) { "Code" } else { "Firefox" }, "title": format!("{file} - {root}")}}),
-        2 => json!({"id": id, "ts": ts, "source": "vscode", "type": "file_save", "payload": {"path": format!("{root}/{file}")}}),
+        2 => {
+            json!({"id": id, "ts": ts, "source": "vscode", "type": "file_save", "payload": {"path": format!("{root}/{file}")}})
+        }
         3 => json!({"id": id, "ts": ts, "source": "firefox", "type": "tab_change",
                     "payload": {"url": format!("https://{domain}/page/{}", i % 7), "title": format!("{domain} docs"), "tab_id": p, "window_id": 1}}),
-        _ => json!({"id": id, "ts": ts, "source": "vscode", "type": "file_open", "payload": {"path": format!("{root}/{file}")}}),
+        _ => {
+            json!({"id": id, "ts": ts, "source": "vscode", "type": "file_open", "payload": {"path": format!("{root}/{file}")}})
+        }
     }
 }
 
@@ -98,7 +102,8 @@ async fn main() {
     let started = Instant::now();
     let mut workers = Vec::new();
     for _ in 0..a.concurrency.max(1) {
-        let (client, next, codes, url) = (client.clone(), Arc::clone(&next), Arc::clone(&codes), format!("{}/v1/event", a.url));
+        let (client, next, codes, url) =
+            (client.clone(), Arc::clone(&next), Arc::clone(&codes), format!("{}/v1/event", a.url));
         let n = a.n;
         workers.push(tokio::spawn(async move {
             loop {

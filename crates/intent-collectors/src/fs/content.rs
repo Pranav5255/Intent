@@ -19,9 +19,8 @@ const PDF_TIMEOUT: Duration = Duration::from_secs(5);
 const OCR_TIMEOUT: Duration = Duration::from_secs(8);
 
 const TEXT_SUFFIXES: &[&str] = &[
-    "txt", "md", "rst", "csv", "json", "yaml", "yml", "toml", "ini", "py", "js", "ts", "tsx",
-    "jsx", "html", "css", "sh", "xml", "rs", "go", "c", "h", "cpp", "hpp", "java", "kt", "rb",
-    "sql", "tex", "org", "log",
+    "txt", "md", "rst", "csv", "json", "yaml", "yml", "toml", "ini", "py", "js", "ts", "tsx", "jsx", "html", "css",
+    "sh", "xml", "rs", "go", "c", "h", "cpp", "hpp", "java", "kt", "rb", "sql", "tex", "org", "log",
 ];
 const IMAGE_SUFFIXES: &[&str] = &["png", "jpg", "jpeg", "webp", "tiff", "bmp"];
 
@@ -34,10 +33,7 @@ pub struct Tools {
 
 impl Tools {
     pub fn detect() -> Self {
-        Self {
-            pdftotext: which("pdftotext"),
-            tesseract: which("tesseract"),
-        }
+        Self { pdftotext: which("pdftotext"), tesseract: which("tesseract") }
     }
 }
 
@@ -47,8 +43,7 @@ pub fn which(bin: &str) -> Option<PathBuf> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            p.metadata()
-                .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+            p.metadata().is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
         }
         #[cfg(not(unix))]
         {
@@ -75,9 +70,7 @@ impl ContentKind {
 }
 
 fn suffix(path: &Path) -> String {
-    path.extension()
-        .map(|e| e.to_string_lossy().to_ascii_lowercase())
-        .unwrap_or_default()
+    path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default()
 }
 
 pub fn guess_mime(path: &Path) -> &'static str {
@@ -142,17 +135,11 @@ pub fn bounded(text: &str) -> String {
 
 fn read_head(path: &Path) -> std::io::Result<Vec<u8>> {
     let mut buf = Vec::with_capacity(8 * 1024);
-    std::fs::File::open(path)?
-        .take(MAX_READ_BYTES as u64)
-        .read_to_end(&mut buf)?;
+    std::fs::File::open(path)?.take(MAX_READ_BYTES as u64).read_to_end(&mut buf)?;
     Ok(buf)
 }
 
-async fn command_output(
-    program: &Path,
-    args: &[&std::ffi::OsStr],
-    timeout: Duration,
-) -> Option<String> {
+async fn command_output(program: &Path, args: &[&std::ffi::OsStr], timeout: Duration) -> Option<String> {
     let child = tokio::process::Command::new(program)
         .args(args)
         .stdin(Stdio::null())
@@ -161,10 +148,7 @@ async fn command_output(
         .kill_on_drop(true)
         .spawn()
         .ok()?;
-    let out = tokio::time::timeout(timeout, child.wait_with_output())
-        .await
-        .ok()?
-        .ok()?;
+    let out = tokio::time::timeout(timeout, child.wait_with_output()).await.ok()?.ok()?;
     if !out.status.success() || out.stdout.is_empty() {
         return None;
     }
@@ -192,14 +176,7 @@ pub async fn extract(path: PathBuf, max_file_bytes: u64, tools: &Tools) -> Optio
         ContentKind::Text => bounded(&String::from_utf8_lossy(&head)),
         ContentKind::Pdf => {
             let bin = tools.pdftotext.as_deref()?;
-            let args = [
-                "-f".as_ref(),
-                "1".as_ref(),
-                "-l".as_ref(),
-                "3".as_ref(),
-                path.as_os_str(),
-                "-".as_ref(),
-            ];
+            let args = ["-f".as_ref(), "1".as_ref(), "-l".as_ref(), "3".as_ref(), path.as_os_str(), "-".as_ref()];
             command_output(bin, &args, PDF_TIMEOUT).await?
         }
         ContentKind::Image => {
@@ -212,10 +189,7 @@ pub async fn extract(path: PathBuf, max_file_bytes: u64, tools: &Tools) -> Optio
     }
     let digest = Sha256::digest(&head);
     let mut payload = Payload::new();
-    payload.insert(
-        "path".into(),
-        Value::String(path.to_string_lossy().into_owned()),
-    );
+    payload.insert("path".into(), Value::String(path.to_string_lossy().into_owned()));
     payload.insert("kind".into(), Value::String(kind.as_str().into()));
     payload.insert("mime".into(), Value::String(guess_mime(&path).into()));
     payload.insert("size_bytes".into(), Value::from(size));
@@ -242,15 +216,9 @@ mod tests {
         assert_eq!(classify(Path::new("a.pdf"), &none), None);
         assert_eq!(classify(Path::new("a.png"), &none), None);
         assert_eq!(classify(Path::new("a.bin"), &none), None);
-        let all = Tools {
-            pdftotext: Some("/usr/bin/pdftotext".into()),
-            tesseract: Some("/usr/bin/tesseract".into()),
-        };
+        let all = Tools { pdftotext: Some("/usr/bin/pdftotext".into()), tesseract: Some("/usr/bin/tesseract".into()) };
         assert_eq!(classify(Path::new("a.pdf"), &all), Some(ContentKind::Pdf));
-        assert_eq!(
-            classify(Path::new("a.jpeg"), &all),
-            Some(ContentKind::Image)
-        );
+        assert_eq!(classify(Path::new("a.jpeg"), &all), Some(ContentKind::Image));
     }
 
     #[tokio::test]
@@ -264,22 +232,14 @@ mod tests {
         assert_eq!(p["excerpt"], "# Title some body text");
         assert_eq!(p["size_bytes"], 26);
         assert_eq!(p["sha256"].as_str().unwrap().len(), 64);
-        assert!(
-            extract(f, 4, &Tools::default()).await.is_none(),
-            "over size cap"
-        );
+        assert!(extract(f, 4, &Tools::default()).await.is_none(), "over size cap");
     }
 
     #[cfg(unix)]
     #[tokio::test]
     async fn external_tool_timeout_is_enforced() {
         let started = std::time::Instant::now();
-        let out = command_output(
-            Path::new("/bin/sleep"),
-            &["5".as_ref()],
-            Duration::from_millis(100),
-        )
-        .await;
+        let out = command_output(Path::new("/bin/sleep"), &["5".as_ref()], Duration::from_millis(100)).await;
         assert!(out.is_none());
         assert!(started.elapsed() < Duration::from_secs(2));
     }

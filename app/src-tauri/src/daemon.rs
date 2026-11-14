@@ -31,11 +31,7 @@ impl Daemon {
             .no_proxy()
             .build()
             .expect("reqwest client");
-        Self {
-            http,
-            base: base_url(),
-            token: Mutex::new(None),
-        }
+        Self { http, base: base_url(), token: Mutex::new(None) }
     }
 
     /// Proxy one request. `path` must be an absolute path on the daemon.
@@ -50,7 +46,13 @@ impl Daemon {
         Ok(first)
     }
 
-    async fn send(&self, method: Method, path: &str, body: Option<&Value>, reload: bool) -> Result<ApiResponse, String> {
+    async fn send(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&Value>,
+        reload: bool,
+    ) -> Result<ApiResponse, String> {
         let token = self.token(reload).await;
         let mut req = self.http.request(method, format!("{}{}", self.base, path));
         if let Some(token) = token {
@@ -60,11 +62,7 @@ impl Daemon {
             req = req.json(body);
         }
         let response = req.send().await.map_err(|e| {
-            if e.is_connect() || e.is_timeout() {
-                UNREACHABLE.to_string()
-            } else {
-                format!("Request failed: {e}")
-            }
+            if e.is_connect() || e.is_timeout() { UNREACHABLE.to_string() } else { format!("Request failed: {e}") }
         })?;
         let status = response.status().as_u16();
         let text = response.text().await.map_err(|e| format!("Couldn’t read the response: {e}"))?;
@@ -95,11 +93,7 @@ impl Daemon {
 
     pub async fn post(&self, path: &str, body: Value) -> Result<(), String> {
         let r = self.request("POST", path, Some(body)).await?;
-        if (200..300).contains(&r.status) {
-            Ok(())
-        } else {
-            Err(format!("Request failed ({})", r.status))
-        }
+        if (200..300).contains(&r.status) { Ok(()) } else { Err(format!("Request failed ({})", r.status)) }
     }
 }
 

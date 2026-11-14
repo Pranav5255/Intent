@@ -125,7 +125,9 @@ impl Store {
                          embedding = COALESCE(excluded.embedding, facts.embedding)
                      RETURNING id",
                 )?
-                .query_row(params![s, p, o, fact.source_intent_id, fact.seen_ts, fact.confidence, blob], |r| r.get(0))?;
+                .query_row(params![s, p, o, fact.source_intent_id, fact.seen_ts, fact.confidence, blob], |r| {
+                    r.get(0)
+                })?;
             Ok(id)
         })
     }

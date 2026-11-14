@@ -90,16 +90,8 @@ pub struct FilesystemCollector {
 }
 
 impl FilesystemCollector {
-    pub fn new(
-        config: watch::Receiver<WatcherConfig>,
-        is_sensitive: SensitivePredicate,
-        options: FsOptions,
-    ) -> Self {
-        Self {
-            config,
-            is_sensitive,
-            options,
-        }
+    pub fn new(config: watch::Receiver<WatcherConfig>, is_sensitive: SensitivePredicate, options: FsOptions) -> Self {
+        Self { config, is_sensitive, options }
     }
 }
 
@@ -126,11 +118,7 @@ type RealDebouncer = Debouncer<notify::RecommendedWatcher, RecommendedCache>;
 
 impl DirWatcher for RealDebouncer {
     fn watch_dir(&mut self, path: &Path, recursive: bool) -> notify::Result<()> {
-        let mode = if recursive {
-            RecursiveMode::Recursive
-        } else {
-            RecursiveMode::NonRecursive
-        };
+        let mode = if recursive { RecursiveMode::Recursive } else { RecursiveMode::NonRecursive };
         self.watch(path, mode)
     }
     fn unwatch_dir(&mut self, path: &Path) {
@@ -138,10 +126,7 @@ impl DirWatcher for RealDebouncer {
     }
 }
 
-fn real_watcher(
-    tx: mpsc::Sender<DebounceEventResult>,
-    debounce: Duration,
-) -> notify::Result<RealDebouncer> {
+fn real_watcher(tx: mpsc::Sender<DebounceEventResult>, debounce: Duration) -> notify::Result<RealDebouncer> {
     // Runs on the debouncer's own thread (not a tokio worker), so blocking_send is fine
     // and gives natural back-pressure.
     new_debouncer(debounce, None, move |res: DebounceEventResult| {
@@ -164,11 +149,7 @@ pub fn inotify_max_user_watches() -> Option<usize> {
     if !cfg!(target_os = "linux") {
         return None;
     }
-    std::fs::read_to_string("/proc/sys/fs/inotify/max_user_watches")
-        .ok()?
-        .trim()
-        .parse()
-        .ok()
+    std::fs::read_to_string("/proc/sys/fs/inotify/max_user_watches").ok()?.trim().parse().ok()
 }
 
 fn is_hidden(name: &str) -> bool {
@@ -177,10 +158,7 @@ fn is_hidden(name: &str) -> bool {
 
 fn has_hidden_component(path: &Path, root: &Path) -> bool {
     path.strip_prefix(root)
-        .map(|rel| {
-            rel.components()
-                .any(|c| is_hidden(&c.as_os_str().to_string_lossy()))
-        })
+        .map(|rel| rel.components().any(|c| is_hidden(&c.as_os_str().to_string_lossy())))
         .unwrap_or(false)
 }
 
@@ -231,17 +209,9 @@ struct WatchSet<W> {
 
 impl<W: DirWatcher> WatchSet<W> {
     /// Blocking: walks the tree and registers watches.
-    fn add_tree(
-        &mut self,
-        start: &Path,
-        skip_hidden: bool,
-        cap: usize,
-        is_sensitive: &dyn Fn(&Path) -> bool,
-    ) {
+    fn add_tree(&mut self, start: &Path, skip_hidden: bool, cap: usize, is_sensitive: &dyn Fn(&Path) -> bool) {
         if !PER_DIR {
-            if self.watched.insert(start.to_path_buf())
-                && self.watcher.watch_dir(start, true).is_err()
-            {
+            if self.watched.insert(start.to_path_buf()) && self.watcher.watch_dir(start, true).is_err() {
                 self.watched.remove(start);
             }
             return;
@@ -269,12 +239,7 @@ impl<W: DirWatcher> WatchSet<W> {
     }
 
     fn remove_tree(&mut self, path: &Path) {
-        let gone: Vec<PathBuf> = self
-            .watched
-            .iter()
-            .filter(|p| p.starts_with(path))
-            .cloned()
-            .collect();
+        let gone: Vec<PathBuf> = self.watched.iter().filter(|p| p.starts_with(path)).cloned().collect();
         for p in gone {
             self.watcher.unwatch_dir(&p);
             self.watched.remove(&p);
@@ -295,28 +260,18 @@ struct Roots {
     all: Vec<PathBuf>,
 }
 
-fn resolve_roots(
-    cfg: &WatcherConfig,
-    opts: &FsOptions,
-    is_sensitive: &dyn Fn(&Path) -> bool,
-) -> (Roots, Vec<Value>) {
+fn resolve_roots(cfg: &WatcherConfig, opts: &FsOptions, is_sensitive: &dyn Fn(&Path) -> bool) -> (Roots, Vec<Value>) {
     let mut rejected = Vec::new();
     let mut workspaces = Vec::new();
     for raw in &cfg.workspaces {
         match normalize_root(raw, opts.home.as_deref(), is_sensitive) {
             Ok(p) if !workspaces.contains(&p) => workspaces.push(p),
             Ok(_) => {}
-            Err(why) => {
-                rejected.push(json!({"path": raw.to_string_lossy(), "reason": why.to_string()}))
-            }
+            Err(why) => rejected.push(json!({"path": raw.to_string_lossy(), "reason": why.to_string()})),
         }
     }
     let home = if cfg.all_accessible {
-        match opts
-            .home
-            .as_deref()
-            .map(|h| normalize_root(h, None, is_sensitive))
-        {
+        match opts.home.as_deref().map(|h| normalize_root(h, None, is_sensitive)) {
             Some(Ok(h)) => Some(h),
             Some(Err(why)) => {
                 rejected.push(json!({"path": "$HOME", "reason": why.to_string()}));
@@ -336,14 +291,7 @@ fn resolve_roots(
     {
         all.push(h.clone());
     }
-    (
-        Roots {
-            workspaces,
-            home,
-            all,
-        },
-        rejected,
-    )
+    (Roots { workspaces, home, all }, rejected)
 }
 
 struct FsLoop<W> {
@@ -385,10 +333,7 @@ impl<W: DirWatcher> FsLoop<W> {
         st.set_detail("watched_dirs", count);
         st.set_detail("watch_budget", budget);
         st.set_detail("watch_limit_hit", limit_hit);
-        st.set_detail(
-            "inotify_max_user_watches",
-            inotify_max_user_watches().map_or(Value::Null, Value::from),
-        );
+        st.set_detail("inotify_max_user_watches", inotify_max_user_watches().map_or(Value::Null, Value::from));
         if limit_hit {
             st.set_error(Some(format!(
                 "watch budget reached ({count} directories); some folders are not watched. \
@@ -412,24 +357,14 @@ impl<W: DirWatcher> FsLoop<W> {
         let previously: HashSet<PathBuf> = self.roots.workspaces.iter().cloned().collect();
         let st = &self.ctx.status;
         st.set_detail("rejected_roots", Value::Array(rejected));
-        st.set_detail(
-            "roots",
-            roots
-                .all
-                .iter()
-                .map(|p| p.to_string_lossy().into_owned())
-                .collect::<Vec<_>>(),
-        );
+        st.set_detail("roots", roots.all.iter().map(|p| p.to_string_lossy().into_owned()).collect::<Vec<_>>());
         st.set_detail("content_capture", cfg.capture_content);
 
         // Tear down the previous watcher before building the new one.
         self.set = None;
         if roots.all.is_empty() {
             self.roots = roots;
-            st.set_waiting(
-                Some(backend_name().into()),
-                "no approved workspaces configured",
-            );
+            st.set_waiting(Some(backend_name().into()), "no approved workspaces configured");
             self.publish_watch_detail();
             return Ok(());
         }
@@ -437,10 +372,7 @@ impl<W: DirWatcher> FsLoop<W> {
             Ok(w) => w,
             Err(e) => {
                 self.roots = roots;
-                st.set_waiting(
-                    Some(backend_name().into()),
-                    format!("cannot create file watcher: {e}"),
-                );
+                st.set_waiting(Some(backend_name().into()), format!("cannot create file watcher: {e}"));
                 return Ok(());
             }
         };
@@ -449,12 +381,7 @@ impl<W: DirWatcher> FsLoop<W> {
         let ws = roots.workspaces.clone();
         let home = roots.home.clone();
         let built = tokio::task::spawn_blocking(move || {
-            let mut set = WatchSet {
-                watcher,
-                watched: HashSet::new(),
-                budget,
-                limit_hit: false,
-            };
+            let mut set = WatchSet { watcher, watched: HashSet::new(), budget, limit_hit: false };
             for root in &ws {
                 set.add_tree(root, false, usize::MAX, &*pred);
             }
@@ -479,10 +406,7 @@ impl<W: DirWatcher> FsLoop<W> {
         for root in self.roots.workspaces.clone() {
             if !previously.contains(&root) {
                 let mut p = Payload::new();
-                p.insert(
-                    "workspace".into(),
-                    Value::String(root.to_string_lossy().into_owned()),
-                );
+                p.insert("workspace".into(), Value::String(root.to_string_lossy().into_owned()));
                 self.sink.emit("filesystem", "workspace_seen", p).await?;
             }
         }
@@ -491,17 +415,14 @@ impl<W: DirWatcher> FsLoop<W> {
 
     fn root_of(&self, path: &Path) -> Option<(PathBuf, bool)> {
         let root = owning_root(path, &self.roots.all)?.clone();
-        let home_mode =
-            self.roots.home.as_ref() == Some(&root) && !self.roots.workspaces.contains(&root);
+        let home_mode = self.roots.home.as_ref() == Some(&root) && !self.roots.workspaces.contains(&root);
         Some((root, home_mode))
     }
 
     /// Eligible regular file → `(root)`; directories get watched as a side effect.
     async fn eligible(&mut self, path: &Path) -> Option<PathBuf> {
         let (root, home_mode) = self.root_of(path)?;
-        if is_ignored_path(path, &root)
-            || (home_mode && has_hidden_component(path, &root))
-            || (self.is_sensitive)(path)
+        if is_ignored_path(path, &root) || (home_mode && has_hidden_component(path, &root)) || (self.is_sensitive)(path)
         {
             return None;
         }
@@ -513,15 +434,9 @@ impl<W: DirWatcher> FsLoop<W> {
                     let set = set.clone();
                     let pred = self.is_sensitive.clone();
                     let dir = path.to_path_buf();
-                    let cap = if home_mode {
-                        self.opts.home_watch_budget
-                    } else {
-                        usize::MAX
-                    };
-                    let _ = tokio::task::spawn_blocking(move || {
-                        lock(&set).add_tree(&dir, home_mode, cap, &*pred)
-                    })
-                    .await;
+                    let cap = if home_mode { self.opts.home_watch_budget } else { usize::MAX };
+                    let _ =
+                        tokio::task::spawn_blocking(move || lock(&set).add_tree(&dir, home_mode, cap, &*pred)).await;
                     self.publish_watch_detail();
                 }
             }
@@ -533,10 +448,7 @@ impl<W: DirWatcher> FsLoop<W> {
     async fn emit_file(&mut self, path: PathBuf, root: &Path) -> Result<(), SinkClosed> {
         let workspace = root.to_string_lossy().into_owned();
         let mut p = Payload::new();
-        p.insert(
-            "path".into(),
-            Value::String(path.to_string_lossy().into_owned()),
-        );
+        p.insert("path".into(), Value::String(path.to_string_lossy().into_owned()));
         p.insert("workspace".into(), Value::String(workspace.clone()));
         self.sink.emit("filesystem", "file_modify", p).await?;
 
@@ -545,28 +457,19 @@ impl<W: DirWatcher> FsLoop<W> {
         }
         if self.inflight.load(Ordering::Relaxed) >= self.opts.content_queue_limit {
             self.content_dropped += 1;
-            self.ctx
-                .status
-                .set_detail("content_dropped", self.content_dropped);
+            self.ctx.status.set_detail("content_dropped", self.content_dropped);
             return Ok(());
         }
         self.inflight.fetch_add(1, Ordering::Relaxed);
-        let (sem, inflight, tools, sink, cancel) = (
-            self.sem.clone(),
-            self.inflight.clone(),
-            self.tools.clone(),
-            self.sink.clone(),
-            self.ctx.cancel.clone(),
-        );
+        let (sem, inflight, tools, sink, cancel) =
+            (self.sem.clone(), self.inflight.clone(), self.tools.clone(), self.sink.clone(), self.ctx.cancel.clone());
         let max = self.opts.max_file_bytes;
         tokio::spawn(async move {
             let work = async {
                 let _permit = sem.acquire().await.ok()?;
                 let mut payload = content::extract(path, max, &tools).await?;
                 payload.insert("workspace".into(), Value::String(workspace));
-                sink.send(make_event("filesystem", "file_content", payload))
-                    .await
-                    .ok()
+                sink.send(make_event("filesystem", "file_content", payload)).await.ok()
             };
             tokio::select! {
                 _ = cancel.cancelled() => {}
@@ -634,20 +537,12 @@ async fn sleep_until_opt(deadline: Option<Instant>) {
     }
 }
 
-pub(crate) async fn run_with<W, F>(
-    c: FilesystemCollector,
-    factory: F,
-    tools: Tools,
-    ctx: CollectorContext,
-) where
+pub(crate) async fn run_with<W, F>(c: FilesystemCollector, factory: F, tools: Tools, ctx: CollectorContext)
+where
     W: DirWatcher,
     F: Fn(mpsc::Sender<DebounceEventResult>, Duration) -> notify::Result<W>,
 {
-    let FilesystemCollector {
-        config: mut config_rx,
-        is_sensitive,
-        options,
-    } = c;
+    let FilesystemCollector { config: mut config_rx, is_sensitive, options } = c;
     let (btx, mut brx) = mpsc::channel::<DebounceEventResult>(64);
     let mut lp = FsLoop::<W> {
         sink: ctx.sink.clone(),
@@ -658,11 +553,7 @@ pub(crate) async fn run_with<W, F>(
         opts: options,
         tools: Arc::new(tools),
         capture_content: false,
-        roots: Roots {
-            workspaces: vec![],
-            home: None,
-            all: vec![],
-        },
+        roots: Roots { workspaces: vec![], home: None, all: vec![] },
         set: None,
         inflight: Arc::new(AtomicUsize::new(0)),
         content_dropped: 0,
@@ -717,14 +608,7 @@ mod tests {
     fn plan_skips_ignored_hidden_and_respects_cap() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().canonicalize().unwrap();
-        for d in [
-            "src/a",
-            "node_modules/x",
-            ".git/objects",
-            ".config/app",
-            "secret/k",
-            "docs",
-        ] {
+        for d in ["src/a", "node_modules/x", ".git/objects", ".config/app", "secret/k", "docs"] {
             std::fs::create_dir_all(root.join(d)).unwrap();
         }
         #[cfg(unix)]
@@ -732,26 +616,13 @@ mod tests {
         let pred = |p: &Path| p.ends_with("secret");
         let (dirs, truncated) = plan_watch_dirs(&root, false, &pred, usize::MAX);
         assert!(!truncated);
-        let rel: HashSet<String> = dirs
-            .iter()
-            .map(|d| {
-                d.strip_prefix(&root)
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .collect();
-        let expect: HashSet<String> = ["", "src", "src/a", "docs", ".config", ".config/app"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let rel: HashSet<String> =
+            dirs.iter().map(|d| d.strip_prefix(&root).unwrap().to_string_lossy().into_owned()).collect();
+        let expect: HashSet<String> =
+            ["", "src", "src/a", "docs", ".config", ".config/app"].iter().map(|s| s.to_string()).collect();
         assert_eq!(rel, expect);
         let (dirs, _) = plan_watch_dirs(&root, true, &pred, usize::MAX);
-        assert!(
-            dirs.iter()
-                .all(|d| !d.to_string_lossy().contains(".config")),
-            "hidden skipped in home mode"
-        );
+        assert!(dirs.iter().all(|d| !d.to_string_lossy().contains(".config")), "hidden skipped in home mode");
         let (dirs, truncated) = plan_watch_dirs(&root, false, &pred, 2);
         assert_eq!(dirs.len(), 2);
         assert!(truncated);
@@ -795,20 +666,12 @@ mod tests {
     fn batch(items: &[(EventKind, &Path)]) -> DebounceEventResult {
         Ok(items
             .iter()
-            .map(|(k, p)| {
-                DebouncedEvent::new(
-                    Event::new(*k).add_path(p.to_path_buf()),
-                    std::time::Instant::now(),
-                )
-            })
+            .map(|(k, p)| DebouncedEvent::new(Event::new(*k).add_path(p.to_path_buf()), std::time::Instant::now()))
             .collect())
     }
 
     async fn next(rx: &mut mpsc::Receiver<RawEvent>) -> RawEvent {
-        tokio::time::timeout(Duration::from_secs(5), rx.recv())
-            .await
-            .expect("event in time")
-            .unwrap()
+        tokio::time::timeout(Duration::from_secs(5), rx.recv()).await.expect("event in time").unwrap()
     }
 
     async fn inject(fake: &Fake, b: DebounceEventResult) {
@@ -835,36 +698,21 @@ mod tests {
             capture_content: true,
         });
         let fake = Fake::default();
-        let pred: SensitivePredicate =
-            Arc::new(|p: &Path| p.file_name().is_some_and(|n| n == ".env"));
-        let opts = FsOptions {
-            per_path_interval: Duration::from_secs(60),
-            home: None,
-            ..Default::default()
-        };
+        let pred: SensitivePredicate = Arc::new(|p: &Path| p.file_name().is_some_and(|n| n == ".env"));
+        let opts = FsOptions { per_path_interval: Duration::from_secs(60), home: None, ..Default::default() };
         let (tx, mut rx) = mpsc::channel(32);
         let cancel = crate::CancellationToken::new();
-        let h = crate::spawn(
-            TestCollector(FilesystemCollector::new(cfg_rx, pred, opts), fake.clone()),
-            tx,
-            cancel.clone(),
-        );
+        let h =
+            crate::spawn(TestCollector(FilesystemCollector::new(cfg_rx, pred, opts), fake.clone()), tx, cancel.clone());
 
         let seen = next(&mut rx).await;
-        assert_eq!(
-            (seen.source.as_str(), seen.kind.as_str()),
-            ("filesystem", "workspace_seen")
-        );
+        assert_eq!((seen.source.as_str(), seen.kind.as_str()), ("filesystem", "workspace_seen"));
         assert_eq!(seen.payload["workspace"], ws1.to_string_lossy().as_ref());
         let st = h.status.snapshot();
         assert_eq!(st.state, CollectorState::Running);
         assert_eq!(st.detail["rejected_roots"][0]["path"], "/");
         if PER_DIR {
-            assert!(
-                !lock(&fake.watched)
-                    .iter()
-                    .any(|p| p.ends_with("node_modules"))
-            );
+            assert!(!lock(&fake.watched).iter().any(|p| p.ends_with("node_modules")));
         }
 
         let data = EventKind::Modify(ModifyKind::Data(DataChange::Content));
@@ -881,10 +729,7 @@ mod tests {
         .await;
         let m = next(&mut rx).await;
         assert_eq!(m.kind, "file_modify");
-        assert_eq!(
-            m.payload["path"],
-            ws1.join("a.md").to_string_lossy().as_ref()
-        );
+        assert_eq!(m.payload["path"], ws1.join("a.md").to_string_lossy().as_ref());
         assert_eq!(m.payload["workspace"], ws1.to_string_lossy().as_ref());
         let c = next(&mut rx).await;
         assert_eq!(c.kind, "file_content");
@@ -906,16 +751,9 @@ mod tests {
         inject(&fake, batch(&[(data, &ws2.join("b.txt"))])).await;
         let m2 = next(&mut rx).await;
         assert_eq!(m2.kind, "file_modify");
-        assert_eq!(
-            m2.payload["path"],
-            ws2.join("b.txt").to_string_lossy().as_ref()
-        );
+        assert_eq!(m2.payload["path"], ws2.join("b.txt").to_string_lossy().as_ref());
         // No content event (capture turned off) and the coalesced a.md write produced nothing.
-        assert!(
-            tokio::time::timeout(Duration::from_millis(200), rx.recv())
-                .await
-                .is_err()
-        );
+        assert!(tokio::time::timeout(Duration::from_millis(200), rx.recv()).await.is_err());
 
         // Removing every root parks the collector in Waiting, not Failed.
         cfg_tx.send_modify(|c| c.workspaces.clear());
@@ -956,17 +794,10 @@ mod tests {
             all_accessible: false,
             capture_content: false,
         });
-        let opts = FsOptions {
-            debounce: Duration::from_millis(200),
-            ..Default::default()
-        };
+        let opts = FsOptions { debounce: Duration::from_millis(200), ..Default::default() };
         let (tx, mut rx) = mpsc::channel(32);
         let cancel = crate::CancellationToken::new();
-        let h = crate::spawn(
-            FilesystemCollector::new(cfg_rx, Arc::new(|_: &Path| false), opts),
-            tx,
-            cancel.clone(),
-        );
+        let h = crate::spawn(FilesystemCollector::new(cfg_rx, Arc::new(|_: &Path| false), opts), tx, cancel.clone());
         assert_eq!(next(&mut rx).await.kind, "workspace_seen");
         tokio::time::sleep(Duration::from_millis(300)).await;
         std::fs::write(ws.join("sub/x.txt"), "1").unwrap();

@@ -13,23 +13,11 @@ use crate::paths::resolve_user_path;
 use crate::secrets::is_sensitive_path;
 
 /// Event kinds that need explicit opt-in.
-pub const DETAILED_EVENT_KINDS: &[(&str, &str)] = &[
-    ("vscode", "document_change"),
-    ("firefox", "user_action"),
-    ("filesystem", "file_content"),
-];
+pub const DETAILED_EVENT_KINDS: &[(&str, &str)] =
+    &[("vscode", "document_change"), ("firefox", "user_action"), ("filesystem", "file_content")];
 
-pub const DEFAULT_EXCLUDED_PATTERNS: &[&str] = &[
-    ".env",
-    ".env.*",
-    "*.pem",
-    "*.key",
-    "id_rsa*",
-    "*secret*",
-    "*credential*",
-    "*password*",
-    "*token*",
-];
+pub const DEFAULT_EXCLUDED_PATTERNS: &[&str] =
+    &[".env", ".env.*", "*.pem", "*.key", "id_rsa*", "*secret*", "*credential*", "*password*", "*token*"];
 
 pub fn is_detailed_event(source: &str, kind: &str) -> bool {
     DETAILED_EVENT_KINDS.contains(&(source, kind))
@@ -78,10 +66,7 @@ impl PatternMatcher {
 
     fn matches(&self, basename: &str) -> bool {
         let lowered = basename.to_lowercase();
-        self.globs
-            .as_ref()
-            .is_some_and(|set| set.is_match(&lowered))
-            || self.literals.contains(&lowered)
+        self.globs.as_ref().is_some_and(|set| set.is_match(&lowered)) || self.literals.contains(&lowered)
     }
 }
 
@@ -104,11 +89,7 @@ pub struct EditorConfig {
 
 impl EditorConfig {
     pub fn new(enabled: bool, excluded_patterns: Vec<String>) -> Self {
-        EditorConfig {
-            enabled,
-            excluded_patterns,
-            matcher: LazyMatcher::default(),
-        }
+        EditorConfig { enabled, excluded_patterns, matcher: LazyMatcher::default() }
     }
 
     pub fn excluded_patterns(&self) -> &[String] {
@@ -122,22 +103,13 @@ impl EditorConfig {
 
     /// Whether a basename matches a user/default exclusion pattern.
     pub fn is_excluded_basename(&self, basename: &str) -> bool {
-        self.matcher
-            .0
-            .get_or_init(|| Arc::new(PatternMatcher::new(&self.excluded_patterns)))
-            .matches(basename)
+        self.matcher.0.get_or_init(|| Arc::new(PatternMatcher::new(&self.excluded_patterns))).matches(basename)
     }
 }
 
 impl Default for EditorConfig {
     fn default() -> Self {
-        EditorConfig::new(
-            false,
-            DEFAULT_EXCLUDED_PATTERNS
-                .iter()
-                .map(|p| p.to_string())
-                .collect(),
-        )
+        EditorConfig::new(false, DEFAULT_EXCLUDED_PATTERNS.iter().map(|p| p.to_string()).collect())
     }
 }
 
@@ -184,11 +156,7 @@ impl DetailedCaptureConfig {
     ///
     /// `approved_workspaces` are expected to be resolved already (as
     /// [`super::WorkspacesConfig`] stores them).
-    pub fn editor_event_is_approved(
-        &self,
-        payload: &Payload,
-        approved_workspaces: &[String],
-    ) -> bool {
+    pub fn editor_event_is_approved(&self, payload: &Payload, approved_workspaces: &[String]) -> bool {
         let (Some(Value::String(path)), Some(Value::String(workspace))) =
             (payload.get("path"), payload.get("workspace"))
         else {
@@ -202,19 +170,13 @@ impl DetailedCaptureConfig {
         if !candidate.starts_with(&workspace) {
             return false;
         }
-        if !approved_workspaces
-            .iter()
-            .any(|approved| Path::new(approved) == workspace)
-        {
+        if !approved_workspaces.iter().any(|approved| Path::new(approved) == workspace) {
             return false;
         }
         if is_sensitive_path(&candidate) {
             return false;
         }
-        let basename = candidate
-            .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
+        let basename = candidate.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         !self.editor.is_excluded_basename(&basename)
     }
 
@@ -232,9 +194,7 @@ impl DetailedCaptureConfig {
 
     fn validate(&self) -> Result<(), ConfigError> {
         if self.editor.excluded_patterns.iter().any(String::is_empty) {
-            return Err(ConfigError::invalid(
-                "detailed-capture editor.excluded_patterns must be a list of strings",
-            ));
+            return Err(ConfigError::invalid("detailed-capture editor.excluded_patterns must be a list of strings"));
         }
         Ok(())
     }
@@ -247,9 +207,7 @@ impl JsonConfig for DetailedCaptureConfig {
 
     fn from_json(raw: &Value) -> Result<Self, ConfigError> {
         let Value::Object(raw) = raw else {
-            return Err(ConfigError::invalid(
-                "detailed-capture config must be an object",
-            ));
+            return Err(ConfigError::invalid("detailed-capture config must be an object"));
         };
         let empty = serde_json::Map::new();
         let mut config = DetailedCaptureConfig::default();
@@ -262,18 +220,14 @@ impl JsonConfig for DetailedCaptureConfig {
                 None => &empty,
                 Some(Value::Object(section)) => section,
                 Some(_) => {
-                    return Err(ConfigError::invalid(format!(
-                        "detailed-capture {source} config must be an object"
-                    )));
+                    return Err(ConfigError::invalid(format!("detailed-capture {source} config must be an object")));
                 }
             };
             match section.get("enabled") {
                 None => {}
                 Some(Value::Bool(enabled)) => config.set_enabled(kind, *enabled),
                 Some(_) => {
-                    return Err(ConfigError::invalid(format!(
-                        "detailed-capture {source}.enabled must be a boolean"
-                    )));
+                    return Err(ConfigError::invalid(format!("detailed-capture {source}.enabled must be a boolean")));
                 }
             }
         }
@@ -282,29 +236,18 @@ impl JsonConfig for DetailedCaptureConfig {
             None => {}
             Some(Value::Bool(enabled)) => config.browser.context_enabled = *enabled,
             Some(_) => {
-                return Err(ConfigError::invalid(
-                    "detailed-capture browser.context_enabled must be a boolean",
-                ));
+                return Err(ConfigError::invalid("detailed-capture browser.context_enabled must be a boolean"));
             }
         }
-        if let Some(patterns) = section("editor").and_then(|editor| editor.get("excluded_patterns"))
-        {
-            let invalid = || {
-                ConfigError::invalid(
-                    "detailed-capture editor.excluded_patterns must be a list of strings",
-                )
-            };
+        if let Some(patterns) = section("editor").and_then(|editor| editor.get("excluded_patterns")) {
+            let invalid =
+                || ConfigError::invalid("detailed-capture editor.excluded_patterns must be a list of strings");
             let Value::Array(items) = patterns else {
                 return Err(invalid());
             };
             let patterns = items
                 .iter()
-                .map(|item| {
-                    item.as_str()
-                        .filter(|s| !s.is_empty())
-                        .map(str::to_owned)
-                        .ok_or_else(invalid)
-                })
+                .map(|item| item.as_str().filter(|s| !s.is_empty()).map(str::to_owned).ok_or_else(invalid))
                 .collect::<Result<Vec<_>, _>>()?;
             config.editor.set_excluded_patterns(patterns);
         }
@@ -406,18 +349,12 @@ mod tests {
         assert!(config.browser.context_enabled && !config.browser.enabled);
         let err = |value: Value| parse(value).unwrap_err().to_string();
         assert_eq!(err(json!([])), "detailed-capture config must be an object");
-        assert_eq!(
-            err(json!({"browser": 1})),
-            "detailed-capture browser config must be an object"
-        );
+        assert_eq!(err(json!({"browser": 1})), "detailed-capture browser config must be an object");
         assert_eq!(
             err(json!({"filesystem": {"enabled": "yes"}})),
             "detailed-capture filesystem.enabled must be a boolean"
         );
-        assert_eq!(
-            err(json!({"editor": {"enabled": null}})),
-            "detailed-capture editor.enabled must be a boolean"
-        );
+        assert_eq!(err(json!({"editor": {"enabled": null}})), "detailed-capture editor.enabled must be a boolean");
         assert_eq!(
             err(json!({"browser": {"context_enabled": 1}})),
             "detailed-capture browser.context_enabled must be a boolean"
@@ -428,13 +365,7 @@ mod tests {
                 "detailed-capture editor.excluded_patterns must be a list of strings"
             );
         }
-        assert!(
-            parse(json!({"editor": {"excluded_patterns": []}}))
-                .unwrap()
-                .editor
-                .excluded_patterns()
-                .is_empty()
-        );
+        assert!(parse(json!({"editor": {"excluded_patterns": []}})).unwrap().editor.excluded_patterns().is_empty());
     }
 
     #[test]
@@ -456,17 +387,17 @@ mod tests {
     #[test]
     fn update_applies_partially() {
         let mut config = DetailedCaptureConfig::default();
-        let update: DetailedCaptureUpdate =
-            serde_json::from_value(json!({"editor": {"excluded_patterns": ["*.tmp"]}, "browser": {"context_enabled": true}})).unwrap();
+        let update: DetailedCaptureUpdate = serde_json::from_value(
+            json!({"editor": {"excluded_patterns": ["*.tmp"]}, "browser": {"context_enabled": true}}),
+        )
+        .unwrap();
         update.apply(&mut config);
         assert!(!config.editor.enabled);
         assert_eq!(config.editor.excluded_patterns(), ["*.tmp"]);
         assert!(config.browser.context_enabled);
         assert!(config.editor.is_excluded_basename("x.TMP"));
         DetailedCaptureUpdate {
-            filesystem: Some(DetailedCaptureFilesystemUpdate {
-                enabled: Some(true),
-            }),
+            filesystem: Some(DetailedCaptureFilesystemUpdate { enabled: Some(true) }),
             ..Default::default()
         }
         .apply(&mut config);
@@ -496,17 +427,12 @@ mod tests {
 
     fn approved_case() -> (tempfile::TempDir, String) {
         let dir = tempfile::tempdir().unwrap();
-        let root = crate::paths::resolve_lenient(dir.path())
-            .to_string_lossy()
-            .into_owned();
+        let root = crate::paths::resolve_lenient(dir.path()).to_string_lossy().into_owned();
         (dir, root)
     }
 
     fn payload(path: &str, workspace: &str) -> Payload {
-        json!({"path": path, "workspace": workspace, "changes": []})
-            .as_object()
-            .cloned()
-            .unwrap()
+        json!({"path": path, "workspace": workspace, "changes": []}).as_object().cloned().unwrap()
     }
 
     #[test]
@@ -515,16 +441,13 @@ mod tests {
         let mut config = DetailedCaptureConfig::default();
         config.editor.enabled = true;
         let file = format!("{root}/src/main.rs");
-        assert!(
-            config.editor_event_is_approved(&payload(&file, &root), std::slice::from_ref(&root))
-        );
+        assert!(config.editor_event_is_approved(&payload(&file, &root), std::slice::from_ref(&root)));
         assert!(!config.editor_event_is_approved(&payload(&file, &root), &[]));
         assert!(!config.editor_event_is_approved(&payload(&file, &root), &[format!("{root}/src")]));
         // Normalised workspace spelling still matches.
-        assert!(config.editor_event_is_approved(
-            &payload(&file, &format!("{root}/src/..")),
-            std::slice::from_ref(&root)
-        ));
+        assert!(
+            config.editor_event_is_approved(&payload(&file, &format!("{root}/src/..")), std::slice::from_ref(&root))
+        );
     }
 
     #[test]
@@ -532,31 +455,18 @@ mod tests {
         let (_dir, root) = approved_case();
         let config = DetailedCaptureConfig::default();
         let approved = std::slice::from_ref(&root);
-        assert!(
-            !config.editor_event_is_approved(
-                &payload(&format!("{root}/../outside.rs"), &root),
-                approved
-            )
-        );
+        assert!(!config.editor_event_is_approved(&payload(&format!("{root}/../outside.rs"), &root), approved));
         assert!(!config.editor_event_is_approved(&payload("/etc/hosts", &root), approved));
-        assert!(
-            !config.editor_event_is_approved(&payload(&format!("{root}x/a.rs"), &root), approved)
-        );
+        assert!(!config.editor_event_is_approved(&payload(&format!("{root}x/a.rs"), &root), approved));
         assert!(
             !config.editor_event_is_approved(
-                &json!({"path": 1, "workspace": root})
-                    .as_object()
-                    .cloned()
-                    .unwrap(),
+                &json!({"path": 1, "workspace": root}).as_object().cloned().unwrap(),
                 approved
             )
         );
         assert!(
             !config.editor_event_is_approved(
-                &json!({"path": format!("{root}/a")})
-                    .as_object()
-                    .cloned()
-                    .unwrap(),
+                &json!({"path": format!("{root}/a")}).as_object().cloned().unwrap(),
                 approved
             )
         );
@@ -579,25 +489,13 @@ mod tests {
             "token_store.py",
             ".ssh/config",
         ] {
-            assert!(
-                !config
-                    .editor_event_is_approved(&payload(&format!("{root}/{name}"), &root), approved),
-                "{name}"
-            );
+            assert!(!config.editor_event_is_approved(&payload(&format!("{root}/{name}"), &root), approved), "{name}");
         }
         config.editor.set_excluded_patterns(vec!["*.lock".into()]);
-        assert!(
-            !config
-                .editor_event_is_approved(&payload(&format!("{root}/Cargo.lock"), &root), approved)
-        );
+        assert!(!config.editor_event_is_approved(&payload(&format!("{root}/Cargo.lock"), &root), approved));
         // Built-in sensitive rules apply even when custom patterns replace the defaults.
-        assert!(
-            !config.editor_event_is_approved(&payload(&format!("{root}/.env"), &root), approved)
-        );
-        assert!(
-            config
-                .editor_event_is_approved(&payload(&format!("{root}/Cargo.toml"), &root), approved)
-        );
+        assert!(!config.editor_event_is_approved(&payload(&format!("{root}/.env"), &root), approved));
+        assert!(config.editor_event_is_approved(&payload(&format!("{root}/Cargo.toml"), &root), approved));
     }
 
     #[test]

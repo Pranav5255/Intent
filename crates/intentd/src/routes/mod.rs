@@ -15,12 +15,12 @@ mod settings;
 
 use std::sync::Arc;
 
+use axum::Router;
 use axum::extract::{Request, State};
 use axum::http::{HeaderValue, Method, header};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, post};
-use axum::Router;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::auth;
@@ -51,10 +51,8 @@ async fn auth_layer(State(state): State<AppState>, request: Request, next: Next)
 /// (`INTENT_FIREFOX_EXTENSION_ORIGIN`) and the Tauri app. Dev builds also allow the
 /// Tauri dev server; release builds never allow Vite/localhost dev origins.
 pub fn cors_layer(firefox_origin: Option<&str>) -> CorsLayer {
-    let mut origins: Vec<HeaderValue> = vec![
-        HeaderValue::from_static("tauri://localhost"),
-        HeaderValue::from_static("http://tauri.localhost"),
-    ];
+    let mut origins: Vec<HeaderValue> =
+        vec![HeaderValue::from_static("tauri://localhost"), HeaderValue::from_static("http://tauri.localhost")];
     if let Some(origin) = firefox_origin.map(str::trim).filter(|o| !o.is_empty())
         && let Ok(value) = HeaderValue::from_str(origin)
     {

@@ -161,10 +161,7 @@ pub(crate) fn migrate(conn: &mut Connection) -> Result<i64> {
         }
         let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         tx.execute_batch(sql)?;
-        tx.execute(
-            "INSERT INTO schema_migrations(version, applied_at) VALUES (?1, ?2)",
-            params![version, now_ts()],
-        )?;
+        tx.execute("INSERT INTO schema_migrations(version, applied_at) VALUES (?1, ?2)", params![version, now_ts()])?;
         tx.commit()?;
         current = *version;
     }

@@ -23,10 +23,7 @@ const SCHEME_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 pub fn urlsplit(raw: &str) -> Result<SplitUrl, InvalidUrl> {
     // WHATWG: strip leading C0 control-or-space, drop ASCII tab/newline anywhere.
     let stripped = raw.trim_start_matches(|c: char| c <= ' ');
-    let mut url: String = stripped
-        .chars()
-        .filter(|c| !matches!(c, '\t' | '\r' | '\n'))
-        .collect();
+    let mut url: String = stripped.chars().filter(|c| !matches!(c, '\t' | '\r' | '\n')).collect();
     let mut scheme = String::new();
     if let Some(index) = url.find(':')
         && index > 0
@@ -48,10 +45,7 @@ pub fn urlsplit(raw: &str) -> Result<SplitUrl, InvalidUrl> {
         }
         if open {
             let bracketed = netloc.split_once('[').map(|(_, rest)| rest).unwrap_or("");
-            let host = bracketed
-                .split_once(']')
-                .map(|(host, _)| host)
-                .unwrap_or(bracketed);
+            let host = bracketed.split_once(']').map(|(host, _)| host).unwrap_or(bracketed);
             check_bracketed_host(host)?;
         }
     }
@@ -65,13 +59,7 @@ pub fn urlsplit(raw: &str) -> Result<SplitUrl, InvalidUrl> {
         query = after.to_string();
         url = before.to_string();
     }
-    Ok(SplitUrl {
-        scheme,
-        netloc,
-        path: url,
-        query,
-        fragment,
-    })
+    Ok(SplitUrl { scheme, netloc, path: url, query, fragment })
 }
 
 fn check_bracketed_host(host: &str) -> Result<(), InvalidUrl> {
@@ -84,26 +72,16 @@ fn check_bracketed_host(host: &str) -> Result<(), InvalidUrl> {
         return Err(InvalidUrl);
     }
     let address = host.split_once('%').map(|(addr, _)| addr).unwrap_or(host);
-    address
-        .parse::<Ipv6Addr>()
-        .map(|_| ())
-        .map_err(|_| InvalidUrl)
+    address.parse::<Ipv6Addr>().map(|_| ()).map_err(|_| InvalidUrl)
 }
 
 impl SplitUrl {
     fn hostinfo(&self) -> (&str, Option<&str>) {
-        let hostinfo = self
-            .netloc
-            .rsplit_once('@')
-            .map(|(_, host)| host)
-            .unwrap_or(&self.netloc);
+        let hostinfo = self.netloc.rsplit_once('@').map(|(_, host)| host).unwrap_or(&self.netloc);
         let (host, port) = match hostinfo.split_once('[') {
             Some((_, bracketed)) => {
                 let (host, rest) = bracketed.split_once(']').unwrap_or((bracketed, ""));
-                (
-                    host,
-                    rest.split_once(':').map(|(_, port)| port).unwrap_or(""),
-                )
+                (host, rest.split_once(':').map(|(_, port)| port).unwrap_or(""))
             }
             None => hostinfo.split_once(':').unwrap_or((hostinfo, "")),
         };
@@ -113,11 +91,7 @@ impl SplitUrl {
     /// Lower-cased host (brackets removed for IPv6), `None` when empty.
     pub fn hostname(&self) -> Option<String> {
         let (host, _) = self.hostinfo();
-        if host.is_empty() {
-            None
-        } else {
-            Some(host.to_lowercase())
-        }
+        if host.is_empty() { None } else { Some(host.to_lowercase()) }
     }
 
     /// Port, `Ok(None)` when absent, `Err` when not a decimal in `0..=65535`.
@@ -141,11 +115,7 @@ pub fn sanitize_url(raw: &str) -> Option<String> {
     }
     let hostname = parsed.hostname()?;
     let port = parsed.port().ok()?;
-    let mut netloc = if hostname.contains(':') {
-        format!("[{hostname}]")
-    } else {
-        hostname
-    };
+    let mut netloc = if hostname.contains(':') { format!("[{hostname}]") } else { hostname };
     if let Some(port) = port.filter(|port| *port != 0) {
         netloc.push_str(&format!(":{port}"));
     }
@@ -209,10 +179,7 @@ mod tests {
         assert!(urlsplit("http://::1]/x").is_err());
         assert!(urlsplit("http://[127.0.0.1]/").is_err());
         assert!(urlsplit("http://[v1.fe]/").is_ok());
-        assert_eq!(
-            sanitize_url("http://[::1]:8080/x?y").as_deref(),
-            Some("http://[::1]:8080/x")
-        );
+        assert_eq!(sanitize_url("http://[::1]:8080/x?y").as_deref(), Some("http://[::1]:8080/x"));
     }
 
     #[test]
@@ -228,22 +195,10 @@ mod tests {
             sanitize_url("https://user:pass@Example.com:8443/a/b?token=1#x").as_deref(),
             Some("https://example.com:8443/a/b")
         );
-        assert_eq!(
-            sanitize_url("http://example.com").as_deref(),
-            Some("http://example.com/")
-        );
-        assert_eq!(
-            sanitize_url("https://example.com:443/").as_deref(),
-            Some("https://example.com:443/")
-        );
-        assert_eq!(
-            sanitize_url("https://example.com:0/x").as_deref(),
-            Some("https://example.com/x")
-        );
-        assert_eq!(
-            sanitize_url("https://example.com?q").as_deref(),
-            Some("https://example.com/")
-        );
+        assert_eq!(sanitize_url("http://example.com").as_deref(), Some("http://example.com/"));
+        assert_eq!(sanitize_url("https://example.com:443/").as_deref(), Some("https://example.com:443/"));
+        assert_eq!(sanitize_url("https://example.com:0/x").as_deref(), Some("https://example.com/x"));
+        assert_eq!(sanitize_url("https://example.com?q").as_deref(), Some("https://example.com/"));
     }
 
     #[test]
@@ -266,10 +221,7 @@ mod tests {
 
     #[test]
     fn match_host_trims_trailing_dot() {
-        assert_eq!(
-            match_host("https://WWW.Chase.com./x").as_deref(),
-            Some("www.chase.com")
-        );
+        assert_eq!(match_host("https://WWW.Chase.com./x").as_deref(), Some("www.chase.com"));
         assert_eq!(match_host("[blocked]"), None);
     }
 }

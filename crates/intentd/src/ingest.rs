@@ -51,7 +51,9 @@ impl WriterConfig {
         let get = |key: &str| std::env::var(key).ok().and_then(|v| v.trim().parse::<u64>().ok());
         let d = Self::default();
         Self {
-            queue_capacity: get("INTENT_INGEST_QUEUE_CAPACITY").filter(|v| *v > 0).map_or(d.queue_capacity, |v| v as usize),
+            queue_capacity: get("INTENT_INGEST_QUEUE_CAPACITY")
+                .filter(|v| *v > 0)
+                .map_or(d.queue_capacity, |v| v as usize),
             max_batch: get("INTENT_INGEST_BATCH_SIZE").filter(|v| *v > 0).map_or(d.max_batch, |v| v as usize),
             batch_wait: get("INTENT_INGEST_BATCH_WAIT_MS").map_or(d.batch_wait, Duration::from_millis),
             submit_timeout: get("INTENT_INGEST_SUBMIT_TIMEOUT_SECONDS")
@@ -266,7 +268,13 @@ impl Writer {
     }
 }
 
-async fn run(mut rx: mpsc::Receiver<Msg>, store: Store, metrics: Arc<Metrics>, config: WriterConfig, on_insert: InsertHook) {
+async fn run(
+    mut rx: mpsc::Receiver<Msg>,
+    store: Store,
+    metrics: Arc<Metrics>,
+    config: WriterConfig,
+    on_insert: InsertHook,
+) {
     while let Some(first) = rx.recv().await {
         let mut batch: Vec<(RawEvent, Instant, Option<Reply>)> = Vec::new();
         let mut flushes: Vec<oneshot::Sender<()>> = Vec::new();
@@ -417,6 +425,8 @@ pub async fn ingest(shared: &Shared, event: RawEvent, delivery: Delivery) -> Res
     };
     match delivery {
         Delivery::Wait => shared.writer.submit(event).await.map(Ingested::Stored).map_err(IngestError::Unavailable),
-        Delivery::Enqueue => shared.writer.enqueue(event).await.map(|()| Ingested::Queued).map_err(IngestError::Unavailable),
+        Delivery::Enqueue => {
+            shared.writer.enqueue(event).await.map(|()| Ingested::Queued).map_err(IngestError::Unavailable)
+        }
     }
 }

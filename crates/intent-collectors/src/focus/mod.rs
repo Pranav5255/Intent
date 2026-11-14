@@ -37,11 +37,7 @@ pub struct FocusSample {
 
 impl FocusSample {
     pub fn new(window_id: impl Into<String>, app: impl Into<String>, title: &str) -> Self {
-        Self {
-            window_id: window_id.into(),
-            app: app.into(),
-            title: truncate_title(title),
-        }
+        Self { window_id: window_id.into(), app: app.into(), title: truncate_title(title) }
     }
 
     pub fn payload(&self) -> Payload {
@@ -64,13 +60,9 @@ pub fn truncate_title(title: &str) -> String {
 pub fn friendly_app_name(raw: &str) -> String {
     let candidate = raw.trim().trim_end_matches(".desktop").to_lowercase();
     let mapped = match candidate.as_str() {
-        "firefox" | "firefox_firefox" | "firefox-esr" | "org.mozilla.firefox" | "navigator" => {
-            "firefox"
-        }
+        "firefox" | "firefox_firefox" | "firefox-esr" | "org.mozilla.firefox" | "navigator" => "firefox",
         "google-chrome" | "google-chrome-stable" | "com.google.chrome" => "google-chrome",
-        "chromium" | "chromium-browser" | "chromium_chromium" | "org.chromium.chromium" => {
-            "chromium"
-        }
+        "chromium" | "chromium-browser" | "chromium_chromium" | "org.chromium.chromium" => "chromium",
         "code" | "code-url-handler" | "com.visualstudio.code" => "code",
         "gnome-terminal-server" | "gnome-terminal" | "org.gnome.terminal" => "gnome-terminal",
         "ptyxis" | "org.gnome.ptyxis" => "ptyxis",
@@ -94,11 +86,7 @@ pub fn parse_wm_class(raw: &[u8]) -> String {
 /// App name for a window reported by the GNOME extension: prefer `wm_class`
 /// (matches what X11 sessions reported), fall back to the `.desktop` app id.
 pub fn app_from_gnome(app_id: &str, wm_class: &str) -> String {
-    if !wm_class.trim().is_empty() {
-        friendly_app_name(wm_class)
-    } else {
-        friendly_app_name(app_id)
-    }
+    if !wm_class.trim().is_empty() { friendly_app_name(wm_class) } else { friendly_app_name(app_id) }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,12 +115,7 @@ struct Pending {
 
 impl FocusSettler {
     pub fn new(settle: Duration, max_delay: Duration) -> Self {
-        Self {
-            settle,
-            max_delay,
-            pending: None,
-            last_emitted: None,
-        }
+        Self { settle, max_delay, pending: None, last_emitted: None }
     }
 
     pub fn offer(&mut self, sample: FocusSample, now: Instant) {
@@ -147,20 +130,12 @@ impl FocusSettler {
                 p.sample = sample;
                 p.last_at = now;
             }
-            None => {
-                self.pending = Some(Pending {
-                    sample,
-                    first_at: now,
-                    last_at: now,
-                })
-            }
+            None => self.pending = Some(Pending { sample, first_at: now, last_at: now }),
         }
     }
 
     pub fn deadline(&self) -> Option<Instant> {
-        self.pending
-            .as_ref()
-            .map(|p| (p.last_at + self.settle).min(p.first_at + self.max_delay))
+        self.pending.as_ref().map(|p| (p.last_at + self.settle).min(p.first_at + self.max_delay))
     }
 
     pub fn poll(&mut self, now: Instant) -> Option<FocusSample> {
@@ -262,11 +237,7 @@ pub struct FocusConfig {
 
 impl Default for FocusConfig {
     fn default() -> Self {
-        Self {
-            backend: FocusBackendPref::Auto,
-            settle: Duration::from_millis(400),
-            max_delay: Duration::from_secs(5),
-        }
+        Self { backend: FocusBackendPref::Auto, settle: Duration::from_millis(400), max_delay: Duration::from_secs(5) }
     }
 }
 
@@ -280,11 +251,7 @@ pub struct FocusCollector {
 
 impl FocusCollector {
     pub fn new(config: FocusConfig, feed: Option<Arc<ActivityFeed>>) -> Self {
-        Self {
-            config,
-            env: None,
-            feed,
-        }
+        Self { config, env: None, feed }
     }
 }
 
@@ -332,12 +299,7 @@ impl Collector for FocusCollector {
 }
 
 #[cfg(target_os = "linux")]
-async fn run_candidate(
-    cand: Candidate,
-    c: &FocusCollector,
-    ctx: &CollectorContext,
-    env: &SessionEnv,
-) -> BackendEnd {
+async fn run_candidate(cand: Candidate, c: &FocusCollector, ctx: &CollectorContext, env: &SessionEnv) -> BackendEnd {
     let (tx, rx) = mpsc::channel::<FocusSample>(64);
     let mut settler = FocusSettler::new(c.config.settle, c.config.max_delay);
     let backend = async {
@@ -381,14 +343,8 @@ mod tests {
     #[test]
     fn wm_class_parsing_matches_1x() {
         assert_eq!(parse_wm_class(b"Navigator\0firefox\0"), "firefox");
-        assert_eq!(
-            parse_wm_class(b"gnome-terminal-server\0Gnome-terminal\0"),
-            "gnome-terminal"
-        );
-        assert_eq!(
-            parse_wm_class(b"google-chrome\0Google-chrome\0"),
-            "google-chrome"
-        );
+        assert_eq!(parse_wm_class(b"gnome-terminal-server\0Gnome-terminal\0"), "gnome-terminal");
+        assert_eq!(parse_wm_class(b"google-chrome\0Google-chrome\0"), "google-chrome");
         assert_eq!(parse_wm_class(b"code\0Code\0"), "code");
         assert_eq!(parse_wm_class(b"slack\0Slack\0"), "slack");
         assert_eq!(parse_wm_class(b""), "unknown");
@@ -398,15 +354,9 @@ mod tests {
     #[test]
     fn wayland_app_ids_map_to_same_names() {
         assert_eq!(app_from_gnome("firefox_firefox.desktop", ""), "firefox");
-        assert_eq!(
-            app_from_gnome("org.gnome.Terminal.desktop", "gnome-terminal-server"),
-            "gnome-terminal"
-        );
+        assert_eq!(app_from_gnome("org.gnome.Terminal.desktop", "gnome-terminal-server"), "gnome-terminal");
         assert_eq!(app_from_gnome("code.desktop", "Code"), "code");
-        assert_eq!(
-            app_from_gnome("org.gnome.Ptyxis.desktop", "org.gnome.Ptyxis"),
-            "ptyxis"
-        );
+        assert_eq!(app_from_gnome("org.gnome.Ptyxis.desktop", "org.gnome.Ptyxis"), "ptyxis");
         assert_eq!(app_from_gnome("", ""), "unknown");
     }
 
@@ -463,10 +413,7 @@ mod tests {
         let t0 = Instant::now();
         let mut st = FocusSettler::new(Duration::from_millis(400), Duration::from_secs(2));
         for i in 0..30u64 {
-            st.offer(
-                s("1", &format!("progress {i}%")),
-                t0 + Duration::from_millis(i * 100),
-            );
+            st.offer(s("1", &format!("progress {i}%")), t0 + Duration::from_millis(i * 100));
             if i * 100 >= 2000 {
                 break;
             }
@@ -483,28 +430,16 @@ mod tests {
             display: Some(":0".into()),
             current_desktop: Some("ubuntu:GNOME".into()),
         };
-        assert_eq!(
-            candidates(FocusBackendPref::Auto, &wl_gnome),
-            vec![Candidate::Gnome { wait: true }]
-        );
-        let wl_kde = SessionEnv {
-            current_desktop: Some("KDE".into()),
-            ..wl_gnome.clone()
-        };
-        assert_eq!(
-            candidates(FocusBackendPref::Auto, &wl_kde),
-            vec![Candidate::Gnome { wait: false }]
-        );
+        assert_eq!(candidates(FocusBackendPref::Auto, &wl_gnome), vec![Candidate::Gnome { wait: true }]);
+        let wl_kde = SessionEnv { current_desktop: Some("KDE".into()), ..wl_gnome.clone() };
+        assert_eq!(candidates(FocusBackendPref::Auto, &wl_kde), vec![Candidate::Gnome { wait: false }]);
         let x_gnome = SessionEnv {
             session_type: Some("x11".into()),
             wayland_display: None,
             display: Some(":0".into()),
             current_desktop: Some("ubuntu:GNOME".into()),
         };
-        assert_eq!(
-            candidates(FocusBackendPref::Auto, &x_gnome),
-            vec![Candidate::X11, Candidate::Gnome { wait: true }]
-        );
+        assert_eq!(candidates(FocusBackendPref::Auto, &x_gnome), vec![Candidate::X11, Candidate::Gnome { wait: true }]);
         assert!(candidates(FocusBackendPref::Auto, &SessionEnv::default()).is_empty());
         assert!(candidates(FocusBackendPref::Disabled, &x_gnome).is_empty());
     }
@@ -541,10 +476,7 @@ mod tests {
     async fn disabled_reports_unavailable_and_exits() {
         let (tx, _rx) = mpsc::channel(1);
         let c = FocusCollector {
-            config: FocusConfig {
-                backend: FocusBackendPref::Disabled,
-                ..Default::default()
-            },
+            config: FocusConfig { backend: FocusBackendPref::Disabled, ..Default::default() },
             ..Default::default()
         };
         let h = crate::spawn(c, tx, crate::CancellationToken::new());
@@ -556,14 +488,8 @@ mod tests {
     #[tokio::test]
     async fn non_linux_is_unavailable() {
         let (tx, _rx) = mpsc::channel(1);
-        let env = SessionEnv {
-            display: Some(":0".into()),
-            ..Default::default()
-        };
-        let c = FocusCollector {
-            env: Some(env),
-            ..Default::default()
-        };
+        let env = SessionEnv { display: Some(":0".into()), ..Default::default() };
+        let c = FocusCollector { env: Some(env), ..Default::default() };
         let h = crate::spawn(c, tx, crate::CancellationToken::new());
         h.join.await.unwrap();
         let st = h.status.snapshot();

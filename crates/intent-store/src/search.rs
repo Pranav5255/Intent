@@ -181,10 +181,7 @@ fn fts_candidates(
             } else {
                 fallback_snippet(&summary)
             };
-            Ok((
-                Candidate { id: r.get(0)?, label: r.get(1)?, summary, date: r.get(3)?, snippet },
-                -r.get::<_, f64>(6)?,
-            ))
+            Ok((Candidate { id: r.get(0)?, label: r.get(1)?, summary, date: r.get(3)?, snippet }, -r.get::<_, f64>(6)?))
         })?;
         let out = rows.collect::<rusqlite::Result<Vec<_>>>()?;
         if !out.is_empty() || any || !q.contains(' ') {
@@ -216,7 +213,13 @@ fn vec_candidates(
     let rows = stmt.query_map(params![vec_to_blob(v), k, from, to, limit as i64], |r| {
         let summary: String = r.get(2)?;
         Ok((
-            Candidate { id: r.get(0)?, label: r.get(1)?, snippet: fallback_snippet(&summary), summary, date: r.get(3)? },
+            Candidate {
+                id: r.get(0)?,
+                label: r.get(1)?,
+                snippet: fallback_snippet(&summary),
+                summary,
+                date: r.get(3)?,
+            },
             1.0 - r.get::<_, f64>(4)?,
         ))
     })?;
@@ -245,7 +248,13 @@ fn hit(c: Candidate, score: f64) -> SearchHit {
 impl Store {
     /// Keyword search over root intents, ranked by weighted bm25, with a `**`-marked
     /// snippet. `limit` is clamped to `1..=100`.
-    pub fn search(&self, query: &str, limit: usize, date_from: Option<&str>, date_to: Option<&str>) -> Result<Vec<SearchHit>> {
+    pub fn search(
+        &self,
+        query: &str,
+        limit: usize,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+    ) -> Result<Vec<SearchHit>> {
         check_range(date_from, date_to)?;
         let limit = limit.clamp(1, MAX_SEARCH_LIMIT);
         self.read(|c| {
@@ -327,8 +336,10 @@ impl Store {
         self.write(|tx| {
             let spec = embedder_spec(tx)?.ok_or(StoreError::EmbeddingsDisabled)?;
             check_vector(vector, spec.dims)?;
-            let pk: Option<i64> =
-                tx.prepare_cached("SELECT pk FROM intents WHERE id = ?1")?.query_row([intent_id], |r| r.get(0)).optional()?;
+            let pk: Option<i64> = tx
+                .prepare_cached("SELECT pk FROM intents WHERE id = ?1")?
+                .query_row([intent_id], |r| r.get(0))
+                .optional()?;
             let Some(pk) = pk else { return Ok(false) };
             // vec0 has no UPSERT; delete then insert.
             tx.prepare_cached("DELETE FROM intent_vec WHERE rowid = ?1")?.execute([pk])?;

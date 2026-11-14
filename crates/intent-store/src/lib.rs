@@ -37,7 +37,7 @@ pub use events::{
     RetentionCutoffs, SourceStats, is_detailed,
 };
 pub use facts::{Fact, FactInput, FactQuery};
-pub use intents::{CachedRun, DeleteReport, IntentStatsReport, LabelCount, ProjectCount, RootIntent, DayBucket};
+pub use intents::{CachedRun, DayBucket, DeleteReport, IntentStatsReport, LabelCount, ProjectCount, RootIntent};
 pub use legacy::ImportReport;
 pub use schema::SCHEMA_VERSION;
 pub use search::{EmbedderSpec, EmbeddingTodo, fts_query};
@@ -91,9 +91,7 @@ fn register_sqlite_vec() {
         // It is registered once, before any connection is opened by the store.
         unsafe {
             #[allow(clippy::missing_transmute_annotations)]
-            rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
-                sqlite_vec::sqlite3_vec_init as *const (),
-            )));
+            rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(sqlite_vec::sqlite3_vec_init as *const ())));
         }
     });
 }
@@ -144,10 +142,8 @@ impl Store {
         let n = opts.read_connections.max(1);
         let mut readers = Vec::with_capacity(n);
         for _ in 0..n {
-            let conn = Connection::open_with_flags(
-                &path,
-                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-            )?;
+            let conn =
+                Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
             conn.busy_timeout(opts.busy_timeout)?;
             conn.set_prepared_statement_cache_capacity(64);
             readers.push(Mutex::new(conn));

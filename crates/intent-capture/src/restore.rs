@@ -25,14 +25,7 @@ pub const MAX_LAST_CMD_CHARS: usize = 500;
 /// Editors tried in order before `$VISUAL`.
 pub const EDITORS: &[&str] = &["code", "codium", "cursor"];
 /// Terminal emulators tried in order.
-pub const TERMINALS: &[&str] = &[
-    "gnome-terminal",
-    "ptyxis",
-    "kgx",
-    "konsole",
-    "xfce4-terminal",
-    "x-terminal-emulator",
-];
+pub const TERMINALS: &[&str] = &["gnome-terminal", "ptyxis", "kgx", "konsole", "xfce4-terminal", "x-terminal-emulator"];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -81,24 +74,10 @@ impl RestoreRequest {
         if !urls.iter().all(|url| is_http_url(url)) {
             return Err(ValidationError::new("urls must use http or https"));
         }
-        if self
-            .shell
-            .last_cmd
-            .as_ref()
-            .is_some_and(|cmd| cmd.chars().count() > MAX_LAST_CMD_CHARS)
-        {
-            return Err(ValidationError::new(
-                "shell.last_cmd must be at most 500 characters",
-            ));
+        if self.shell.last_cmd.as_ref().is_some_and(|cmd| cmd.chars().count() > MAX_LAST_CMD_CHARS) {
+            return Err(ValidationError::new("shell.last_cmd must be at most 500 characters"));
         }
-        Ok((
-            ResumePayload {
-                files,
-                urls,
-                shell: self.shell,
-            },
-            mode,
-        ))
+        Ok((ResumePayload { files, urls, shell: self.shell }, mode))
     }
 }
 
@@ -113,9 +92,7 @@ fn dedupe(items: Vec<String>) -> Vec<String> {
 }
 
 fn is_http_url(url: &str) -> bool {
-    urlsplit(url).is_ok_and(|parsed| {
-        (parsed.scheme == "http" || parsed.scheme == "https") && !parsed.netloc.is_empty()
-    })
+    urlsplit(url).is_ok_and(|parsed| (parsed.scheme == "http" || parsed.scheme == "https") && !parsed.netloc.is_empty())
 }
 
 /// What a launch restores when it succeeds.
@@ -201,9 +178,7 @@ impl SystemProbe for HostProbe {
     }
 
     fn env(&self, key: &str) -> Option<String> {
-        std::env::var(key)
-            .ok()
-            .filter(|value| !value.trim().is_empty())
+        std::env::var(key).ok().filter(|value| !value.trim().is_empty())
     }
 
     fn window_titles(&self) -> Option<String> {
@@ -253,19 +228,12 @@ fn is_executable(path: &Path) -> bool {
 
 fn run_with_timeout(command: &mut Command, timeout: Duration) -> Option<String> {
     use std::io::Read;
-    let mut child = command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
+    let mut child = command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
     let started = Instant::now();
     loop {
         match child.try_wait() {
             Ok(Some(_)) => break,
-            Ok(None) if started.elapsed() < timeout => {
-                std::thread::sleep(Duration::from_millis(10))
-            }
+            Ok(None) if started.elapsed() < timeout => std::thread::sleep(Duration::from_millis(10)),
             _ => {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -284,33 +252,18 @@ pub fn plan_restore(payload: &ResumePayload, mode: RestoreMode) -> RestorePlan {
 }
 
 /// Plan against an arbitrary [`SystemProbe`].
-pub fn plan_restore_with(
-    payload: &ResumePayload,
-    mode: RestoreMode,
-    probe: &dyn SystemProbe,
-) -> RestorePlan {
-    let mut plan = RestorePlan {
-        mode,
-        ..Default::default()
-    };
+pub fn plan_restore_with(payload: &ResumePayload, mode: RestoreMode, probe: &dyn SystemProbe) -> RestorePlan {
+    let mut plan = RestorePlan { mode, ..Default::default() };
     plan_files(payload, mode, probe, &mut plan);
     plan_urls(payload, probe, &mut plan);
     plan_terminal(&payload.shell, mode, probe, &mut plan);
     plan
 }
 
-fn plan_files(
-    payload: &ResumePayload,
-    mode: RestoreMode,
-    probe: &dyn SystemProbe,
-    plan: &mut RestorePlan,
-) {
+fn plan_files(payload: &ResumePayload, mode: RestoreMode, probe: &dyn SystemProbe, plan: &mut RestorePlan) {
     let mut existing: Vec<String> = Vec::new();
     let mut missing: Vec<String> = Vec::new();
-    for raw in dedupe(payload.files.clone())
-        .into_iter()
-        .take(RESUME_MAX_FILES)
-    {
+    for raw in dedupe(payload.files.clone()).into_iter().take(RESUME_MAX_FILES) {
         let expanded = expand_user(Path::new(&raw));
         if probe.is_file(&expanded) {
             let resolved = resolve_lenient(&expanded).to_string_lossy().into_owned();
@@ -322,17 +275,14 @@ fn plan_files(
         }
     }
     if !missing.is_empty() {
-        plan.failed
-            .push(format!("files not found: {}", missing.join(", ")));
+        plan.failed.push(format!("files not found: {}", missing.join(", ")));
     }
     if mode == RestoreMode::Continue
         && let Some(titles) = probe.window_titles()
     {
         // Window titles, not editor tabs: errs on the side of reopening.
         let (open, closed): (Vec<String>, Vec<String>) = existing.into_iter().partition(|file| {
-            Path::new(file)
-                .file_name()
-                .is_some_and(|name| titles.contains(name.to_string_lossy().as_ref()))
+            Path::new(file).file_name().is_some_and(|name| titles.contains(name.to_string_lossy().as_ref()))
         });
         plan.already_open = open;
         existing = closed;
@@ -342,11 +292,7 @@ fn plan_files(
     }
     let editor = EDITORS
         .iter()
-        .find_map(|name| {
-            probe
-                .which(name)
-                .map(|path| (path, vec!["--reuse-window".to_string()]))
-        })
+        .find_map(|name| probe.which(name).map(|path| (path, vec!["--reuse-window".to_string()])))
         .or_else(|| {
             let visual = probe.env("VISUAL")?;
             let mut words = visual.split_whitespace();
@@ -362,25 +308,18 @@ fn plan_files(
                 program,
                 args,
                 cwd: None,
-                restores: RestoredCounts {
-                    files: count,
-                    ..Default::default()
-                },
+                restores: RestoredCounts { files: count, ..Default::default() },
             });
         }
-        None => plan
-            .failed
-            .push("no editor found (tried code, codium, cursor, $VISUAL)".into()),
+        None => plan.failed.push("no editor found (tried code, codium, cursor, $VISUAL)".into()),
     }
 }
 
 fn plan_urls(payload: &ResumePayload, probe: &dyn SystemProbe, plan: &mut RestorePlan) {
     let all = dedupe(payload.urls.clone());
-    let (urls, rejected): (Vec<String>, Vec<String>) =
-        all.into_iter().partition(|url| is_http_url(url));
+    let (urls, rejected): (Vec<String>, Vec<String>) = all.into_iter().partition(|url| is_http_url(url));
     if !rejected.is_empty() {
-        plan.failed
-            .push(format!("skipped {} non-http(s) URL(s)", rejected.len()));
+        plan.failed.push(format!("skipped {} non-http(s) URL(s)", rejected.len()));
     }
     let urls: Vec<String> = urls.into_iter().take(RESUME_MAX_URLS).collect();
     if urls.is_empty() {
@@ -397,10 +336,7 @@ fn plan_urls(payload: &ResumePayload, probe: &dyn SystemProbe, plan: &mut Restor
             program: firefox,
             args,
             cwd: None,
-            restores: RestoredCounts {
-                urls: urls.len(),
-                ..Default::default()
-            },
+            restores: RestoredCounts { urls: urls.len(), ..Default::default() },
         });
     } else if let Some(opener) = probe.which("xdg-open") {
         for url in urls {
@@ -409,15 +345,11 @@ fn plan_urls(payload: &ResumePayload, probe: &dyn SystemProbe, plan: &mut Restor
                 program: opener.clone(),
                 args: vec![url],
                 cwd: None,
-                restores: RestoredCounts {
-                    urls: 1,
-                    ..Default::default()
-                },
+                restores: RestoredCounts { urls: 1, ..Default::default() },
             });
         }
     } else {
-        plan.failed
-            .push("no browser launcher found (tried firefox, xdg-open)".into());
+        plan.failed.push("no browser launcher found (tried firefox, xdg-open)".into());
     }
 }
 
@@ -448,32 +380,18 @@ fn terminal_args(name: &str, mode: RestoreMode, cwd: &str) -> Vec<String> {
     args
 }
 
-fn plan_terminal(
-    shell: &ShellResume,
-    mode: RestoreMode,
-    probe: &dyn SystemProbe,
-    plan: &mut RestorePlan,
-) {
+fn plan_terminal(shell: &ShellResume, mode: RestoreMode, probe: &dyn SystemProbe, plan: &mut RestorePlan) {
     let Some(cwd) = shell.cwd.as_deref().filter(|cwd| !cwd.is_empty()) else {
         return;
     };
     let expanded = expand_user(Path::new(cwd));
     if !probe.is_dir(&expanded) {
-        plan.failed.push(format!(
-            "terminal working directory not found: {}",
-            expanded.display()
-        ));
+        plan.failed.push(format!("terminal working directory not found: {}", expanded.display()));
         return;
     }
     let resolved = resolve_lenient(&expanded);
-    let Some((name, program)) = TERMINALS
-        .iter()
-        .find_map(|name| probe.which(name).map(|path| (*name, path)))
-    else {
-        plan.failed.push(format!(
-            "no terminal emulator found (tried {})",
-            TERMINALS.join(", ")
-        ));
+    let Some((name, program)) = TERMINALS.iter().find_map(|name| probe.which(name).map(|path| (*name, path))) else {
+        plan.failed.push(format!("no terminal emulator found (tried {})", TERMINALS.join(", ")));
         return;
     };
     // last_cmd is deliberately ignored: it may be sensitive or destructive.
@@ -482,10 +400,7 @@ fn plan_terminal(
         program,
         args: terminal_args(name, mode, &resolved.to_string_lossy()),
         cwd: Some(resolved),
-        restores: RestoredCounts {
-            shell: true,
-            ..Default::default()
-        },
+        restores: RestoredCounts { shell: true, ..Default::default() },
     });
 }
 
@@ -511,22 +426,14 @@ where
             Err(err) => failed.push(format!("{} launch failed: {err}", command.target.label())),
         }
     }
-    RestoreResult {
-        ok: failed.is_empty(),
-        restored,
-        failed,
-    }
+    RestoreResult { ok: failed.is_empty(), restored, failed }
 }
 
 /// Spawn with no shell, null stdio, in a new session; a background thread reaps
 /// the child so no zombie is left behind.
 pub fn spawn_detached(launch: &LaunchCommand) -> std::io::Result<()> {
     let mut command = Command::new(&launch.program);
-    command
-        .args(&launch.args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+    command.args(&launch.args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     if let Some(cwd) = &launch.cwd {
         command.current_dir(cwd);
     }
@@ -544,11 +451,9 @@ pub fn spawn_detached(launch: &LaunchCommand) -> std::io::Result<()> {
         }
     }
     let mut child = command.spawn()?;
-    std::thread::Builder::new()
-        .name("intent-restore-reaper".into())
-        .spawn(move || {
-            let _ = child.wait();
-        })?;
+    std::thread::Builder::new().name("intent-restore-reaper".into()).spawn(move || {
+        let _ = child.wait();
+    })?;
     Ok(())
 }
 
@@ -570,9 +475,7 @@ mod tests {
         fn with_programs(names: &[&'static str]) -> Self {
             let mut probe = FakeProbe::default();
             for name in names {
-                probe
-                    .programs
-                    .insert(name, PathBuf::from(format!("/usr/bin/{name}")));
+                probe.programs.insert(name, PathBuf::from(format!("/usr/bin/{name}")));
             }
             probe
         }
@@ -606,10 +509,7 @@ mod tests {
         ResumePayload {
             files: files.iter().map(|f| file(f)).collect(),
             urls: urls.iter().map(|u| u.to_string()).collect(),
-            shell: ShellResume {
-                cwd: cwd.map(str::to_owned),
-                last_cmd: Some("rm -rf /".into()),
-            },
+            shell: ShellResume { cwd: cwd.map(str::to_owned), last_cmd: Some("rm -rf /".into()) },
         }
     }
 
@@ -626,11 +526,7 @@ mod tests {
     fn resume_plans_editor_browser_terminal() {
         let probe = probe_with_files(&["code", "firefox", "gnome-terminal"], &["a.rs", "b.rs"]);
         let plan = plan_restore_with(
-            &payload(
-                &["a.rs", "b.rs", "a.rs"],
-                &["https://a.com/", "http://b.com/x"],
-                Some(ROOT),
-            ),
+            &payload(&["a.rs", "b.rs", "a.rs"], &["https://a.com/", "http://b.com/x"], Some(ROOT)),
             RestoreMode::Resume,
             &probe,
         );
@@ -638,64 +534,34 @@ mod tests {
         assert_eq!(plan.commands.len(), 3);
         let editor = &plan.commands[0];
         assert_eq!(editor.program, PathBuf::from("/usr/bin/code"));
-        assert_eq!(
-            editor.args,
-            vec!["--reuse-window".to_string(), file("a.rs"), file("b.rs")]
-        );
+        assert_eq!(editor.args, vec!["--reuse-window".to_string(), file("a.rs"), file("b.rs")]);
         assert_eq!(editor.restores.files, 2);
         let browser = &plan.commands[1];
-        assert_eq!(
-            browser.args,
-            [
-                "--new-window",
-                "https://a.com/",
-                "--new-tab",
-                "http://b.com/x"
-            ]
-        );
+        assert_eq!(browser.args, ["--new-window", "https://a.com/", "--new-tab", "http://b.com/x"]);
         assert_eq!(browser.restores.urls, 2);
         let terminal = &plan.commands[2];
         assert_eq!(terminal.args, [format!("--working-directory={ROOT}")]);
         assert_eq!(terminal.cwd.as_deref(), Some(Path::new(ROOT)));
         assert!(terminal.restores.shell);
         // last_cmd never reaches any argv.
-        assert!(
-            plan.commands
-                .iter()
-                .all(|c| c.args.iter().all(|a| !a.contains("rm -rf")))
-        );
+        assert!(plan.commands.iter().all(|c| c.args.iter().all(|a| !a.contains("rm -rf"))));
     }
 
     #[test]
     fn continue_mode_uses_tabs_and_dedupes_open_files() {
-        let mut probe =
-            probe_with_files(&["codium", "firefox", "gnome-terminal"], &["a.rs", "b.rs"]);
+        let mut probe = probe_with_files(&["codium", "firefox", "gnome-terminal"], &["a.rs", "b.rs"]);
         probe.titles = Some("0x01  0 host a.rs - project - VSCodium\n".into());
-        let plan = plan_restore_with(
-            &payload(&["a.rs", "b.rs"], &[], Some(ROOT)),
-            RestoreMode::Continue,
-            &probe,
-        );
+        let plan = plan_restore_with(&payload(&["a.rs", "b.rs"], &[], Some(ROOT)), RestoreMode::Continue, &probe);
         assert_eq!(plan.already_open, vec![file("a.rs")]);
         assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/codium"));
-        assert_eq!(
-            plan.commands[0].args,
-            vec!["--reuse-window".to_string(), file("b.rs")]
-        );
-        assert_eq!(
-            plan.commands[1].args,
-            ["--tab".to_string(), format!("--working-directory={ROOT}")]
-        );
+        assert_eq!(plan.commands[0].args, vec!["--reuse-window".to_string(), file("b.rs")]);
+        assert_eq!(plan.commands[1].args, ["--tab".to_string(), format!("--working-directory={ROOT}")]);
     }
 
     #[test]
     fn continue_mode_without_window_list_skips_dedupe() {
         let probe = probe_with_files(&["code"], &["a.rs"]);
-        let plan = plan_restore_with(
-            &payload(&["a.rs"], &[], None),
-            RestoreMode::Continue,
-            &probe,
-        );
+        let plan = plan_restore_with(&payload(&["a.rs"], &[], None), RestoreMode::Continue, &probe);
         assert!(plan.already_open.is_empty());
         assert_eq!(plan.commands[0].restores.files, 1);
         // Resume mode never consults the window list.
@@ -708,25 +574,11 @@ mod tests {
     #[test]
     fn missing_files_are_skipped_and_reported() {
         let probe = probe_with_files(&["cursor"], &["a.rs"]);
-        let plan = plan_restore_with(
-            &payload(&["a.rs", "gone.rs"], &[], None),
-            RestoreMode::Resume,
-            &probe,
-        );
-        assert_eq!(
-            plan.failed,
-            vec![format!("files not found: {}", file("gone.rs"))]
-        );
+        let plan = plan_restore_with(&payload(&["a.rs", "gone.rs"], &[], None), RestoreMode::Resume, &probe);
+        assert_eq!(plan.failed, vec![format!("files not found: {}", file("gone.rs"))]);
         assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/cursor"));
-        assert_eq!(
-            plan.commands[0].args,
-            vec!["--reuse-window".to_string(), file("a.rs")]
-        );
-        let plan = plan_restore_with(
-            &payload(&["gone.rs"], &[], None),
-            RestoreMode::Resume,
-            &probe,
-        );
+        assert_eq!(plan.commands[0].args, vec!["--reuse-window".to_string(), file("a.rs")]);
+        let plan = plan_restore_with(&payload(&["gone.rs"], &[], None), RestoreMode::Resume, &probe);
         assert!(plan.commands.is_empty());
     }
 
@@ -736,53 +588,28 @@ mod tests {
         probe.env.insert("VISUAL", "gvim --remote-tab".into());
         let plan = plan_restore_with(&payload(&["a.rs"], &[], None), RestoreMode::Resume, &probe);
         assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/gvim"));
-        assert_eq!(
-            plan.commands[0].args,
-            vec!["--remote-tab".to_string(), file("a.rs")]
-        );
+        assert_eq!(plan.commands[0].args, vec!["--remote-tab".to_string(), file("a.rs")]);
         let probe = probe_with_files(&[], &["a.rs"]);
         let plan = plan_restore_with(&payload(&["a.rs"], &[], None), RestoreMode::Resume, &probe);
         assert!(plan.commands.is_empty());
-        assert_eq!(
-            plan.failed,
-            ["no editor found (tried code, codium, cursor, $VISUAL)"]
-        );
+        assert_eq!(plan.failed, ["no editor found (tried code, codium, cursor, $VISUAL)"]);
     }
 
     #[test]
     fn browser_fallback_and_url_filtering() {
         let probe = probe_with_files(&["xdg-open"], &[]);
         let plan = plan_restore_with(
-            &payload(
-                &[],
-                &[
-                    "https://a.com/",
-                    "file:///etc/passwd",
-                    "javascript:x",
-                    "https://b.com/",
-                ],
-                None,
-            ),
+            &payload(&[], &["https://a.com/", "file:///etc/passwd", "javascript:x", "https://b.com/"], None),
             RestoreMode::Resume,
             &probe,
         );
         assert_eq!(plan.commands.len(), 2);
-        assert!(
-            plan.commands
-                .iter()
-                .all(|c| c.program == Path::new("/usr/bin/xdg-open") && c.args.len() == 1)
-        );
+        assert!(plan.commands.iter().all(|c| c.program == Path::new("/usr/bin/xdg-open") && c.args.len() == 1));
         assert_eq!(plan.commands[1].args, ["https://b.com/"]);
         assert_eq!(plan.failed, ["skipped 2 non-http(s) URL(s)"]);
-        let plan = plan_restore_with(
-            &payload(&[], &["https://a.com/"], None),
-            RestoreMode::Resume,
-            &FakeProbe::default(),
-        );
-        assert_eq!(
-            plan.failed,
-            ["no browser launcher found (tried firefox, xdg-open)"]
-        );
+        let plan =
+            plan_restore_with(&payload(&[], &["https://a.com/"], None), RestoreMode::Resume, &FakeProbe::default());
+        assert_eq!(plan.failed, ["no browser launcher found (tried firefox, xdg-open)"]);
     }
 
     #[test]
@@ -792,11 +619,7 @@ mod tests {
         let urls: Vec<String> = (0..12).map(|i| format!("https://h{i}.com/")).collect();
         let url_refs: Vec<&str> = urls.iter().map(String::as_str).collect();
         let probe = probe_with_files(&["code", "firefox"], &name_refs);
-        let plan = plan_restore_with(
-            &payload(&name_refs, &url_refs, None),
-            RestoreMode::Resume,
-            &probe,
-        );
+        let plan = plan_restore_with(&payload(&name_refs, &url_refs, None), RestoreMode::Resume, &probe);
         assert_eq!(plan.commands[0].restores.files, 5);
         assert_eq!(plan.commands[1].restores.urls, 8);
     }
@@ -811,10 +634,7 @@ mod tests {
             ),
             (
                 "ptyxis",
-                vec![
-                    "--new-window".to_string(),
-                    format!("--working-directory={ROOT}"),
-                ],
+                vec!["--new-window".to_string(), format!("--working-directory={ROOT}")],
                 vec!["--tab".to_string(), format!("--working-directory={ROOT}")],
             ),
             (
@@ -825,11 +645,7 @@ mod tests {
             (
                 "konsole",
                 vec!["--workdir".to_string(), ROOT.to_string()],
-                vec![
-                    "--new-tab".to_string(),
-                    "--workdir".to_string(),
-                    ROOT.to_string(),
-                ],
+                vec!["--new-tab".to_string(), "--workdir".to_string(), ROOT.to_string()],
             ),
             (
                 "xfce4-terminal",
@@ -839,38 +655,23 @@ mod tests {
             ("x-terminal-emulator", vec![], vec![]),
         ] {
             let probe = probe_with_files(&[name], &[]);
-            let plan =
-                plan_restore_with(&payload(&[], &[], Some(ROOT)), RestoreMode::Resume, &probe);
+            let plan = plan_restore_with(&payload(&[], &[], Some(ROOT)), RestoreMode::Resume, &probe);
             assert_eq!(plan.commands[0].args, resume, "{name}");
             assert_eq!(plan.commands[0].cwd.as_deref(), Some(Path::new(ROOT)));
-            let plan = plan_restore_with(
-                &payload(&[], &[], Some(ROOT)),
-                RestoreMode::Continue,
-                &probe,
-            );
+            let plan = plan_restore_with(&payload(&[], &[], Some(ROOT)), RestoreMode::Continue, &probe);
             assert_eq!(plan.commands[0].args, cont, "{name}");
         }
         // Detection order prefers gnome-terminal.
         let probe = probe_with_files(&["konsole", "gnome-terminal"], &[]);
         let plan = plan_restore_with(&payload(&[], &[], Some(ROOT)), RestoreMode::Resume, &probe);
-        assert_eq!(
-            plan.commands[0].program,
-            PathBuf::from("/usr/bin/gnome-terminal")
-        );
+        assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/gnome-terminal"));
     }
 
     #[test]
     fn terminal_failures() {
         let probe = probe_with_files(&["gnome-terminal"], &[]);
-        let plan = plan_restore_with(
-            &payload(&[], &[], Some("/nonexistent-intent/nope")),
-            RestoreMode::Resume,
-            &probe,
-        );
-        assert_eq!(
-            plan.failed,
-            ["terminal working directory not found: /nonexistent-intent/nope"]
-        );
+        let plan = plan_restore_with(&payload(&[], &[], Some("/nonexistent-intent/nope")), RestoreMode::Resume, &probe);
+        assert_eq!(plan.failed, ["terminal working directory not found: /nonexistent-intent/nope"]);
         let probe = probe_with_files(&[], &[]);
         let plan = plan_restore_with(&payload(&[], &[], Some(ROOT)), RestoreMode::Resume, &probe);
         assert!(plan.failed[0].starts_with("no terminal emulator found"));
@@ -896,61 +697,33 @@ mod tests {
             }
         });
         assert_eq!(calls, 4);
-        assert_eq!(
-            result.restored,
-            RestoredCounts {
-                files: 1,
-                urls: 1,
-                shell: true
-            }
-        );
+        assert_eq!(result.restored, RestoredCounts { files: 1, urls: 1, shell: true });
         assert_eq!(result.failed, ["browser launch failed: boom"]);
         assert!(!result.ok);
         let json = serde_json::to_value(&result).unwrap();
-        assert_eq!(
-            json["restored"],
-            serde_json::json!({"files": 1, "urls": 1, "shell": true})
-        );
+        assert_eq!(json["restored"], serde_json::json!({"files": 1, "urls": 1, "shell": true}));
         let empty = execute_with(&RestorePlan::default(), |_| Ok(()));
         assert!(empty.ok);
     }
 
     #[test]
     fn request_validation() {
-        let request = |value: serde_json::Value| {
-            serde_json::from_value::<RestoreRequest>(value)
-                .unwrap()
-                .validate()
-        };
-        let (payload, mode) = request(serde_json::json!({"files": ["/a", "/a"], "urls": ["https://x/"], "shell": {"cwd": "/"}})).unwrap();
+        let request = |value: serde_json::Value| serde_json::from_value::<RestoreRequest>(value).unwrap().validate();
+        let (payload, mode) =
+            request(serde_json::json!({"files": ["/a", "/a"], "urls": ["https://x/"], "shell": {"cwd": "/"}})).unwrap();
         assert_eq!(mode, RestoreMode::Resume);
         assert_eq!(payload.files, ["/a"]);
-        assert_eq!(
-            request(serde_json::json!({"mode": "continue"})).unwrap().1,
-            RestoreMode::Continue
-        );
+        assert_eq!(request(serde_json::json!({"mode": "continue"})).unwrap().1, RestoreMode::Continue);
         let err = |value: serde_json::Value| request(value).unwrap_err().message;
-        assert_eq!(
-            err(serde_json::json!({"mode": "replay"})),
-            "mode must be resume or continue"
-        );
+        assert_eq!(err(serde_json::json!({"mode": "replay"})), "mode must be resume or continue");
         assert_eq!(
             err(serde_json::json!({"files": ["1", "2", "3", "4", "5", "6"]})),
             "at most five files may be restored"
         );
         let urls: Vec<String> = (0..9).map(|i| format!("https://h{i}/")).collect();
-        assert_eq!(
-            err(serde_json::json!({"urls": urls})),
-            "at most eight URLs may be restored"
-        );
-        assert_eq!(
-            err(serde_json::json!({"urls": ["ftp://x/"]})),
-            "urls must use http or https"
-        );
-        assert_eq!(
-            err(serde_json::json!({"urls": ["https://"]})),
-            "urls must use http or https"
-        );
+        assert_eq!(err(serde_json::json!({"urls": urls})), "at most eight URLs may be restored");
+        assert_eq!(err(serde_json::json!({"urls": ["ftp://x/"]})), "urls must use http or https");
+        assert_eq!(err(serde_json::json!({"urls": ["https://"]})), "urls must use http or https");
         assert_eq!(
             err(serde_json::json!({"shell": {"last_cmd": "x".repeat(501)}})),
             "shell.last_cmd must be at most 500 characters"
@@ -965,20 +738,11 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(
-                find_executable("intent-fake-tool", Some(dir.path().as_os_str())),
-                None
-            );
+            assert_eq!(find_executable("intent-fake-tool", Some(dir.path().as_os_str())), None);
             std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
         }
-        assert_eq!(
-            find_executable("intent-fake-tool", Some(dir.path().as_os_str())),
-            Some(tool.clone())
-        );
-        assert_eq!(
-            find_executable("missing-tool", Some(dir.path().as_os_str())),
-            None
-        );
+        assert_eq!(find_executable("intent-fake-tool", Some(dir.path().as_os_str())), Some(tool.clone()));
+        assert_eq!(find_executable("missing-tool", Some(dir.path().as_os_str())), None);
         assert_eq!(find_executable("intent-fake-tool", None), None);
     }
 
@@ -1000,10 +764,7 @@ mod tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert!(marker.exists());
-        let missing = LaunchCommand {
-            program: PathBuf::from("/nonexistent-intent/bin"),
-            ..launch
-        };
+        let missing = LaunchCommand { program: PathBuf::from("/nonexistent-intent/bin"), ..launch };
         assert!(spawn_detached(&missing).is_err());
     }
 

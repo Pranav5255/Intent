@@ -28,14 +28,7 @@ impl WorkspacesConfig {
     /// Return a copy without `path` (resolved).
     pub fn with_removed(&self, path: &str) -> Self {
         let resolved = resolve_user_path(path);
-        WorkspacesConfig {
-            workspaces: self
-                .workspaces
-                .iter()
-                .filter(|item| **item != resolved)
-                .cloned()
-                .collect(),
-        }
+        WorkspacesConfig { workspaces: self.workspaces.iter().filter(|item| **item != resolved).cloned().collect() }
     }
 
     /// Whether `path` (resolved) is an approved workspace.
@@ -62,18 +55,14 @@ impl JsonConfig for WorkspacesConfig {
         let mut resolved: Vec<String> = Vec::new();
         for item in entries {
             let Some(path) = item.as_str().filter(|path| !path.trim().is_empty()) else {
-                return Err(ConfigError::invalid(
-                    "workspace paths must be non-empty strings",
-                ));
+                return Err(ConfigError::invalid("workspace paths must be non-empty strings"));
             };
             let path = resolve_user_path(path);
             if !resolved.contains(&path) {
                 resolved.push(path);
             }
         }
-        Ok(WorkspacesConfig {
-            workspaces: resolved,
-        })
+        Ok(WorkspacesConfig { workspaces: resolved })
     }
 
     fn to_json(&self) -> Value {
@@ -107,41 +96,23 @@ mod tests {
         .unwrap();
         assert_eq!(config.workspaces, vec![root.clone(), format!("{root}/b")]);
         assert!(config.contains(&format!("{root}/b/./")));
-        assert_eq!(
-            WorkspacesConfig::from_json(&json!({})).unwrap(),
-            WorkspacesConfig::default()
-        );
+        assert_eq!(WorkspacesConfig::from_json(&json!({})).unwrap(), WorkspacesConfig::default());
     }
 
     #[test]
     fn validation_errors() {
         let err = |value: Value| WorkspacesConfig::from_json(&value).unwrap_err().to_string();
         assert_eq!(err(json!([])), "workspaces config must be an object");
-        assert_eq!(
-            err(json!({"workspaces": "/a"})),
-            "workspaces must be a list"
-        );
-        assert_eq!(
-            err(json!({"workspaces": [" "]})),
-            "workspace paths must be non-empty strings"
-        );
-        assert_eq!(
-            err(json!({"workspaces": [1]})),
-            "workspace paths must be non-empty strings"
-        );
+        assert_eq!(err(json!({"workspaces": "/a"})), "workspaces must be a list");
+        assert_eq!(err(json!({"workspaces": [" "]})), "workspace paths must be non-empty strings");
+        assert_eq!(err(json!({"workspaces": [1]})), "workspace paths must be non-empty strings");
     }
 
     #[test]
     fn add_and_remove() {
-        let config = WorkspacesConfig::default()
-            .with_added("/nonexistent-intent/w")
-            .with_added("/nonexistent-intent/w/");
+        let config =
+            WorkspacesConfig::default().with_added("/nonexistent-intent/w").with_added("/nonexistent-intent/w/");
         assert_eq!(config.workspaces, vec!["/nonexistent-intent/w".to_string()]);
-        assert!(
-            config
-                .with_removed("/nonexistent-intent/x/../w")
-                .workspaces
-                .is_empty()
-        );
+        assert!(config.with_removed("/nonexistent-intent/x/../w").workspaces.is_empty());
     }
 }

@@ -52,9 +52,7 @@ pub enum Admission {
 /// `Err` means the event must be rejected (HTTP 422, metric `redaction_rejected`).
 pub fn admit(event: RawEvent, policy: &AdmissionPolicy) -> Result<Admission, RedactionError> {
     let detailed = &policy.detailed;
-    if is_detailed_event(&event.source, &event.kind)
-        && !detailed.is_enabled(&event.source, &event.kind)
-    {
+    if is_detailed_event(&event.source, &event.kind) && !detailed.is_enabled(&event.source, &event.kind) {
         return Ok(Admission::Drop(DropReason::DetailedCaptureDisabled));
     }
     if event.source == "vscode"
@@ -65,8 +63,7 @@ pub fn admit(event: RawEvent, policy: &AdmissionPolicy) -> Result<Admission, Red
     }
     let mut event = redact_event(event)?;
     // 2.0: enforce `browser.context_enabled` server-side (1.x trusted the extension).
-    if event.source == "firefox" && event.kind == "user_action" && !detailed.browser.context_enabled
-    {
+    if event.source == "firefox" && event.kind == "user_action" && !detailed.browser.context_enabled {
         event.payload.remove("context");
     }
     Ok(Admission::Accept(apply_block(event, &policy.blocklist)))
@@ -117,35 +114,23 @@ mod tests {
     #[test]
     fn detailed_events_need_consent() {
         let off = policy(|_| {}, &[], &[]);
-        assert_eq!(
-            admit(user_action(), &off).unwrap(),
-            Admission::Drop(DropReason::DetailedCaptureDisabled)
-        );
+        assert_eq!(admit(user_action(), &off).unwrap(), Admission::Drop(DropReason::DetailedCaptureDisabled));
         let content = event(
             "filesystem",
             "file_content",
             json!({"path": "/w/a.md", "workspace": "/w", "kind": "text", "mime": "text/markdown", "size_bytes": 1, "sha256": "ab", "excerpt": "x"}),
         );
-        assert_eq!(
-            admit(content.clone(), &off).unwrap(),
-            Admission::Drop(DropReason::DetailedCaptureDisabled)
-        );
+        assert_eq!(admit(content.clone(), &off).unwrap(), Admission::Drop(DropReason::DetailedCaptureDisabled));
         let on = policy(|d| d.set_enabled(DetailedKind::Filesystem, true), &[], &[]);
         assert!(matches!(admit(content, &on).unwrap(), Admission::Accept(_)));
-        let tab = event(
-            "firefox",
-            "tab_change",
-            json!({"url": "https://a.com/", "title": "t"}),
-        );
+        let tab = event("firefox", "tab_change", json!({"url": "https://a.com/", "title": "t"}));
         assert!(matches!(admit(tab, &off).unwrap(), Admission::Accept(_)));
     }
 
     #[test]
     fn context_requires_context_consent() {
         let no_context = policy(|d| d.set_enabled(DetailedKind::Browser, true), &[], &[]);
-        let Admission::Accept(out) = admit(user_action(), &no_context).unwrap() else {
-            panic!()
-        };
+        let Admission::Accept(out) = admit(user_action(), &no_context).unwrap() else { panic!() };
         assert!(out.payload.get("context").is_none());
         assert_eq!(out.payload["url"], "https://news.example/a");
         let with_context = policy(
@@ -156,9 +141,7 @@ mod tests {
             &[],
             &[],
         );
-        let Admission::Accept(out) = admit(user_action(), &with_context).unwrap() else {
-            panic!()
-        };
+        let Admission::Accept(out) = admit(user_action(), &with_context).unwrap() else { panic!() };
         assert_eq!(out.payload["context"]["text_excerpt"], "hello");
     }
 
@@ -172,38 +155,20 @@ mod tests {
             ]}),
         );
         let unapproved = policy(|d| d.set_enabled(DetailedKind::Editor, true), &[], &[]);
-        assert_eq!(
-            admit(doc.clone(), &unapproved).unwrap(),
-            Admission::Drop(DropReason::EditorNotApproved)
-        );
-        let approved = policy(
-            |d| d.set_enabled(DetailedKind::Editor, true),
-            &["/nonexistent-intent/w"],
-            &[],
-        );
-        let Admission::Accept(out) = admit(doc, &approved).unwrap() else {
-            panic!()
-        };
+        assert_eq!(admit(doc.clone(), &unapproved).unwrap(), Admission::Drop(DropReason::EditorNotApproved));
+        let approved = policy(|d| d.set_enabled(DetailedKind::Editor, true), &["/nonexistent-intent/w"], &[]);
+        let Admission::Accept(out) = admit(doc, &approved).unwrap() else { panic!() };
         assert_eq!(out.payload["changes"][0]["text"], "[redacted]");
     }
 
     #[test]
     fn redaction_errors_reject_and_blocklist_applies_last() {
         let off = policy(|_| {}, &[], &["chase.com"]);
-        let bad = event(
-            "firefox",
-            "tab_change",
-            json!({"url": "file:///etc/passwd", "title": "t"}),
-        );
+        let bad = event("firefox", "tab_change", json!({"url": "file:///etc/passwd", "title": "t"}));
         assert!(admit(bad, &off).is_err());
-        let blocked = event(
-            "firefox",
-            "tab_change",
-            json!({"url": "https://user:pw@www.chase.com/acct?id=1", "title": "Chase"}),
-        );
-        let Admission::Accept(out) = admit(blocked, &off).unwrap() else {
-            panic!()
-        };
+        let blocked =
+            event("firefox", "tab_change", json!({"url": "https://user:pw@www.chase.com/acct?id=1", "title": "Chase"}));
+        let Admission::Accept(out) = admit(blocked, &off).unwrap() else { panic!() };
         assert_eq!(out.payload["url"], "[blocked]");
         assert_eq!(out.payload["blocked"], true);
     }
@@ -211,35 +176,17 @@ mod tests {
     #[test]
     fn shell_commands_are_redacted() {
         let off = policy(|_| {}, &[], &[]);
-        let cmd = event(
-            "shell",
-            "command",
-            json!({"cmd": "PGPASSWORD=x psql", "cwd": "/", "exit_code": 0}),
-        );
-        let Admission::Accept(out) = admit(cmd, &off).unwrap() else {
-            panic!()
-        };
+        let cmd = event("shell", "command", json!({"cmd": "PGPASSWORD=x psql", "cwd": "/", "exit_code": 0}));
+        let Admission::Accept(out) = admit(cmd, &off).unwrap() else { panic!() };
         assert_eq!(out.payload["cmd"], "<redacted>");
-        let cmd = event(
-            "shell",
-            "command",
-            json!({"cmd": "DB=prod make deploy", "cwd": "/", "exit_code": 0}),
-        );
-        let Admission::Accept(out) = admit(cmd, &off).unwrap() else {
-            panic!()
-        };
+        let cmd = event("shell", "command", json!({"cmd": "DB=prod make deploy", "cwd": "/", "exit_code": 0}));
+        let Admission::Accept(out) = admit(cmd, &off).unwrap() else { panic!() };
         assert_eq!(out.payload["cmd"], "DB=<redacted> make deploy");
     }
 
     #[test]
     fn drop_reason_labels() {
-        assert_eq!(
-            DropReason::DetailedCaptureDisabled.as_str(),
-            "detailed_capture_disabled"
-        );
-        assert_eq!(
-            DropReason::EditorNotApproved.as_str(),
-            "editor_not_approved"
-        );
+        assert_eq!(DropReason::DetailedCaptureDisabled.as_str(), "detailed_capture_disabled");
+        assert_eq!(DropReason::EditorNotApproved.as_str(), "editor_not_approved");
     }
 }

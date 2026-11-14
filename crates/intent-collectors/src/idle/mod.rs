@@ -49,10 +49,7 @@ pub struct IdleTracker {
 
 impl IdleTracker {
     pub fn new(threshold_ms: u64) -> Self {
-        Self {
-            threshold_ms: threshold_ms.max(1),
-            idle: false,
-        }
+        Self { threshold_ms: threshold_ms.max(1), idle: false }
     }
 
     pub fn is_idle(&self) -> bool {
@@ -69,11 +66,7 @@ impl IdleTracker {
             return None;
         }
         self.idle = now_idle;
-        Some(if now_idle {
-            IdleTransition::Start
-        } else {
-            IdleTransition::End
-        })
+        Some(if now_idle { IdleTransition::Start } else { IdleTransition::End })
     }
 }
 
@@ -136,10 +129,7 @@ impl Default for IdleConfig {
             .and_then(|v| v.parse::<u64>().ok())
             .map(Duration::from_millis)
             .unwrap_or(DEFAULT_IDLE_THRESHOLD);
-        Self {
-            threshold,
-            backend: IdleBackendPref::Auto,
-        }
+        Self { threshold, backend: IdleBackendPref::Auto }
     }
 }
 
@@ -152,11 +142,7 @@ pub struct IdleCollector {
 
 impl IdleCollector {
     pub fn new(config: IdleConfig, feed: Arc<ActivityFeed>) -> Self {
-        Self {
-            config,
-            env: None,
-            feed,
-        }
+        Self { config, env: None, feed }
     }
 }
 
@@ -178,12 +164,11 @@ impl Collector for IdleCollector {
         ctx.status.set_detail("threshold_ms", threshold_ms);
         let list = candidates(self.config.backend, &env);
         if list.is_empty() {
-            ctx.status
-                .set_unavailable(if self.config.backend == IdleBackendPref::Disabled {
-                    "disabled by configuration"
-                } else {
-                    "no supported idle source (needs GNOME/Mutter or an X11 session)"
-                });
+            ctx.status.set_unavailable(if self.config.backend == IdleBackendPref::Disabled {
+                "disabled by configuration"
+            } else {
+                "no supported idle source (needs GNOME/Mutter or an X11 session)"
+            });
             return;
         }
         let mut reasons = Vec::new();
@@ -249,18 +234,9 @@ mod tests {
     #[test]
     fn x11_delay_targets_threshold() {
         assert_eq!(x11_poll_delay(0, 300_000, false), Duration::from_secs(10));
-        assert_eq!(
-            x11_poll_delay(299_000, 300_000, false),
-            Duration::from_millis(1_050)
-        );
-        assert_eq!(
-            x11_poll_delay(300_000, 300_000, false),
-            Duration::from_millis(100)
-        );
-        assert_eq!(
-            x11_poll_delay(400_000, 300_000, true),
-            Duration::from_secs(2)
-        );
+        assert_eq!(x11_poll_delay(299_000, 300_000, false), Duration::from_millis(1_050));
+        assert_eq!(x11_poll_delay(300_000, 300_000, false), Duration::from_millis(100));
+        assert_eq!(x11_poll_delay(400_000, 300_000, true), Duration::from_secs(2));
     }
 
     #[test]
@@ -271,19 +247,9 @@ mod tests {
             wayland_display: Some("wayland-0".into()),
             current_desktop: Some("GNOME".into()),
         };
-        assert_eq!(
-            candidates(IdleBackendPref::Auto, &wl),
-            vec![Candidate::Mutter]
-        );
-        let x = SessionEnv {
-            session_type: Some("x11".into()),
-            display: Some(":0".into()),
-            ..Default::default()
-        };
-        assert_eq!(
-            candidates(IdleBackendPref::Auto, &x),
-            vec![Candidate::Mutter, Candidate::X11]
-        );
+        assert_eq!(candidates(IdleBackendPref::Auto, &wl), vec![Candidate::Mutter]);
+        let x = SessionEnv { session_type: Some("x11".into()), display: Some(":0".into()), ..Default::default() };
+        assert_eq!(candidates(IdleBackendPref::Auto, &x), vec![Candidate::Mutter, Candidate::X11]);
         assert!(candidates(IdleBackendPref::Auto, &SessionEnv::default()).is_empty());
     }
 
@@ -293,21 +259,15 @@ mod tests {
         let sink = EventSink::new(tx, StatusHandle::new("idle"));
         emit(&sink, IdleTransition::Start).await.unwrap();
         let ev = rx.recv().await.unwrap();
-        assert_eq!(
-            (ev.source.as_str(), ev.kind.as_str()),
-            ("linux", "idle_start")
-        );
+        assert_eq!((ev.source.as_str(), ev.kind.as_str()), ("linux", "idle_start"));
         assert!(ev.payload.is_empty());
     }
 
     #[tokio::test]
     async fn no_session_is_unavailable_not_crash() {
         let (tx, _rx) = mpsc::channel(1);
-        let c = IdleCollector {
-            config: IdleConfig::default(),
-            env: Some(SessionEnv::default()),
-            feed: Default::default(),
-        };
+        let c =
+            IdleCollector { config: IdleConfig::default(), env: Some(SessionEnv::default()), feed: Default::default() };
         let h = crate::spawn(c, tx, crate::CancellationToken::new());
         h.join.await.unwrap();
         let st = h.status.snapshot();

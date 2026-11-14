@@ -40,8 +40,12 @@ impl CorrelateConfig {
     /// Cache identity: changes whenever the merge behaviour can change.
     pub fn identity(&self, embedder: Option<&dyn Embedder>) -> String {
         match embedder {
-            Some(e) => format!("{CORRELATE_POLICY_VERSION}:embed:{}:{:.3}", e.cache_identity(), self.embedding_threshold),
-            None => format!("{CORRELATE_POLICY_VERSION}:hashed-tfidf:{}:{:.3}", self.hashed_dims, self.hashed_threshold),
+            Some(e) => {
+                format!("{CORRELATE_POLICY_VERSION}:embed:{}:{:.3}", e.cache_identity(), self.embedding_threshold)
+            }
+            None => {
+                format!("{CORRELATE_POLICY_VERSION}:hashed-tfidf:{}:{:.3}", self.hashed_dims, self.hashed_threshold)
+            }
         }
     }
 }

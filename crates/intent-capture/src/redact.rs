@@ -16,18 +16,14 @@ pub const REDACTED_COMMAND: &str = "<redacted>";
 /// Commands longer than this (in characters) are fully redacted.
 pub const MAX_COMMAND_LENGTH: usize = 500;
 
-static PRIVATE_KEY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----").expect("valid regex")
-});
+static PRIVATE_KEY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----").expect("valid regex"));
 static SENSITIVE_ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?i)\b(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|authorization)\b\s*[:=]",
-    )
-    .expect("valid regex")
+    Regex::new(r"(?i)\b(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|authorization)\b\s*[:=]")
+        .expect("valid regex")
 });
 static TOKEN_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b(?:gh[pous]_[A-Za-z0-9_]+|xox[baprs]-[A-Za-z0-9-]+|eyJ[A-Za-z0-9_-]+\.)")
-        .expect("valid regex")
+    Regex::new(r"\b(?:gh[pous]_[A-Za-z0-9_]+|xox[baprs]-[A-Za-z0-9-]+|eyJ[A-Za-z0-9_-]+\.)").expect("valid regex")
 });
 
 /// Commands that look like they carry credentials or run with elevated rights.
@@ -42,8 +38,7 @@ static URL_USERINFO: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^\s/?#@]+@").expect("valid regex"));
 /// `NAME=value` shell assignments (inline env vars, `export`, `env`).
 static ENV_ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(^|[\s;&|(])([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|[^\s;&|)]*)"#)
-        .expect("valid regex")
+    Regex::new(r#"(^|[\s;&|(])([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|[^\s;&|)]*)"#).expect("valid regex")
 });
 
 /// Error for events that must not be stored at all (HTTP 422 in 1.x).
@@ -87,10 +82,7 @@ pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
                 payload.insert("url".into(), Value::String(clean));
             }
             if let Some(Value::Object(target)) = payload.get_mut("target")
-                && let Some(href) = target
-                    .get("href")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned)
+                && let Some(href) = target.get("href").and_then(Value::as_str).map(str::to_owned)
             {
                 match sanitize_url(&href) {
                     Some(clean) => {
@@ -110,11 +102,7 @@ pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
             }
         }
         "shell" if event.kind == "command" => {
-            if let Some(clean) = payload
-                .get("cmd")
-                .and_then(Value::as_str)
-                .map(redact_shell_command)
-            {
+            if let Some(clean) = payload.get("cmd").and_then(Value::as_str).map(redact_shell_command) {
                 payload.insert("cmd".into(), Value::String(clean));
             }
         }
@@ -149,8 +137,7 @@ pub fn redact_shell_command(command: &str) -> String {
         return REDACTED_COMMAND.to_string();
     }
     let masked = URL_USERINFO.replace_all(command, format!("${{1}}{REDACTED_COMMAND}@").as_str());
-    let masked =
-        ENV_ASSIGNMENT.replace_all(&masked, format!("${{1}}${{2}}={REDACTED_COMMAND}").as_str());
+    let masked = ENV_ASSIGNMENT.replace_all(&masked, format!("${{1}}${{2}}={REDACTED_COMMAND}").as_str());
     mask_tool_flags(&masked)
 }
 
@@ -169,9 +156,7 @@ const MYSQL_TOOLS: &[&str] = &[
     "mariadb-import",
     "mariadb-check",
 ];
-const WRAPPERS: &[&str] = &[
-    "env", "command", "exec", "time", "nice", "nohup", "builtin", "xargs",
-];
+const WRAPPERS: &[&str] = &["env", "command", "exec", "time", "nice", "nohup", "builtin", "xargs"];
 
 /// Mask tool-specific password arguments, segment by segment (`|`, `;`, `&`).
 fn mask_tool_flags(command: &str) -> String {
@@ -206,9 +191,7 @@ fn mask_segment(segment: &str) -> String {
     if !current.is_empty() {
         tokens.push(current);
     }
-    let words: Vec<usize> = (0..tokens.len())
-        .filter(|&i| !tokens[i].trim().is_empty())
-        .collect();
+    let words: Vec<usize> = (0..tokens.len()).filter(|&i| !tokens[i].trim().is_empty()).collect();
     let program_index = words.iter().position(|&i| {
         let word = tokens[i].trim_start_matches('(');
         !(word.contains('=') && !word.starts_with('-')) && !WRAPPERS.contains(&word)
@@ -217,11 +200,7 @@ fn mask_segment(segment: &str) -> String {
         return segment.to_string();
     };
     let program_word = tokens[words[program_index]].trim_start_matches('(');
-    let program = program_word
-        .rsplit('/')
-        .next()
-        .unwrap_or(program_word)
-        .to_ascii_lowercase();
+    let program = program_word.rsplit('/').next().unwrap_or(program_word).to_ascii_lowercase();
     let args = &words[program_index + 1..];
     let mut mask_next = false;
     for &i in args {
@@ -241,11 +220,7 @@ fn mask_segment(segment: &str) -> String {
             }
         }
         if program == "curl" || program == "wget" {
-            if token == "-u"
-                || token == "--user"
-                || token == "--http-password"
-                || token == "--proxy-user"
-            {
+            if token == "-u" || token == "--user" || token == "--http-password" || token == "--proxy-user" {
                 mask_next = true;
             } else if let Some((flag, _)) = token.split_once('=')
                 && matches!(flag, "--user" | "--http-password" | "--proxy-user")
@@ -298,14 +273,7 @@ mod tests {
         ] {
             assert!(should_redact_text(text), "{text}");
         }
-        for text in [
-            "let x = 1;",
-            "the password field",
-            "tokenize(x)",
-            "db_password = 1",
-            "ghp",
-            "eyJ",
-        ] {
+        for text in ["let x = 1;", "the password field", "tokenize(x)", "db_password = 1", "ghp", "eyJ"] {
             assert!(!should_redact_text(text), "{text}");
         }
     }
@@ -348,17 +316,9 @@ mod tests {
 
     #[test]
     fn firefox_non_http_url_is_rejected() {
-        for url in [
-            "file:///etc/passwd",
-            "about:config",
-            "moz-extension://x/y",
-            "chrome://settings",
-        ] {
+        for url in ["file:///etc/passwd", "about:config", "moz-extension://x/y", "chrome://settings"] {
             let error = redact_event(raw("firefox", "tab_close", json!({"url": url}))).unwrap_err();
-            assert_eq!(
-                error.message,
-                "firefox event url must be an http or https URL"
-            );
+            assert_eq!(error.message, "firefox event url must be an http or https URL");
         }
     }
 
@@ -390,33 +350,14 @@ mod tests {
                 json!({"url": "https://a.com/", "context": {"kind": "post", "text_excerpt": excerpt}}),
             )
         };
-        assert!(
-            redact_event(event("my password: hunter2"))
-                .unwrap()
-                .payload
-                .get("context")
-                .is_none()
-        );
-        assert!(
-            redact_event(event("look at ghp_abc123"))
-                .unwrap()
-                .payload
-                .get("context")
-                .is_none()
-        );
-        assert_eq!(
-            redact_event(event("nice post")).unwrap().payload["context"]["text_excerpt"],
-            "nice post"
-        );
+        assert!(redact_event(event("my password: hunter2")).unwrap().payload.get("context").is_none());
+        assert!(redact_event(event("look at ghp_abc123")).unwrap().payload.get("context").is_none());
+        assert_eq!(redact_event(event("nice post")).unwrap().payload["context"]["text_excerpt"], "nice post");
     }
 
     #[test]
     fn other_sources_untouched() {
-        let event = raw(
-            "linux",
-            "app_focus",
-            json!({"app": "x", "title": "password=1"}),
-        );
+        let event = raw("linux", "app_focus", json!({"app": "x", "title": "password=1"}));
         assert_eq!(redact_event(event.clone()).unwrap(), event);
     }
 
@@ -431,12 +372,8 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(out.payload["cmd"], "<redacted>");
-        let out = redact_event(raw(
-            "shell",
-            "command",
-            json!({"cmd": "  cargo test  ", "cwd": "/", "exit_code": 0}),
-        ))
-        .unwrap();
+        let out = redact_event(raw("shell", "command", json!({"cmd": "  cargo test  ", "cwd": "/", "exit_code": 0})))
+            .unwrap();
         assert_eq!(out.payload["cmd"], "cargo test");
     }
 
@@ -490,26 +427,11 @@ mod tests {
 
     #[test]
     fn shell_env_assignments_masked() {
-        assert_eq!(
-            redact_shell_command("DATABASE_URL=postgres://x cargo run"),
-            "DATABASE_URL=<redacted> cargo run"
-        );
-        assert_eq!(
-            redact_shell_command("A=1 B=\"two words\" make"),
-            "A=<redacted> B=<redacted> make"
-        );
-        assert_eq!(
-            redact_shell_command("export HF_HOME=/data"),
-            "export HF_HOME=<redacted>"
-        );
-        assert_eq!(
-            redact_shell_command("env FOO='a b' ./run.sh"),
-            "env FOO=<redacted> ./run.sh"
-        );
-        assert_eq!(
-            redact_shell_command("make && X=1 ./go"),
-            "make && X=<redacted> ./go"
-        );
+        assert_eq!(redact_shell_command("DATABASE_URL=postgres://x cargo run"), "DATABASE_URL=<redacted> cargo run");
+        assert_eq!(redact_shell_command("A=1 B=\"two words\" make"), "A=<redacted> B=<redacted> make");
+        assert_eq!(redact_shell_command("export HF_HOME=/data"), "export HF_HOME=<redacted>");
+        assert_eq!(redact_shell_command("env FOO='a b' ./run.sh"), "env FOO=<redacted> ./run.sh");
+        assert_eq!(redact_shell_command("make && X=1 ./go"), "make && X=<redacted> ./go");
     }
 
     #[test]
@@ -518,51 +440,24 @@ mod tests {
             redact_shell_command("git clone https://alice:hunter2@example.com/repo.git"),
             "git clone https://<redacted>@example.com/repo.git"
         );
-        assert_eq!(
-            redact_shell_command("psql postgres://bob:x@db/app"),
-            "psql postgres://<redacted>@db/app"
-        );
-        assert_eq!(
-            redact_shell_command("curl https://example.com/a@b"),
-            "curl https://example.com/a@b"
-        );
+        assert_eq!(redact_shell_command("psql postgres://bob:x@db/app"), "psql postgres://<redacted>@db/app");
+        assert_eq!(redact_shell_command("curl https://example.com/a@b"), "curl https://example.com/a@b");
     }
 
     #[test]
     fn shell_password_flags_masked() {
-        assert_eq!(
-            redact_shell_command("mysql -uroot -phunter2 app"),
-            "mysql -uroot -p<redacted> app"
-        );
+        assert_eq!(redact_shell_command("mysql -uroot -phunter2 app"), "mysql -uroot -p<redacted> app");
         assert_eq!(
             redact_shell_command("/usr/bin/mysqldump -pX db > d.sql"),
             "/usr/bin/mysqldump -p<redacted> db > d.sql"
         );
-        assert_eq!(
-            redact_shell_command("cat x.sql | mariadb -pS3cret"),
-            "cat x.sql | mariadb -p<redacted>"
-        );
+        assert_eq!(redact_shell_command("cat x.sql | mariadb -pS3cret"), "cat x.sql | mariadb -p<redacted>");
         assert_eq!(redact_shell_command("mysql -p app"), "mysql -p app");
-        assert_eq!(
-            redact_shell_command("sshpass -p hunter2 scp a b"),
-            "sshpass -p <redacted> scp a b"
-        );
-        assert_eq!(
-            redact_shell_command("curl -u alice:pw https://x/"),
-            "curl -u <redacted> https://x/"
-        );
-        assert_eq!(
-            redact_shell_command("curl --user=alice:pw https://x/"),
-            "curl --user=<redacted> https://x/"
-        );
-        assert_eq!(
-            redact_shell_command("curl -ualice:pw https://x/"),
-            "curl -u<redacted> https://x/"
-        );
-        assert_eq!(
-            redact_shell_command("wget --http-password pw https://x/"),
-            "<redacted>"
-        );
+        assert_eq!(redact_shell_command("sshpass -p hunter2 scp a b"), "sshpass -p <redacted> scp a b");
+        assert_eq!(redact_shell_command("curl -u alice:pw https://x/"), "curl -u <redacted> https://x/");
+        assert_eq!(redact_shell_command("curl --user=alice:pw https://x/"), "curl --user=<redacted> https://x/");
+        assert_eq!(redact_shell_command("curl -ualice:pw https://x/"), "curl -u<redacted> https://x/");
+        assert_eq!(redact_shell_command("wget --http-password pw https://x/"), "<redacted>");
     }
 
     #[test]

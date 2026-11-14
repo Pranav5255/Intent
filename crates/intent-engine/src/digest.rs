@@ -39,7 +39,9 @@ fn primary_root<'a>(roots: &[&'a Intent]) -> &'a Intent {
     // `max_by_key` keeps the last maximum; 1.x `max` kept the first.
     let mut best = candidates[0];
     for candidate in candidates.iter().skip(1) {
-        if (candidate.children.len(), candidate.stats.duration_seconds) > (best.children.len(), best.stats.duration_seconds) {
+        if (candidate.children.len(), candidate.stats.duration_seconds)
+            > (best.children.len(), best.stats.duration_seconds)
+        {
             best = candidate;
         }
     }
@@ -54,8 +56,7 @@ fn headline(primary: &Intent, roots: &[&Intent]) -> String {
     {
         headline = format!("{headline} in {project}");
     }
-    let others: Vec<&str> =
-        unique(roots.iter().filter_map(|r| r.project_tag()).filter(|p| Some(*p) != project));
+    let others: Vec<&str> = unique(roots.iter().filter_map(|r| r.project_tag()).filter(|p| Some(*p) != project));
     match others.as_slice() {
         [] => {}
         [one] => headline.push_str(&format!(", plus {one}")),
@@ -69,7 +70,10 @@ fn summary(root: &Intent) -> String {
     let mut parts: Vec<String> = Vec::new();
     let labels: Vec<&str> = root.children.iter().map(|c| c.label.as_str()).filter(|l| !l.is_empty()).collect();
     if !labels.is_empty() {
-        parts.push(format!("You worked on {}", labels.iter().take(2).copied().collect::<Vec<_>>().join(", ").to_lowercase()));
+        parts.push(format!(
+            "You worked on {}",
+            labels.iter().take(2).copied().collect::<Vec<_>>().join(", ").to_lowercase()
+        ));
     }
     if let Some(file) = insight_values(root, |i| &i.insights.editor, "file").first() {
         parts.push(format!("edited {file}"));
@@ -96,7 +100,9 @@ type InsightList = Vec<serde_json::Map<String, serde_json::Value>>;
 
 fn insight_values(root: &Intent, pick: impl Fn(&Intent) -> &InsightList, key: &str) -> Vec<String> {
     let nodes = std::iter::once(root).chain(root.children.iter());
-    unique(nodes.flat_map(|n| pick(n).iter().filter_map(|i| i.get(key)?.as_str().map(str::to_owned)).collect::<Vec<_>>()))
+    unique(
+        nodes.flat_map(|n| pick(n).iter().filter_map(|i| i.get(key)?.as_str().map(str::to_owned)).collect::<Vec<_>>()),
+    )
 }
 
 fn failed_families(root: &Intent) -> Vec<String> {

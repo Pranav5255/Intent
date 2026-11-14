@@ -40,7 +40,13 @@ pub struct AppState {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-async fn api(app: AppHandle, state: State<'_, AppState>, method: String, path: String, body: Option<Value>) -> Result<ApiResponse, String> {
+async fn api(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    method: String,
+    path: String,
+    body: Option<Value>,
+) -> Result<ApiResponse, String> {
     let response = state.daemon.request(&method, &path, body.filter(|b| !b.is_null())).await?;
     // A pause/resume from one window (e.g. the palette) must reach the tray and
     // the other windows now, not at their next poll.
@@ -225,7 +231,9 @@ fn preview_from_args(args: &[String]) -> Option<String> {
 }
 
 fn valid_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 128 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == ':')
+    !id.is_empty()
+        && id.len() <= 128
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == ':')
 }
 
 fn handle_launch(app: &AppHandle, args: &[String], first: bool) {

@@ -74,10 +74,7 @@ pub fn is_ignored_path(path: &Path, root: &Path) -> bool {
 
 /// Most specific root containing `path`.
 pub fn owning_root<'a>(path: &Path, roots: &'a [PathBuf]) -> Option<&'a PathBuf> {
-    roots
-        .iter()
-        .filter(|r| path.starts_with(r))
-        .max_by_key(|r| r.components().count())
+    roots.iter().filter(|r| path.starts_with(r)).max_by_key(|r| r.components().count())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,9 +88,7 @@ pub enum RootRejection {
 impl std::fmt::Display for RootRejection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::FilesystemRoot => {
-                "refusing to watch / recursively (use the home-directory option instead)"
-            }
+            Self::FilesystemRoot => "refusing to watch / recursively (use the home-directory option instead)",
             Self::Virtual => "virtual filesystem",
             Self::NotADirectory => "not a directory",
             Self::Sensitive => "sensitive path",
@@ -111,9 +106,7 @@ pub fn normalize_root(
         (Ok(rest), Some(h)) => h.join(rest),
         _ => raw.to_path_buf(),
     };
-    let resolved = expanded
-        .canonicalize()
-        .map_err(|_| RootRejection::NotADirectory)?;
+    let resolved = expanded.canonicalize().map_err(|_| RootRejection::NotADirectory)?;
     if resolved.parent().is_none() {
         return Err(RootRejection::FilesystemRoot);
     }
@@ -131,12 +124,7 @@ pub fn normalize_root(
 
 /// Full eligibility check for a changed path (touches the filesystem).
 /// Symlinks, non-regular files, oversized files, ignored and sensitive paths are skipped.
-pub fn should_capture(
-    path: &Path,
-    root: &Path,
-    max_bytes: u64,
-    is_sensitive: &dyn Fn(&Path) -> bool,
-) -> bool {
+pub fn should_capture(path: &Path, root: &Path, max_bytes: u64, is_sensitive: &dyn Fn(&Path) -> bool) -> bool {
     if is_ignored_path(path, root) || is_sensitive(path) {
         return false;
     }
@@ -159,67 +147,40 @@ mod tests {
         let root = Path::new("/w");
         assert!(!is_ignored_path(Path::new("/w/src/main.rs"), root));
         assert!(is_ignored_path(Path::new("/w/.git/HEAD"), root));
-        assert!(is_ignored_path(
-            Path::new("/w/a/node_modules/x/index.js"),
-            root
-        ));
+        assert!(is_ignored_path(Path::new("/w/a/node_modules/x/index.js"), root));
         assert!(is_ignored_path(Path::new("/w/target/debug/foo"), root));
         assert!(is_ignored_path(Path::new("/w/.venv/lib/site.py"), root));
         assert!(is_ignored_path(Path::new("/w/src/.main.rs.swp"), root));
         assert!(is_ignored_path(Path::new("/w/src/4913"), root));
         assert!(is_ignored_path(Path::new("/w/notes.md~"), root));
-        assert!(
-            is_ignored_path(Path::new("/elsewhere/a.txt"), root),
-            "outside root"
-        );
+        assert!(is_ignored_path(Path::new("/elsewhere/a.txt"), root), "outside root");
         // A *file* named like an ignored dir is fine; ignored names only apply to directories.
         assert!(!is_ignored_path(Path::new("/w/docs/build"), root));
         // The root itself may live under an ignored-looking name.
-        assert!(!is_ignored_path(
-            Path::new("/home/u/build/proj/a.c"),
-            Path::new("/home/u/build/proj")
-        ));
+        assert!(!is_ignored_path(Path::new("/home/u/build/proj/a.c"), Path::new("/home/u/build/proj")));
     }
 
     #[test]
     fn owning_root_prefers_most_specific() {
         let roots = vec![PathBuf::from("/home/u"), PathBuf::from("/home/u/proj")];
-        assert_eq!(
-            owning_root(Path::new("/home/u/proj/a.rs"), &roots),
-            Some(&roots[1])
-        );
-        assert_eq!(
-            owning_root(Path::new("/home/u/b.txt"), &roots),
-            Some(&roots[0])
-        );
+        assert_eq!(owning_root(Path::new("/home/u/proj/a.rs"), &roots), Some(&roots[1]));
+        assert_eq!(owning_root(Path::new("/home/u/b.txt"), &roots), Some(&roots[0]));
         assert_eq!(owning_root(Path::new("/home/user2/b.txt"), &roots), None);
     }
 
     #[test]
     fn root_validation() {
-        assert_eq!(
-            normalize_root(Path::new("/"), None, &never),
-            Err(RootRejection::FilesystemRoot)
-        );
-        assert_eq!(
-            normalize_root(Path::new("/definitely/missing"), None, &never),
-            Err(RootRejection::NotADirectory)
-        );
+        assert_eq!(normalize_root(Path::new("/"), None, &never), Err(RootRejection::FilesystemRoot));
+        assert_eq!(normalize_root(Path::new("/definitely/missing"), None, &never), Err(RootRejection::NotADirectory));
         let dir = tempfile::tempdir().unwrap();
         let ok = normalize_root(dir.path(), None, &never).unwrap();
         assert!(ok.is_absolute());
         let tilde = normalize_root(Path::new("~"), Some(dir.path()), &never).unwrap();
         assert_eq!(tilde, ok);
-        assert_eq!(
-            normalize_root(dir.path(), None, &|_| true),
-            Err(RootRejection::Sensitive)
-        );
+        assert_eq!(normalize_root(dir.path(), None, &|_| true), Err(RootRejection::Sensitive));
         let file = dir.path().join("f");
         std::fs::write(&file, "x").unwrap();
-        assert_eq!(
-            normalize_root(&file, None, &never),
-            Err(RootRejection::NotADirectory)
-        );
+        assert_eq!(normalize_root(&file, None, &never), Err(RootRejection::NotADirectory));
     }
 
     #[test]
@@ -230,28 +191,14 @@ mod tests {
         std::fs::write(&f, "hello").unwrap();
         assert!(should_capture(&f, &root, MAX_FILE_BYTES, &never));
         assert!(!should_capture(&f, &root, 2, &never), "too large");
-        assert!(
-            !should_capture(&f, &root, MAX_FILE_BYTES, &|p| p.ends_with("a.txt")),
-            "sensitive"
-        );
-        assert!(!should_capture(
-            &root.join("missing"),
-            &root,
-            MAX_FILE_BYTES,
-            &never
-        ));
-        assert!(
-            !should_capture(&root, &root, MAX_FILE_BYTES, &never),
-            "directory"
-        );
+        assert!(!should_capture(&f, &root, MAX_FILE_BYTES, &|p| p.ends_with("a.txt")), "sensitive");
+        assert!(!should_capture(&root.join("missing"), &root, MAX_FILE_BYTES, &never));
+        assert!(!should_capture(&root, &root, MAX_FILE_BYTES, &never), "directory");
         #[cfg(unix)]
         {
             let link = root.join("link.txt");
             std::os::unix::fs::symlink(&f, &link).unwrap();
-            assert!(
-                !should_capture(&link, &root, MAX_FILE_BYTES, &never),
-                "symlink"
-            );
+            assert!(!should_capture(&link, &root, MAX_FILE_BYTES, &never), "symlink");
         }
     }
 }

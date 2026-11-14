@@ -33,7 +33,12 @@ pub struct RunRecord {
 pub const LAST_RUN_KEY: &str = "pipeline_last_run";
 
 /// Run the pipeline for `date` over `events` (the stored day when `None`).
-pub async fn run(shared: &Shared, date: &str, events: Option<Vec<RawEvent>>, mode: RunMode) -> anyhow::Result<PipelineResult> {
+pub async fn run(
+    shared: &Shared,
+    date: &str,
+    events: Option<Vec<RawEvent>>,
+    mode: RunMode,
+) -> anyhow::Result<PipelineResult> {
     let _guard = shared.pipeline_lock.lock().await;
     let started = std::time::Instant::now();
     let events = match events {

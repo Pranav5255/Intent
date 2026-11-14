@@ -71,10 +71,7 @@ impl StatusHandle {
     pub fn update(&self, f: impl FnOnce(&mut CollectorStatus)) {
         let mut guard = self.0.write().unwrap_or_else(|e| e.into_inner());
         f(&mut guard);
-        guard.running = matches!(
-            guard.state,
-            CollectorState::Running | CollectorState::Waiting
-        );
+        guard.running = matches!(guard.state, CollectorState::Running | CollectorState::Waiting);
     }
 
     pub fn set_state(&self, state: CollectorState) {

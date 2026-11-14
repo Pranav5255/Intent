@@ -231,7 +231,11 @@ impl Daemon {
     }
 
     /// Serve until `shutdown` resolves, then stop collectors/jobs and flush the writer.
-    pub async fn serve(self, listener: TcpListener, shutdown: impl Future<Output = ()> + Send + 'static) -> anyhow::Result<()> {
+    pub async fn serve(
+        self,
+        listener: TcpListener,
+        shutdown: impl Future<Output = ()> + Send + 'static,
+    ) -> anyhow::Result<()> {
         let router = self.router.clone();
         axum::serve(listener, router).with_graceful_shutdown(shutdown).await.context("HTTP server failed")?;
         self.shutdown().await;

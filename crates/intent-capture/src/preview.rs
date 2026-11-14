@@ -66,17 +66,10 @@ mod tests {
     #[test]
     fn default_sample_has_no_snippet_and_extra_disclosure() {
         let sample = build_preview_sample(&DetailedCaptureConfig::default());
-        assert!(
-            sample["semantic_clustering_example"]["packets"][0]
-                .get("snippet")
-                .is_none()
-        );
+        assert!(sample["semantic_clustering_example"]["packets"][0].get("snippet").is_none());
         assert_eq!(sample["disclosure"].as_array().unwrap().len(), 5);
         assert_eq!(sample["browser_detailed_enabled"], false);
-        assert_eq!(
-            sample["labeling_example"]["policy_version"],
-            "safe-intent-features-v2"
-        );
+        assert_eq!(sample["labeling_example"]["policy_version"], "safe-intent-features-v2");
         assert_eq!(sample["copilot_example"]["raw_events_sent"], false);
     }
 

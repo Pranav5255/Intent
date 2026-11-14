@@ -52,14 +52,25 @@ async fn ingest_status_codes_and_dedupe() {
     assert_eq!(body, Value::Null);
 
     // Invalid: missing required payload field, bad id, unknown kind, malformed JSON.
-    let (s, body) = d.post_event(&json!({"id": uuid(), "ts": now, "source": "shell", "type": "command", "payload": {"cmd": "x"}})).await;
+    let (s, body) = d
+        .post_event(&json!({"id": uuid(), "ts": now, "source": "shell", "type": "command", "payload": {"cmd": "x"}}))
+        .await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(body["detail"].as_str().unwrap().contains("cwd"), "{body}");
-    let (s, _) = d.post_event(&json!({"id": "nope", "ts": now, "source": "shell", "type": "command", "payload": {}})).await;
+    let (s, _) =
+        d.post_event(&json!({"id": "nope", "ts": now, "source": "shell", "type": "command", "payload": {}})).await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
-    let (s, _) = d.post_event(&json!({"id": uuid(), "ts": now, "source": "shell", "type": "teleport", "payload": {}})).await;
+    let (s, _) =
+        d.post_event(&json!({"id": uuid(), "ts": now, "source": "shell", "type": "teleport", "payload": {}})).await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
-    let resp = d.client.post(format!("{}/v1/event", d.base)).header("content-type", "application/json").body("{").send().await.unwrap();
+    let resp = d
+        .client
+        .post(format!("{}/v1/event", d.base))
+        .header("content-type", "application/json")
+        .body("{")
+        .send()
+        .await
+        .unwrap();
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     let (_, status) = d.call(Method::GET, "/v1/status", None).await;
@@ -110,7 +121,8 @@ async fn pause_persists_across_restart_and_expires() {
     let dir = tempfile::tempdir().unwrap();
     let d = TestDaemon::start(dir.path()).await;
     let now = intent_store::now_ts();
-    let (s, body) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "duration_seconds": 3600}))).await;
+    let (s, body) =
+        d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "duration_seconds": 3600}))).await;
     assert_eq!(s, StatusCode::OK);
     assert_eq!(body["paused"], true);
     let until = body["paused_until"].as_i64().unwrap();
@@ -128,7 +140,8 @@ async fn pause_persists_across_restart_and_expires() {
     assert_eq!(s, StatusCode::NO_CONTENT);
 
     // A short timed pause expires on its own.
-    let (_, body) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "duration_seconds": 1}))).await;
+    let (_, body) =
+        d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "duration_seconds": 1}))).await;
     assert_eq!(body["paused"], true);
     tokio::time::sleep(Duration::from_millis(1300)).await;
     let (s, _) = d.post_event(&shell(now, "resumed", "/", 0)).await;
@@ -267,7 +280,8 @@ async fn workspace_put_reconfigures_watcher() {
     assert_eq!(body, json!({"all_accessible": true}));
     assert!(d.state.fs_watch.borrow().all_accessible);
 
-    let (s, _) = d.call(Method::PUT, "/v1/detailed-capture/config", Some(json!({"filesystem": {"enabled": true}}))).await;
+    let (s, _) =
+        d.call(Method::PUT, "/v1/detailed-capture/config", Some(json!({"filesystem": {"enabled": true}}))).await;
     assert_eq!(s, StatusCode::OK);
     assert!(d.state.fs_watch.borrow().capture_content);
 
@@ -347,8 +361,12 @@ async fn seed_day(d: &TestDaemon, project: &str) -> (String, usize) {
         let t = t0 + i * 120;
         events.push(json!({"id": uuid(), "ts": t, "source": "linux", "type": "app_focus",
                            "payload": {"app": "Code", "title": "lib.rs - intent - Visual Studio Code"}}));
-        events.push(json!({"id": uuid(), "ts": t + 5, "source": "vscode", "type": "file_open", "payload": {"path": file}}));
-        events.push(json!({"id": uuid(), "ts": t + 30, "source": "vscode", "type": "file_save", "payload": {"path": file}}));
+        events.push(
+            json!({"id": uuid(), "ts": t + 5, "source": "vscode", "type": "file_open", "payload": {"path": file}}),
+        );
+        events.push(
+            json!({"id": uuid(), "ts": t + 30, "source": "vscode", "type": "file_save", "payload": {"path": file}}),
+        );
         events.push(shell(t + 60, "cargo test -p intentd", project, if i == 2 { 101 } else { 0 }));
         events.push(json!({"id": uuid(), "ts": t + 90, "source": "firefox", "type": "tab_change",
                            "payload": {"url": "https://docs.rs/axum/latest/axum/", "title": "axum - Rust", "tab_id": 3, "window_id": 1}}));
@@ -399,14 +417,17 @@ async fn pipeline_search_digest_resume_restore() {
 
     // Search by a word of the label.
     let word = root["label"].as_str().unwrap().split_whitespace().find(|w| w.len() > 3).unwrap().to_string();
-    let (s, hits) = d.call(Method::GET, &format!("/intents/search?q={word}&date_from={date}&date_to={date}"), None).await;
+    let (s, hits) =
+        d.call(Method::GET, &format!("/intents/search?q={word}&date_from={date}&date_to={date}"), None).await;
     assert_eq!(s, StatusCode::OK, "{hits}");
     assert!(hits.as_array().unwrap().iter().any(|h| h["date"] == date.as_str()), "{hits}");
     let (s, _) = d.call(Method::GET, "/intents/search?q=%20", None).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
 
     // The overlay scopes search to a project tag.
-    if let Some(tag) = root["tags"].as_array().unwrap().iter().filter_map(Value::as_str).find_map(|t| t.strip_prefix("project:")) {
+    if let Some(tag) =
+        root["tags"].as_array().unwrap().iter().filter_map(Value::as_str).find_map(|t| t.strip_prefix("project:"))
+    {
         let (_, scoped) = d.call(Method::GET, &format!("/intents/search?q={word}&project={tag}"), None).await;
         assert!(!scoped.as_array().unwrap().is_empty(), "{scoped}");
     }
@@ -429,7 +450,10 @@ async fn pipeline_search_digest_resume_restore() {
     assert_eq!(s, StatusCode::OK, "{sel}");
     assert_eq!(sel["needs_picker"], false);
     let payload = sel["selected"]["resume_payload"].clone();
-    assert!(!payload["files"].as_array().unwrap().is_empty() || !payload["urls"].as_array().unwrap().is_empty(), "{payload}");
+    assert!(
+        !payload["files"].as_array().unwrap().is_empty() || !payload["urls"].as_array().unwrap().is_empty(),
+        "{payload}"
+    );
     let (s, sel_q) = d.call(Method::POST, "/resume/select", Some(json!({"query": word}))).await;
     assert_eq!(s, StatusCode::OK);
     assert!(!sel_q["candidates"].as_array().unwrap().is_empty());
@@ -495,7 +519,8 @@ async fn retention_preview_and_purge_requires_confirm() {
     assert_eq!(events.as_array().unwrap().len(), 1);
 
     // Policy round trip; the daily job applies it.
-    let (s, policy) = d.call(Method::PUT, "/v1/retention/policy", Some(json!({"metadata_days": 2, "detailed_days": null}))).await;
+    let (s, policy) =
+        d.call(Method::PUT, "/v1/retention/policy", Some(json!({"metadata_days": 2, "detailed_days": null}))).await;
     assert_eq!(s, StatusCode::OK);
     assert_eq!(policy, json!({"metadata_days": 2, "detailed_days": null}));
     let (s, _) = d.call(Method::PUT, "/v1/retention/policy", Some(json!({"metadata_days": 0}))).await;
@@ -539,9 +564,12 @@ async fn settings_round_trip_rebuilds_providers() {
     }
 
     // Cloud provider needs a key; a cloud http base URL is refused.
-    let (s, body) = d.call(Method::PUT, "/settings/llm", Some(json!({"provider": "openai", "base_url": "http://example.com/v1"}))).await;
+    let (s, body) = d
+        .call(Method::PUT, "/settings/llm", Some(json!({"provider": "openai", "base_url": "http://example.com/v1"})))
+        .await;
     assert_eq!(s, StatusCode::BAD_REQUEST, "{body}");
-    let (s, summary) = d.call(Method::PUT, "/settings/llm", Some(json!({"provider": "groq", "api_key": "gsk_test"}))).await;
+    let (s, summary) =
+        d.call(Method::PUT, "/settings/llm", Some(json!({"provider": "groq", "api_key": "gsk_test"}))).await;
     assert_eq!(s, StatusCode::OK);
     assert_eq!(summary["api_key_configured"], true);
     assert!(summary.get("api_key").is_none(), "secrets never leave the daemon");
@@ -549,7 +577,8 @@ async fn settings_round_trip_rebuilds_providers() {
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
     let (s, _) = d.call(Method::POST, "/settings/llm/gemini-credentials", Some(json!({"credentials": ""}))).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
-    let (s, _) = d.call(Method::POST, "/settings/llm/gemini-credentials", Some(json!({"credentials": "{\"type\": 1}"}))).await;
+    let (s, _) =
+        d.call(Method::POST, "/settings/llm/gemini-credentials", Some(json!({"credentials": "{\"type\": 1}"}))).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
     d.stop().await;
 
@@ -600,7 +629,8 @@ async fn copilot_503_when_unconfigured_and_answers_with_mock_provider() {
     let d = TestDaemon::start_with(opts, launched).await;
     let (date, _) = seed_day(&d, "/home/dev/src/intent").await;
     d.call(Method::POST, &format!("/pipeline/run?date={date}"), None).await;
-    let (s, body) = d.call(Method::POST, "/copilot/query", Some(json!({"question": "what was I testing?", "mode": "qa"}))).await;
+    let (s, body) =
+        d.call(Method::POST, "/copilot/query", Some(json!({"question": "what was I testing?", "mode": "qa"}))).await;
     assert_eq!(s, StatusCode::OK, "{body}");
     assert!(body["answer"].as_str().unwrap().contains("intentd"), "{body}");
     assert!(body["tool_calls_made"].as_array().unwrap().iter().any(|t| t == "search_intents"));
