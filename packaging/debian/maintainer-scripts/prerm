@@ -1,0 +1,22 @@
+#!/bin/sh
+# Runs while package files still exist.
+set -eu
+
+POLICY_FILE=/etc/firefox/policies/policies.json
+POLICY_XPI=/etc/firefox/policies/intent-firefox.xpi
+TEMPLATE=/usr/share/intent/firefox/policies.json
+
+if [ "${1:-}" = "remove" ]; then
+  # Only the exact policy installed by Intent is removed; administrator-managed
+  # policies are always retained.
+  if [ -f "$POLICY_FILE" ] && [ -f "$TEMPLATE" ] && cmp -s "$POLICY_FILE" "$TEMPLATE"; then
+    rm -f "$POLICY_FILE" "$POLICY_XPI"
+  fi
+  # Best effort: stop the invoking user's daemon and remove their shell hooks
+  # (data is kept; it is only deleted on purge).
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ] && [ -x /usr/bin/intentctl ]; then
+    su - "$SUDO_USER" -c "/usr/bin/intentctl uninstall --keep-data" >/dev/null 2>&1 || true
+  fi
+fi
+
+exit 0

@@ -1,0 +1,16 @@
+#!/bin/sh
+# /usr/bin/intent: start the desktop app. Installed only when the Tauri app is
+# packaged (see build-deb.sh). Unlike 1.x, it enables the user service only the
+# first time (when it is not enabled yet) instead of on every launch.
+set -eu
+
+if [ "${1:-}" = "uninstall" ]; then
+  shift
+  exec /usr/bin/intentctl uninstall "$@"
+fi
+
+if ! systemctl --user is-enabled --quiet intentd.service 2>/dev/null; then
+  /usr/bin/intentctl enable || true
+fi
+
+exec /usr/lib/intent/intent-app "$@"

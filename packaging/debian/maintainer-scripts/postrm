@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+POLICY_FILE=/etc/firefox/policies/policies.json
+POLICY_XPI=/etc/firefox/policies/intent-firefox.xpi
+# The template is already gone at this point; compare by content instead.
+INTENT_POLICY='"install_url": "file:///etc/firefox/policies/intent-firefox.xpi"'
+
+if [ "${1:-}" = "remove" ] || [ "${1:-}" = "purge" ]; then
+  # Remove the policy only if it is still exactly Intent's single-extension policy.
+  if [ -f "$POLICY_FILE" ] && grep -qF "$INTENT_POLICY" "$POLICY_FILE" \
+    && [ "$(grep -c '"installation_mode"' "$POLICY_FILE")" = "1" ] \
+    && [ "$(grep -c '@' "$POLICY_FILE")" = "1" ]; then
+    rm -f "$POLICY_FILE" "$POLICY_XPI"
+  fi
+fi
+
+# Purge also removes the invoking user's captured data and configuration.
+if [ "${1:-}" = "purge" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+  home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+  if [ -n "$home" ] && [ -d "$home" ]; then
+    rm -rf "$home/.config/intent" "$home/.local/share/intent"
+  fi
+fi
+
+exit 0

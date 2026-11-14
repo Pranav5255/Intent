@@ -1,0 +1,19 @@
+Package: intent
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @ARCHITECTURE@
+Maintainer: Intent contributors <intent@local.invalid>
+Installed-Size: @INSTALLED_SIZE@
+Depends: @DEPENDS@
+Suggests: poppler-utils, tesseract-ocr, xdotool, wmctrl
+Homepage: https://github.com/Pranav5255/Intent
+Description: Local-first activity memory for Ubuntu (intentd daemon, CLI and companions)
+ Intent records consented desktop, shell, Firefox, VS Code and workspace file
+ activity on this machine only, turns each day into a tree of work "intents"
+ and helps you resume where you left off.
+ .
+ This package provides the intentd user service (one native process with an
+ HTTP API on 127.0.0.1:9477), the intentctl CLI and shell hooks, the GNOME
+ Shell focus extension for Wayland, and the bundled browser/editor companions
+ when they were built. Nothing is enabled until a user runs "intentctl enable".

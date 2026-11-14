@@ -1,0 +1,48 @@
+#!/bin/sh
+# Intent 2.0 postinst. Enables nothing per user: each user opts in with
+# `intentctl enable`. Only the Firefox companion policy is installed system-wide,
+# and only when this is a release build with a signed XPI and no
+# administrator-managed policy exists.
+set -eu
+
+SHARE=/usr/share/intent
+POLICY_DIR=/etc/firefox/policies
+POLICY_FILE="$POLICY_DIR/policies.json"
+POLICY_XPI="$POLICY_DIR/intent-firefox.xpi"
+TEMPLATE="$SHARE/firefox/policies.json"
+SOURCE_XPI="$SHARE/integrations/intent-firefox.xpi"
+# The exact policy written by Intent 1.0.0 (migrated; anything else is left alone).
+LEGACY_POLICY_SHA256=02bfdf3bc6cb06c7ce0e43e25c1beedc94976f18e344f38365cb05066b052002
+
+install_intent_policy() {
+  # Firefox installed as an Ubuntu Snap may only read host files below its
+  # policy directory, so the signed XPI sits next to policies.json.
+  install -m 0644 "$SOURCE_XPI" "$POLICY_XPI"
+  install -m 0644 "$TEMPLATE" "$POLICY_FILE"
+}
+
+if [ "${1:-}" = "configure" ]; then
+  # A dev package carries an unsigned (or no) XPI and must never alter Firefox.
+  if [ "$(cat "$SHARE/BUILD_MODE" 2>/dev/null || true)" = "release" ] && [ -f "$SOURCE_XPI" ]; then
+    mkdir -p "$POLICY_DIR"
+    if [ -e "$POLICY_FILE" ]; then
+      if cmp -s "$POLICY_FILE" "$TEMPLATE" \
+        || [ "$(sha256sum "$POLICY_FILE" | awk '{print $1}')" = "$LEGACY_POLICY_SHA256" ]; then
+        install_intent_policy
+      else
+        echo "Intent: existing Firefox policy retained; install the companion from $SOURCE_XPI manually." >&2
+      fi
+    else
+      install_intent_policy
+    fi
+  fi
+  # Pick up the new unit for users who already enabled Intent (no enabling here).
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    systemctl --user --machine="$SUDO_USER@" daemon-reload >/dev/null 2>&1 || true
+    if systemctl --user --machine="$SUDO_USER@" is-active --quiet intentd.service 2>/dev/null; then
+      systemctl --user --machine="$SUDO_USER@" restart intentd.service >/dev/null 2>&1 || true
+    fi
+  fi
+fi
+
+exit 0

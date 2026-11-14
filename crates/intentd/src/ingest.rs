@@ -161,6 +161,9 @@ impl Metrics {
 
 type Reply = oneshot::Sender<Result<InsertOutcome, String>>;
 
+/// Longest gap between two events that still joins them into one batch.
+const LINGER: Duration = Duration::from_millis(2);
+
 enum Msg {
     Event { event: RawEvent, enqueued: Instant, reply: Option<Reply> },
     Flush(oneshot::Sender<()>),
@@ -274,9 +277,13 @@ async fn run(mut rx: mpsc::Receiver<Msg>, store: Store, metrics: Arc<Metrics>, c
                 continue;
             }
         }
+        // The batch stays open while events keep arriving (gaps ≤ LINGER), for at most
+        // `batch_wait` and `max_batch` events. 1.x always waited the full window, which
+        // capped a client that waits for its 201 at ~1 event per 25 ms.
         let deadline = Instant::now() + config.batch_wait;
         while batch.len() < config.max_batch {
-            match tokio::time::timeout_at(deadline, rx.recv()).await {
+            let until = deadline.min(Instant::now() + LINGER);
+            match tokio::time::timeout_at(until, rx.recv()).await {
                 Ok(Some(Msg::Event { event, enqueued, reply })) => batch.push((event, enqueued, reply)),
                 Ok(Some(Msg::Flush(done))) => {
                     flushes.push(done);

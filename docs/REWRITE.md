@@ -22,10 +22,56 @@ shapes (`/v1/event`, `/v1/events`, `/v1/export/day[/meta]`, `/v1/events/incremen
 unchanged. The former engine routes (`/intents/*`, `/settings/llm`, `/copilot/*`,
 `/resume/select`, `/pipeline/*`, `/v1/memory/*`) move onto the same port with the same paths.
 
-**Auth.** Routes that change state or launch programs (restore, settings, purges, memory
-deletion, pause, PUT config) require `Authorization: Bearer <token>`. The token is generated at
-first start into `$XDG_RUNTIME_DIR/intent/token` (fallback `~/.local/share/intent/token`),
-mode 0600. Ingest (`POST /v1/event`) and read-only config stay open to local companions.
+**Auth.** Everything requires `Authorization: Bearer <token>` except the surface the
+browser/editor companions and the shell hook use. The token is generated at first start into
+`$XDG_RUNTIME_DIR/intent/token` (fallback `~/.local/share/intent/token`), mode 0600; the Tauri
+app and `intentctl` read it.
+
+| Route | Methods | Token | Notes |
+|---|---|---|---|
+| `/healthz` | GET | open | `{ok, version, pipeline_version, database}` |
+| `/v1/event`, `/event` | POST | open | 201 stored · 200 duplicate id · 204 dropped (paused / no consent / workspace not approved) · 422 invalid or rejected by redaction · 503 writer queue full / unavailable |
+| `/v1/detailed-capture/config` | GET | open | read by the Firefox and VS Code companions |
+| `/v1/config` | GET | open | blocked domains |
+| `/v1/detailed-capture/config` | PUT | **token** | |
+| `/v1/events`, `/events` · `/v1/events/incremental`, `/events/incremental` · `/v1/export/day[/meta]`, `/export/day[/meta]` | GET | **token** | captured data is never readable without the token |
+| `/v1/workspaces` · `/v1/filesystem-capture` | GET, PUT | **token** | PUT re-configures the filesystem watcher live |
+| `/v1/retention/policy` | GET, PUT | **token** | |
+| `/v1/retention/preview`, `/retention/preview` | GET | **token** | |
+| `/v1/retention/purge`, `/retention/purge` | POST | **token** | 409 unless `confirm: true` |
+| `/v1/detailed-capture/purge` | POST | **token** | |
+| `/v1/intelligence/preview-sample` | GET | **token** | |
+| `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
+| `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?}`; persisted with its resume time |
+| `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention` |
+| `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
+| `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
+| `/pipeline/run[?date]`, `/pipeline/run-replay`, `/pipeline/recompute?date` | POST | **token** | `run` defaults to today |
+| `/v1/memory/date/{date}`, `/v1/memory/project/{project}` | DELETE | **token** | |
+| any `OPTIONS` preflight | OPTIONS | open | |
+
+**CORS.** Only `INTENT_FIREFOX_EXTENSION_ORIGIN` (the companion's `moz-extension://…` origin),
+`tauri://localhost` and `http://tauri.localhost` are allowed (debug builds add the Tauri dev
+server on `:1420`); Vite/localhost dev origins are never allowed in release builds.
+
+### Background work inside `intentd`
+
+All on one 60 s housekeeping timer plus an event-driven embedding task (no busy polling):
+
+- **Scheduler** (replaces `intent-pipeline.timer`): when new events arrived since the last run
+  and the user has been idle ≥ 2 min, or 30 min passed, run today's pipeline; skip when the
+  day's `content_hash` is unchanged. Yesterday is finalized once after midnight. The outcome is
+  stored as `pipeline_last_run` metadata and shown in `/v1/status`.
+- **Retention**: the saved policy is applied ~30 s after start and then daily.
+- **Pause expiry**: a timed pause resumes on time, also across restarts.
+- **Embedding backfill**: root intents without a vector are embedded after every pipeline run
+  (and every 15 min), with the configured embedder (offline hashing embedder by default).
+- **"Continue yesterday?"** (Linux): one desktop notification per morning while the user is
+  active and capture is not paused; its action runs `intent --preview <intent_id>`.
+  `INTENT_NOTIFICATIONS=0` disables it.
+
+Logging goes to stderr (journald under systemd; no log files). `INTENT_LOG` / `RUST_LOG` set the
+filter. `INTENT_BIND` overrides the loopback listen address (tests).
 
 ### Data
 
@@ -37,6 +83,32 @@ mode 0600. Ingest (`POST /v1/event`) and read-only config stay open to local com
   `retention-policy.json`, `blocked-domains.yaml`). LLM settings move to `llm.toml` (0600);
   a 1.x `llm.env` is imported once.
 - No mem0. Semantic memory = FTS5 + sqlite-vec over intent summaries + a small `facts` table.
+
+### Ingest path
+
+HTTP (`POST /v1/event`) and the in-process collectors share one path: validation
+(`intent_capture::validate_event`) → persisted pause check → `ConfigStore::admission_policy()`
++ `admit` (consent, workspace approval, redaction, blocklist) → bounded writer queue (1024) →
+one SQLite transaction per batch (≤ 100 events, ≤ 25 ms). Unlike 1.x the batch closes as soon
+as no new event arrives for 2 ms, so a client waiting for its 201 is no longer capped at one
+event per 25 ms. Writer metrics (accepted, inserted, duplicates, drops by reason, batches,
+failures, queue high-water mark, average wait/write ms) are in `/v1/status.ingestion`.
+
+## Packaging and verification
+
+- `packaging/build-deb.sh` (run on the Ubuntu build host / Lima VM) builds release `intentd` +
+  `intentctl` and assembles `intent_2.0.0_<arch>.deb` with `dpkg-deb`: binaries in `/usr/bin`,
+  `intentd.service` in `/usr/lib/systemd/user`, shell hooks in `/usr/share/intent/shell`, the
+  GNOME extension, the companions found under `capture/integrations/*/dist` (skipped with a
+  warning otherwise) and the Firefox policy logic ported from 1.x (policy only installed for a
+  release build with a signed XPI, never over an administrator-managed policy). Depends:
+  `libc6, libgcc-s1` only. The Tauri app is a marked hook (`INTENT_BUILD_APP=1`); its launcher
+  runs `intentctl enable` only when the service is not enabled yet (1.x did it every launch).
+- `dev/lima/e2e.sh` installs the .deb in the VM, drives an Xvfb + openbox session (xdotool focus
+  switches, an interactive bash with the hook, file writes in an approved workspace, companion
+  payloads) and checks events, intents, search, digest and status through the API.
+- `dev/lima/measure.sh idle|ingest|pipeline` reports RSS/PSS, idle CPU, ingest events/s
+  (`crates/intentd/examples/ingest_load.rs`) and pipeline latency.
 
 ## Crates and ownership
 
