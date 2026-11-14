@@ -9,9 +9,10 @@ mod tray;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewWindow, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, Webview, WebviewWindow, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -22,11 +23,16 @@ const DEFAULT_SHORTCUT: &str = "Alt+Space"; // Super+Space is Spotlight on macOS
 #[cfg(not(target_os = "macos"))]
 const DEFAULT_SHORTCUT: &str = "Super+Space";
 
+/// A shortcut press this soon after the palette hid on blur closes it (X11 grab).
+const BLUR_TOGGLE_WINDOW: Duration = Duration::from_millis(250);
+
 pub struct AppState {
     pub daemon: Daemon,
     shortcut: Mutex<String>,
     /// Route requested before the main webview was ready to listen.
     pending_route: Mutex<Option<String>>,
+    /// When the palette last hid because it lost focus (see `toggle_overlay`).
+    overlay_blurred_at: Mutex<Option<Instant>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -34,8 +40,14 @@ pub struct AppState {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-async fn api(state: State<'_, AppState>, method: String, path: String, body: Option<Value>) -> Result<ApiResponse, String> {
-    state.daemon.request(&method, &path, body.filter(|b| !b.is_null())).await
+async fn api(app: AppHandle, state: State<'_, AppState>, method: String, path: String, body: Option<Value>) -> Result<ApiResponse, String> {
+    let response = state.daemon.request(&method, &path, body.filter(|b| !b.is_null())).await?;
+    // A pause/resume from one window (e.g. the palette) must reach the tray and
+    // the other windows now, not at their next poll.
+    if method.eq_ignore_ascii_case("POST") && path == "/v1/capture/pause" && (200..300).contains(&response.status) {
+        tray::refresh(&app).await;
+    }
+    Ok(response)
 }
 
 #[tauri::command]
@@ -116,7 +128,7 @@ pub fn show_main(app: &AppHandle, route: Option<String>) {
     }
     let _ = win.unminimize();
     let _ = win.show();
-    let _ = win.set_focus();
+    focus_when_shown(&win, false);
     if let Some(route) = route {
         let _ = win.emit("navigate", route);
     }
@@ -133,10 +145,46 @@ fn toggle_overlay(app: &AppHandle) {
         let _ = win.hide();
         return;
     }
+    // On X11 the shortcut's own key grab takes focus from the palette, so the
+    // blur handler has usually hidden it a moment before this press arrives.
+    // That press meant "close", not "open again".
+    let just_blurred = app
+        .state::<AppState>()
+        .overlay_blurred_at
+        .lock()
+        .ok()
+        .and_then(|mut t| t.take())
+        .is_some_and(|t| t.elapsed() < BLUR_TOGGLE_WINDOW);
+    if just_blurred {
+        return;
+    }
     place_overlay(app, &win);
     let _ = win.show();
-    let _ = win.set_focus();
+    focus_when_shown(&win, true);
     let _ = win.emit("overlay-shown", ());
+}
+
+/// Focus a window and its webview once it is mapped. On Linux `set_focus` is
+/// ignored while the window is still hidden (`show` is applied asynchronously),
+/// so calling it right after `show` never raised or focused anything; it only
+/// worked where the window manager happens to focus new windows. `reposition`
+/// re-applies the palette position: on its first map the X11 window manager's
+/// own placement wins over the position set while it was hidden.
+fn focus_when_shown(win: &WebviewWindow, reposition: bool) {
+    let win = win.clone();
+    tauri::async_runtime::spawn(async move {
+        for _ in 0..50 {
+            if win.is_visible().unwrap_or(false) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        if reposition {
+            place_overlay(win.app_handle(), &win);
+        }
+        let _ = win.set_focus();
+        let _ = AsRef::<Webview>::as_ref(&win).set_focus();
+    });
 }
 
 fn place_overlay(app: &AppHandle, win: &WebviewWindow) {
@@ -217,6 +265,7 @@ pub fn run() {
             daemon: Daemon::new(),
             shortcut: Mutex::new(DEFAULT_SHORTCUT.into()),
             pending_route: Mutex::new(None),
+            overlay_blurred_at: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             api,
@@ -251,8 +300,14 @@ pub fn run() {
             // Overlay hides on blur, like any GNOME popover.
             if let Some(overlay) = handle.get_webview_window("overlay") {
                 let w = overlay.clone();
+                let app = handle.clone();
                 overlay.on_window_event(move |event| {
                     if let WindowEvent::Focused(false) = event {
+                        if w.is_visible().unwrap_or(false)
+                            && let Ok(mut at) = app.state::<AppState>().overlay_blurred_at.lock()
+                        {
+                            *at = Some(Instant::now());
+                        }
                         let _ = w.hide();
                     }
                 });

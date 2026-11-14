@@ -128,6 +128,12 @@ export function Overlay() {
     return () => void unlisten.then((fn) => fn());
   }, [load, reset]);
 
+  // Each open remounts the dialog (`key={opening}`), so the input that reset()
+  // focused may be the one being thrown away; focus the new one once it exists.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [opening]);
+
   // Hybrid search on the daemon, debounced. Local lists filter instantly.
   useEffect(() => {
     if (mode !== 'search' || text.trim().length < 2) {
