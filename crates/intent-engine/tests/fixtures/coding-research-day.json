@@ -1,0 +1,1190 @@
+{
+ "version": 1,
+ "date": "2026-11-02",
+ "exported_at": 1793608844,
+ "events": [
+  {
+   "id": "2026-11-02-e001",
+   "ts": 1793602840,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "code",
+    "title": "intent - Visual Studio Code"
+   }
+  },
+  {
+   "id": "2026-11-02-e002",
+   "ts": 1793602869,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e003",
+   "ts": 1793602914,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e004",
+   "ts": 1793602975,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e005",
+   "ts": 1793602998,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e006",
+   "ts": 1793603022,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e007",
+   "ts": 1793603094,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e008",
+   "ts": 1793603148,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e009",
+   "ts": 1793603174,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e010",
+   "ts": 1793603217,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e011",
+   "ts": 1793603274,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e012",
+   "ts": 1793603297,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html",
+    "title": "Semaphore in tokio::sync",
+    "tab_id": 11
+   }
+  },
+  {
+   "id": "2026-11-02-e013",
+   "ts": 1793603349,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "let permit = semaphore.acquire().await",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e014",
+   "ts": 1793603382,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://github.com/tokio-rs/tokio/issues/5512",
+    "title": "Semaphore fairness issue",
+    "tab_id": 12
+   }
+  },
+  {
+   "id": "2026-11-02-e015",
+   "ts": 1793603404,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.rs/futures/latest/futures/stream/trait.StreamExt.html",
+    "title": "StreamExt buffered",
+    "tab_id": 13
+   }
+  },
+  {
+   "id": "2026-11-02-e016",
+   "ts": 1793603429,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e017",
+   "ts": 1793603476,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e018",
+   "ts": 1793603522,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e019",
+   "ts": 1793603546,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e020",
+   "ts": 1793603581,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e021",
+   "ts": 1793603606,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e022",
+   "ts": 1793603661,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e023",
+   "ts": 1793603708,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e024",
+   "ts": 1793603731,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e025",
+   "ts": 1793603803,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e026",
+   "ts": 1793603859,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/scheduler.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "stream::iter(jobs).buffered(4)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e027",
+   "ts": 1793603886,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo build -p intentd",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e028",
+   "ts": 1793603920,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test -p intentd",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e029",
+   "ts": 1793603980,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo clippy -p intentd",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e030",
+   "ts": 1793604040,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git status",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e031",
+   "ts": 1793604097,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git add crates/intentd",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e032",
+   "ts": 1793604120,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git commit -m 'feat: bounded scheduler'",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e033",
+   "ts": 1793604576,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "title": "Learn Rust",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e034",
+   "ts": 1793604633,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "title": "Shared-State Concurrency",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e035",
+   "ts": 1793604678,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/state.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Arc<Mutex<State>>",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e036",
+   "ts": 1793604701,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "title": "Learn Rust",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e037",
+   "ts": 1793604735,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "title": "Shared-State Concurrency",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e038",
+   "ts": 1793604757,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/state.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Arc<Mutex<State>>",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e039",
+   "ts": 1793604812,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "title": "Learn Rust",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e040",
+   "ts": 1793604886,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "title": "Shared-State Concurrency",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e041",
+   "ts": 1793604914,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/state.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Arc<Mutex<State>>",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e042",
+   "ts": 1793604952,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "title": "Learn Rust",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e043",
+   "ts": 1793604998,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "title": "Shared-State Concurrency",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e044",
+   "ts": 1793605027,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/state.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Arc<Mutex<State>>",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e045",
+   "ts": 1793605081,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "title": "Learn Rust",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e046",
+   "ts": 1793605108,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/book/ch16-03-shared-state.html",
+    "title": "Shared-State Concurrency",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e047",
+   "ts": 1793605164,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intentd/src/state.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Arc<Mutex<State>>",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e048",
+   "ts": 1793605203,
+   "source": "firefox",
+   "type": "tab_close",
+   "payload": {
+    "url": "https://www.rust-lang.org/learn",
+    "tab_id": 14
+   }
+  },
+  {
+   "id": "2026-11-02-e049",
+   "ts": 1793605258,
+   "source": "linux",
+   "type": "idle_start",
+   "payload": {
+    "idle_seconds": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e050",
+   "ts": 1793606759,
+   "source": "linux",
+   "type": "idle_end",
+   "payload": {
+    "idle_seconds": 1500
+   }
+  },
+  {
+   "id": "2026-11-02-e051",
+   "ts": 1793606831,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "firefox",
+    "title": "sqlite-vec docs"
+   }
+  },
+  {
+   "id": "2026-11-02-e052",
+   "ts": 1793606894,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s0",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e053",
+   "ts": 1793606925,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.sqlite.org/fts5.html",
+    "title": "SQLite FTS5 Extension",
+    "tab_id": 22
+   }
+  },
+  {
+   "id": "2026-11-02-e054",
+   "ts": 1793606951,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s1",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e055",
+   "ts": 1793607008,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s2",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e056",
+   "ts": 1793607064,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.sqlite.org/fts5.html",
+    "title": "SQLite FTS5 Extension",
+    "tab_id": 22
+   }
+  },
+  {
+   "id": "2026-11-02-e057",
+   "ts": 1793607124,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s3",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e058",
+   "ts": 1793607156,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s4",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e059",
+   "ts": 1793607199,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.sqlite.org/fts5.html",
+    "title": "SQLite FTS5 Extension",
+    "tab_id": 22
+   }
+  },
+  {
+   "id": "2026-11-02-e060",
+   "ts": 1793607225,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s5",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e061",
+   "ts": 1793607280,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s6",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e062",
+   "ts": 1793607345,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.sqlite.org/fts5.html",
+    "title": "SQLite FTS5 Extension",
+    "tab_id": 22
+   }
+  },
+  {
+   "id": "2026-11-02-e063",
+   "ts": 1793607369,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s7",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e064",
+   "ts": 1793607425,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s8",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e065",
+   "ts": 1793607448,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.sqlite.org/fts5.html",
+    "title": "SQLite FTS5 Extension",
+    "tab_id": 22
+   }
+  },
+  {
+   "id": "2026-11-02-e066",
+   "ts": 1793607507,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://alexgarcia.xyz/sqlite-vec/guide.html#s9",
+    "title": "sqlite-vec guide",
+    "tab_id": 21
+   }
+  },
+  {
+   "id": "2026-11-02-e067",
+   "ts": 1793607540,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://news.ycombinator.com/item?id=1",
+    "title": "Hacker News",
+    "tab_id": 23
+   }
+  },
+  {
+   "id": "2026-11-02-e068",
+   "ts": 1793607591,
+   "source": "firefox",
+   "type": "tab_close",
+   "payload": {
+    "url": "https://news.ycombinator.com/item?id=1",
+    "tab_id": 23
+   }
+  },
+  {
+   "id": "2026-11-02-e069",
+   "ts": 1793607654,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e070",
+   "ts": 1793607708,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e071",
+   "ts": 1793607755,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e072",
+   "ts": 1793607824,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e073",
+   "ts": 1793607864,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e074",
+   "ts": 1793607913,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e075",
+   "ts": 1793607970,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e076",
+   "ts": 1793608019,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e077",
+   "ts": 1793608062,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e078",
+   "ts": 1793608101,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e079",
+   "ts": 1793608136,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e080",
+   "ts": 1793608206,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e081",
+   "ts": 1793608237,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e082",
+   "ts": 1793608301,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "CREATE VIRTUAL TABLE intents_vec USING vec0",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e083",
+   "ts": 1793608370,
+   "source": "vscode",
+   "type": "document_save",
+   "payload": {
+    "path": "/home/dev/intent/crates/intent-store/src/vec.rs",
+    "workspace": "/home/dev/intent"
+   }
+  },
+  {
+   "id": "2026-11-02-e084",
+   "ts": 1793608405,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test -p intent-store",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e085",
+   "ts": 1793608430,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test -p intent-store",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-02-e086",
+   "ts": 1793608486,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e087",
+   "ts": 1793608525,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e088",
+   "ts": 1793608578,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e089",
+   "ts": 1793608629,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e090",
+   "ts": 1793608670,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e091",
+   "ts": 1793608736,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/intent/docs/REWRITE.md",
+    "workspace": "/home/dev/intent",
+    "changes": [
+     {
+      "text": "Semantic memory = FTS5 + sqlite-vec",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-02-e092",
+   "ts": 1793608784,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git commit -am 'docs: memory design'",
+    "cwd": "/home/dev/intent",
+    "exit_code": 0
+   }
+  }
+ ]
+}

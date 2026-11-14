@@ -1,0 +1,365 @@
+{
+ "date": "2026-11-02",
+ "intents": [
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 1019,
+     "end_ts": 1793603859,
+     "event_count": 26,
+     "insights": {
+      "browser": [
+       {
+        "domain": "docs.rs",
+        "visits": 7
+       },
+       {
+        "domain": "github.com",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "scheduler.rs",
+        "saves": 3,
+        "typed_chars": 468
+       }
+      ],
+      "shell": []
+     },
+     "label": "Edit scheduler.rs",
+     "prefix": [
+      "editor",
+      "document_save",
+      "/home/dev/intent"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/intent/crates/intentd/src/scheduler.rs"
+      ],
+      "shell": {},
+      "urls": [
+       "https://docs.rs/futures/latest/futures/stream/trait.StreamExt.html",
+       "https://github.com/tokio-rs/tokio/issues/5512",
+       "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html"
+      ]
+     },
+     "sources": {
+      "firefox": 8,
+      "linux": 1,
+      "vscode": 17
+     },
+     "start_ts": 1793602840,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 94,
+     "end_ts": 1793603980,
+     "event_count": 3,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Cargo",
+     "prefix": [
+      "command",
+      "command",
+      "cargo"
+     ],
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/intent",
+       "last_cmd": "cargo clippy -p intentd"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 3
+     },
+     "start_ts": 1793603886,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 1163,
+     "end_ts": 1793605203,
+     "event_count": 19,
+     "insights": {
+      "browser": [
+       {
+        "domain": "www.rust-lang.org",
+        "visits": 6
+       },
+       {
+        "domain": "doc.rust-lang.org",
+        "visits": 5
+       }
+      ],
+      "editor": [
+       {
+        "file": "state.rs",
+        "saves": 0,
+        "typed_chars": 85
+       }
+      ],
+      "shell": []
+     },
+     "label": "Run Git",
+     "prefix": [
+      "browser",
+      "document_change",
+      ""
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/intent/crates/intentd/src/state.rs"
+      ],
+      "shell": {
+       "cwd": "/home/dev/intent",
+       "last_cmd": "git commit -m 'feat: bounded scheduler'"
+      },
+      "urls": []
+     },
+     "sources": {
+      "firefox": 11,
+      "shell": 3,
+      "vscode": 5
+     },
+     "start_ts": 1793604040,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 2276,
+   "end_ts": 1793605203,
+   "event_count": 48,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on intent",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/intent/crates/intentd/src/state.rs",
+     "/home/dev/intent/crates/intentd/src/scheduler.rs"
+    ],
+    "shell": {
+     "cwd": "/home/dev/intent",
+     "last_cmd": "git commit -m 'feat: bounded scheduler'"
+    },
+    "urls": [
+     "https://docs.rs/futures/latest/futures/stream/trait.StreamExt.html",
+     "https://github.com/tokio-rs/tokio/issues/5512",
+     "https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html"
+    ]
+   },
+   "sources": {
+    "firefox": 19,
+    "linux": 1,
+    "shell": 6,
+    "vscode": 22
+   },
+   "start_ts": 1793602840,
+   "tags": [
+    "project:intent"
+   ],
+   "todos": []
+  },
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 1539,
+     "end_ts": 1793608370,
+     "event_count": 33,
+     "insights": {
+      "browser": [
+       {
+        "domain": "alexgarcia.xyz",
+        "visits": 10
+       },
+       {
+        "domain": "www.sqlite.org",
+        "visits": 5
+       },
+       {
+        "domain": "news.ycombinator.com",
+        "visits": 2
+       }
+      ],
+      "editor": [
+       {
+        "file": "vec.rs",
+        "saves": 3,
+        "typed_chars": 516
+       }
+      ],
+      "shell": []
+     },
+     "label": "Research alexgarcia.xyz",
+     "prefix": [
+      "editor",
+      "document_change",
+      "/home/dev/intent"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/intent/crates/intent-store/src/vec.rs"
+      ],
+      "shell": {},
+      "urls": [
+       "https://alexgarcia.xyz/sqlite-vec/guide.html#s9",
+       "https://www.sqlite.org/fts5.html"
+      ]
+     },
+     "sources": {
+      "firefox": 17,
+      "linux": 1,
+      "vscode": 15
+     },
+     "start_ts": 1793606831,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 331,
+     "end_ts": 1793608736,
+     "event_count": 8,
+     "insights": {
+      "browser": [],
+      "editor": [
+       {
+        "file": "REWRITE.md",
+        "saves": 0,
+        "typed_chars": 210
+       }
+      ],
+      "shell": []
+     },
+     "label": "Run Cargo",
+     "prefix": [
+      "editor",
+      "document_change",
+      "/home/dev/intent"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/intent/docs/REWRITE.md"
+      ],
+      "shell": {
+       "cwd": "/home/dev/intent",
+       "last_cmd": "cargo test -p intent-store"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 2,
+      "vscode": 6
+     },
+     "start_ts": 1793608405,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 0,
+     "end_ts": 1793608784,
+     "event_count": 1,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Git",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/intent",
+       "last_cmd": "git commit -am 'docs: memory design'"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 1
+     },
+     "start_ts": 1793608784,
+     "tags": [
+      "project:intent"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 1870,
+   "end_ts": 1793608784,
+   "event_count": 42,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on intent",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/intent/docs/REWRITE.md",
+     "/home/dev/intent/crates/intent-store/src/vec.rs"
+    ],
+    "shell": {
+     "cwd": "/home/dev/intent",
+     "last_cmd": "git commit -am 'docs: memory design'"
+    },
+    "urls": [
+     "https://alexgarcia.xyz/sqlite-vec/guide.html#s9",
+     "https://www.sqlite.org/fts5.html"
+    ]
+   },
+   "sources": {
+    "firefox": 17,
+    "linux": 1,
+    "shell": 3,
+    "vscode": 21
+   },
+   "start_ts": 1793606831,
+   "tags": [
+    "project:intent"
+   ],
+   "todos": []
+  }
+ ]
+}

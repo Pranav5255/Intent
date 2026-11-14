@@ -1,0 +1,133 @@
+{
+ "date": "2026-07-30",
+ "intents": [
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 60,
+     "end_ts": 1753881660,
+     "event_count": 2,
+     "insights": {
+      "browser": [
+       {
+        "domain": "docs.python.org",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "README.md",
+        "saves": 0,
+        "typed_chars": 24
+       }
+      ],
+      "shell": []
+     },
+     "label": "Research python.org",
+     "prefix": null,
+     "resume_payload": {
+      "files": [
+       "/home/user/project/README.md"
+      ],
+      "shell": {},
+      "urls": [
+       "https://docs.python.org/3/library/asyncio-task.html"
+      ]
+     },
+     "sources": {
+      "firefox": 1,
+      "vscode": 1
+     },
+     "start_ts": 1753881600,
+     "tags": [
+      "project:project"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 60,
+     "end_ts": 1753881780,
+     "event_count": 2,
+     "insights": {
+      "browser": [
+       {
+        "domain": "stackoverflow.com",
+        "visits": 1
+       }
+      ],
+      "editor": [],
+      "shell": [
+       {
+        "command_family": "pytest",
+        "count": 1,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Pytest",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/user/project",
+       "last_cmd": "pytest tests/test_async.py"
+      },
+      "urls": [
+       "https://stackoverflow.com/questions/12345/asyncio-timeout"
+      ]
+     },
+     "sources": {
+      "firefox": 1,
+      "shell": 1
+     },
+     "start_ts": 1753881720,
+     "tags": [
+      "project:project"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 120,
+   "end_ts": 1753881780,
+   "event_count": 4,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on project",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/user/project/README.md"
+    ],
+    "shell": {
+     "cwd": "/home/user/project",
+     "last_cmd": "pytest tests/test_async.py"
+    },
+    "urls": [
+     "https://stackoverflow.com/questions/12345/asyncio-timeout",
+     "https://docs.python.org/3/library/asyncio-task.html"
+    ]
+   },
+   "sources": {
+    "firefox": 2,
+    "shell": 1,
+    "vscode": 1
+   },
+   "start_ts": 1753881600,
+   "tags": [
+    "project:project"
+   ],
+   "todos": []
+  }
+ ]
+}
