@@ -1,4 +1,4 @@
-//! Retention windows (port of `capture/event_server/retention_policy.py`).
+//! Retention windows.
 
 use std::path::Path;
 

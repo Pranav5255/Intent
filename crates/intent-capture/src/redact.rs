@@ -1,6 +1,5 @@
-//! Server-side final redaction (port of `capture/event_server/redaction.py`), plus
-//! shell command redaction, which 1.x only performed in the (bypassable) client-side
-//! sender `capture/shell/intent_shell_send.py`.
+//! Server-side final redaction, including shell commands, so a bypassed or
+//! outdated client-side hook can't store secrets.
 
 use std::sync::LazyLock;
 
@@ -31,8 +30,7 @@ static TOKEN_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("valid regex")
 });
 
-/// 1.x `intent_shell_send.SENSITIVE_COMMAND`, extended with `credential`,
-/// `authorization` and `private key`.
+/// Commands that look like they carry credentials or run with elevated rights.
 static SENSITIVE_COMMAND: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?i)(?:password|passwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|token|bearer|credential|authorization|ssh\b|gpg\b|sudo\b)",

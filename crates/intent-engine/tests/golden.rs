@@ -1,7 +1,7 @@
 //! Golden tests over day fixtures.
 //!
 //! * `*.parity.json` — structural output of the 1.x Python engine (template labels,
-//!   semantic off), produced by `fixtures/generate_parity.py`. The Rust pipeline in
+//!   semantic off), frozen when the Python code was retired. The Rust pipeline in
 //!   parity mode (no correlation step) must match it exactly.
 //! * `*.rust.json` — full 2.0 output with default settings (correlation on), plus the
 //!   digest and context export. Regenerate with `UPDATE_GOLDEN=1 cargo test -p intent-engine`.
@@ -31,7 +31,7 @@ fn read_json(path: &PathBuf) -> Value {
         .expect("json")
 }
 
-/// Same projection as `generate_parity.py::project`.
+/// The structural projection the parity fixtures were recorded with.
 fn project(intent: &Intent) -> Value {
     let v = serde_json::to_value(intent).expect("intent json");
     json!({

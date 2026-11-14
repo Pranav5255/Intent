@@ -1,5 +1,5 @@
-//! Restore a resumed intent: open files, URLs and a terminal (port of
-//! `capture/event_server/restore.py`).
+//! Restore a resumed intent: open files, URLs and a terminal,
+//! after validating every target.
 //!
 //! Split in two so the decision logic is testable:
 //! - [`plan_restore`] / [`plan_restore_with`] — decide which programs to launch.

@@ -1,4 +1,4 @@
-//! Approved workspaces (port of `capture/tools/workspaces.py`).
+//! Approved workspaces.
 
 use std::path::Path;
 

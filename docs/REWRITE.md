@@ -99,7 +99,7 @@ failures, queue high-water mark, average wait/write ms) are in `/v1/status.inges
 - `packaging/build-deb.sh` (run on the Ubuntu build host / Lima VM) builds release `intentd` +
   `intentctl` and assembles `intent_2.0.0_<arch>.deb` with `dpkg-deb`: binaries in `/usr/bin`,
   `intentd.service` in `/usr/lib/systemd/user`, shell hooks in `/usr/share/intent/shell`, the
-  GNOME extension, the companions found under `capture/integrations/*/dist` (skipped with a
+  GNOME extension, the companions found under `integrations/*/dist` (skipped with a
   warning otherwise) and the Firefox policy logic ported from 1.x (policy only installed for a
   release build with a signed XPI, never over an administrator-managed policy). Depends:
   `libc6, libgcc-s1` only. With `INTENT_BUILD_APP=1` it also builds the Tauri app

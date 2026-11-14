@@ -1,6 +1,5 @@
 //! Static, redacted examples of what optional LLM providers may receive
-//! (port of `capture/event_server/intelligence_preview.py`,
-//! `GET /v1/intelligence/preview-sample`).
+//! (`GET /v1/intelligence/preview-sample`).
 
 use serde_json::{Value, json};
 

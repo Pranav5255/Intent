@@ -11,7 +11,7 @@
 //! `tests/golden.rs` runs [`pipeline::run`] in [`PipelineConfig::parity`] mode
 //! against the 1.x Python engine's output on four day fixtures and must match
 //! boundaries, tree shape, labels, confidences, stats, tags, insights, prefixes and
-//! resume payloads exactly (`tests/fixtures/generate_parity.py` regenerates them).
+//! resume payloads exactly (the `*.parity.json` fixtures are frozen).
 //!
 //! # Intentional divergences from 1.x
 //!

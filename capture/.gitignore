@@ -1,8 +1,0 @@
-.venv/
-dist/
-__pycache__/
-*.py[cod]
-*.db
-integrations/firefox-extension/dist/
-integrations/vscode-extension/dist/
-.env

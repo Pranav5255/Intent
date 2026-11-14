@@ -1,4 +1,4 @@
-//! Detailed-capture consent (port of `capture/event_server/detailed_capture.py`).
+//! Detailed-capture consent.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};

@@ -1,4 +1,4 @@
-//! Broad filesystem observation consent (port of `capture/tools/filesystem_capture.py`).
+//! Broad filesystem observation consent.
 
 use std::path::Path;
 

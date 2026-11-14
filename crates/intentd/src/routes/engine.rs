@@ -1,4 +1,4 @@
-//! Former engine routes (`engine/intent_engine/api.py`), same paths and shapes.
+//! Intent routes: timeline, search, digest, context, resume, pipeline, memory.
 
 use std::time::Duration;
 

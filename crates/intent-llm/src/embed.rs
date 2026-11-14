@@ -284,8 +284,8 @@ mod tests {
     #[tokio::test]
     async fn hashing_is_deterministic_and_normalised() {
         let e = HashingEmbedder::default();
-        let a = e.embed(&["Fix flaky pytest in intent_engine/cluster.py".into()]).await.unwrap();
-        let b = e.embed(&["Fix flaky pytest in intent_engine/cluster.py".into()]).await.unwrap();
+        let a = e.embed(&["Fix flaky pytest in intent-engine/src/cluster.rs".into()]).await.unwrap();
+        let b = e.embed(&["Fix flaky pytest in intent-engine/src/cluster.rs".into()]).await.unwrap();
         assert_eq!(a, b);
         assert_eq!(a[0].len(), HASHING_DIMS);
         let norm: f32 = a[0].iter().map(|x| x * x).sum::<f32>().sqrt();

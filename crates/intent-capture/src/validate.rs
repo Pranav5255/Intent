@@ -1,4 +1,4 @@
-//! Strict ingest validation (port of `capture/event_server/models.py`).
+//! Strict ingest validation.
 //!
 //! Error messages match 1.x so companions and logs read the same.
 

@@ -1,4 +1,4 @@
-//! Domain blocklist for browser events (port of `capture/event_server/url_filter.py`).
+//! Domain blocklist for browser events.
 //!
 //! Matching compares parsed host names, never URL substrings: `purchase.com` must
 //! never match a `chase` rule.

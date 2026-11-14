@@ -7,7 +7,7 @@
 # Environment:
 #   CARGO_TARGET_DIR      cargo output dir (default: <repo>/target)
 #   INTENT_FIREFOX_XPI    Mozilla-signed XPI → release build (installs the Firefox policy);
-#                         otherwise capture/integrations/firefox-extension/dist/*.xpi is
+#                         otherwise integrations/firefox-extension/dist/*.xpi is
 #                         bundled as a dev build (no policy) if present.
 #   INTENT_BUILD_APP=1    also build and package the Tauri app from app/ (needs Node 22 and
 #                         the webkit2gtk-4.1 / appindicator -dev packages; see "App" below).
@@ -63,15 +63,15 @@ if [[ -n "${INTENT_FIREFOX_XPI:-}" ]]; then
   install -m 0644 "$INTENT_FIREFOX_XPI" "$SHARE/integrations/intent-firefox.xpi"
   BUILD_MODE=release
 else
-  xpi=$(ls "$ROOT"/capture/integrations/firefox-extension/dist/*.xpi 2>/dev/null | head -n1 || true)
+  xpi=$(ls "$ROOT"/integrations/firefox-extension/dist/*.xpi 2>/dev/null | head -n1 || true)
   if [[ -n "$xpi" ]]; then
     install -m 0644 "$xpi" "$SHARE/integrations/intent-firefox.xpi"
     warn "bundling unsigned Firefox XPI ($xpi); dev build, Firefox policy will not be installed"
   else
-    warn "no Firefox XPI under capture/integrations/firefox-extension/dist; companion skipped"
+    warn "no Firefox XPI under integrations/firefox-extension/dist; companion skipped"
   fi
 fi
-vsix="$ROOT/capture/integrations/vscode-extension/dist/intent-vscode.vsix"
+vsix="$ROOT/integrations/vscode-extension/dist/intent-vscode.vsix"
 if [[ -f "$vsix" ]]; then
   install -m 0644 "$vsix" "$SHARE/integrations/intent-vscode.vsix"
 else

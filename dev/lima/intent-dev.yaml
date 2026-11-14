@@ -2,7 +2,7 @@
 #   limactl start --name=intent dev/lima/intent-dev.yaml
 #   limactl shell intent
 # 24.04 still ships both "Ubuntu" (Wayland) and "Ubuntu on Xorg" sessions, so both
-# focus backends can be exercised. The repo is mounted read-write at the same path.
+# focus backends can be exercised. The repo is mounted read-only at the same path; build from a copy (see e2e scripts).
 minimumLimaVersion: 2.0.0
 base: [template:ubuntu-24.04]
 vmType: vz

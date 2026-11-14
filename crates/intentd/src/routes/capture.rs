@@ -1,4 +1,4 @@
-//! 1.x capture routes (`capture/event_server/main.py`), same paths and shapes.
+//! Capture routes: ingest, export, consent configs, retention, restore, pause, status.
 
 use std::collections::BTreeMap;
 
