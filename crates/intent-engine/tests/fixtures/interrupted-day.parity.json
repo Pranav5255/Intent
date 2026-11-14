@@ -1,0 +1,744 @@
+{
+ "date": "2026-11-04",
+ "intents": [
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 300,
+     "end_ts": 1793775969,
+     "event_count": 8,
+     "insights": {
+      "browser": [
+       {
+        "domain": "mail.google.com",
+        "visits": 2
+       }
+      ],
+      "editor": [
+       {
+        "file": "app.ts",
+        "saves": 0,
+        "typed_chars": 120
+       }
+      ],
+      "shell": []
+     },
+     "label": "Edit app.ts",
+     "prefix": [
+      "editor",
+      "tab_change",
+      ""
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/alpha/src/app.ts"
+      ],
+      "shell": {},
+      "urls": [
+       "https://mail.google.com/mail/u/0/#inbox/abc"
+      ]
+     },
+     "sources": {
+      "firefox": 2,
+      "linux": 1,
+      "vscode": 5
+     },
+     "start_ts": 1793775669,
+     "tags": [
+      "project:alpha"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 306,
+     "end_ts": 1793776319,
+     "event_count": 8,
+     "insights": {
+      "browser": [],
+      "editor": [
+       {
+        "file": "handlers.go",
+        "saves": 0,
+        "typed_chars": 125
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "go",
+        "count": 1,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Go",
+     "prefix": [
+      "focus",
+      "app_focus",
+      "/home/dev/alpha"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/alpha/src/app.ts",
+       "/home/dev/beta-api/api/handlers.go"
+      ],
+      "shell": {
+       "cwd": "/home/dev/beta-api",
+       "last_cmd": "go test ./..."
+      },
+      "urls": []
+     },
+     "sources": {
+      "linux": 2,
+      "shell": 2,
+      "vscode": 4
+     },
+     "start_ts": 1793776013,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 142,
+     "end_ts": 1793776481,
+     "event_count": 4,
+     "insights": {
+      "browser": [
+       {
+        "domain": "www.youtube.com",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "post.md",
+        "saves": 0,
+        "typed_chars": 27
+       }
+      ],
+      "shell": []
+     },
+     "label": "Run Npm",
+     "prefix": [
+      "command",
+      "tab_change",
+      "/home/dev/site"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/site/content/post.md"
+      ],
+      "shell": {
+       "cwd": "/home/dev/alpha",
+       "last_cmd": "npm run build"
+      },
+      "urls": [
+       "https://www.youtube.com/watch?v=xyz"
+      ]
+     },
+     "sources": {
+      "firefox": 1,
+      "shell": 2,
+      "vscode": 1
+     },
+     "start_ts": 1793776339,
+     "tags": [
+      "project:alpha"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 116,
+     "end_ts": 1793776618,
+     "event_count": 4,
+     "insights": {
+      "browser": [],
+      "editor": [
+       {
+        "file": "Makefile",
+        "saves": 0,
+        "typed_chars": 13
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "make",
+        "count": 1,
+        "exit_code": 2
+       }
+      ]
+     },
+     "label": "Run Make",
+     "prefix": [
+      "editor",
+      "command",
+      "git"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/site/Makefile"
+      ],
+      "shell": {
+       "cwd": "/home/dev/site",
+       "last_cmd": "git commit -am 'release notes'"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 3,
+      "vscode": 1
+     },
+     "start_ts": 1793776502,
+     "tags": [
+      "project:site"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 864,
+   "end_ts": 1793776618,
+   "event_count": 24,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on alpha",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/site/Makefile",
+     "/home/dev/site/content/post.md",
+     "/home/dev/alpha/src/app.ts",
+     "/home/dev/beta-api/api/handlers.go"
+    ],
+    "shell": {
+     "cwd": "/home/dev/site",
+     "last_cmd": "git commit -am 'release notes'"
+    },
+    "urls": [
+     "https://www.youtube.com/watch?v=xyz",
+     "https://mail.google.com/mail/u/0/#inbox/abc"
+    ]
+   },
+   "sources": {
+    "firefox": 3,
+    "linux": 3,
+    "shell": 7,
+    "vscode": 11
+   },
+   "start_ts": 1793775669,
+   "tags": [
+    "project:alpha",
+    "project:beta-api",
+    "project:site"
+   ],
+   "todos": []
+  },
+  {
+   "children": [],
+   "confidence": 0.5,
+   "depth": 0,
+   "duration_seconds": 21,
+   "end_ts": 1793779137,
+   "event_count": 2,
+   "insights": {
+    "browser": [
+     {
+      "domain": "calendar.google.com",
+      "visits": 1
+     }
+    ],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work Session",
+   "prefix": null,
+   "resume_payload": {
+    "files": [],
+    "shell": {},
+    "urls": [
+     "https://calendar.google.com/calendar/r"
+    ]
+   },
+   "sources": {
+    "firefox": 1,
+    "linux": 1
+   },
+   "start_ts": 1793779116,
+   "tags": [],
+   "todos": []
+  },
+  {
+   "children": [],
+   "confidence": 0.75,
+   "depth": 0,
+   "duration_seconds": 0,
+   "end_ts": 1793780189,
+   "event_count": 1,
+   "insights": {
+    "browser": [
+     {
+      "domain": "calendar.google.com",
+      "visits": 1
+     }
+    ],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Research google.com",
+   "prefix": null,
+   "resume_payload": {
+    "files": [],
+    "shell": {},
+    "urls": [
+     "https://calendar.google.com/calendar/r/week"
+    ]
+   },
+   "sources": {
+    "firefox": 1
+   },
+   "start_ts": 1793780189,
+   "tags": [],
+   "todos": []
+  },
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 214,
+     "end_ts": 1793781430,
+     "event_count": 6,
+     "insights": {
+      "browser": [],
+      "editor": [
+       {
+        "file": "handlers.go",
+        "saves": 0,
+        "typed_chars": 170
+       }
+      ],
+      "shell": []
+     },
+     "label": "Edit handlers.go",
+     "prefix": [
+      "editor",
+      "document_change",
+      "/home/dev/beta-api"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/beta-api/api/handlers.go"
+      ],
+      "shell": {},
+      "urls": []
+     },
+     "sources": {
+      "linux": 1,
+      "vscode": 5
+     },
+     "start_ts": 1793781216,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 911,
+     "end_ts": 1793782411,
+     "event_count": 19,
+     "insights": {
+      "browser": [
+       {
+        "domain": "pkg.go.dev",
+        "visits": 1
+       },
+       {
+        "domain": "go.dev",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "handlers.go",
+        "saves": 0,
+        "typed_chars": 420
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "go",
+        "count": 2,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Go",
+     "prefix": [
+      "editor",
+      "document_change",
+      "/home/dev/beta-api"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/beta-api/api/middleware.go",
+       "/home/dev/beta-api/api/handlers.go"
+      ],
+      "shell": {
+       "cwd": "/home/dev/beta-api",
+       "last_cmd": "go test ./api/..."
+      },
+      "urls": [
+       "https://go.dev/blog/context",
+       "https://pkg.go.dev/context"
+      ]
+     },
+     "sources": {
+      "firefox": 2,
+      "shell": 2,
+      "vscode": 15
+     },
+     "start_ts": 1793781500,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 0,
+     "end_ts": 1793782436,
+     "event_count": 1,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Docker",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/beta-api",
+       "last_cmd": "docker build -t beta-api ."
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 1
+     },
+     "start_ts": 1793782436,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 50,
+     "end_ts": 1793782558,
+     "event_count": 2,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Kubectl",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/beta-api",
+       "last_cmd": "kubectl rollout status deploy/beta-api"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 2
+     },
+     "start_ts": 1793782508,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 1175,
+   "end_ts": 1793782558,
+   "event_count": 28,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on beta-api",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/beta-api/api/middleware.go",
+     "/home/dev/beta-api/api/handlers.go"
+    ],
+    "shell": {
+     "cwd": "/home/dev/beta-api",
+     "last_cmd": "kubectl rollout status deploy/beta-api"
+    },
+    "urls": [
+     "https://go.dev/blog/context",
+     "https://pkg.go.dev/context"
+    ]
+   },
+   "sources": {
+    "firefox": 2,
+    "linux": 1,
+    "shell": 5,
+    "vscode": 20
+   },
+   "start_ts": 1793781216,
+   "tags": [
+    "project:beta-api"
+   ],
+   "todos": []
+  },
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 1211,
+     "end_ts": 1793784900,
+     "event_count": 18,
+     "insights": {
+      "browser": [
+       {
+        "domain": "d3js.org",
+        "visits": 7
+       }
+      ],
+      "editor": [
+       {
+        "file": "chart.ts",
+        "saves": 0,
+        "typed_chars": 122
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "npm",
+        "count": 1,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Npm",
+     "prefix": [
+      "command",
+      "document_change",
+      "make"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/site/content/post.md",
+       "/home/dev/alpha/src/chart.ts"
+      ],
+      "shell": {
+       "cwd": "/home/dev/site",
+       "last_cmd": "make deploy"
+      },
+      "urls": [
+       "https://d3js.org/d3-axis"
+      ]
+     },
+     "sources": {
+      "firefox": 7,
+      "shell": 3,
+      "vscode": 8
+     },
+     "start_ts": 1793783689,
+     "tags": [
+      "project:alpha"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.75,
+     "depth": 1,
+     "duration_seconds": 27,
+     "end_ts": 1793785314,
+     "event_count": 2,
+     "insights": {
+      "browser": [
+       {
+        "domain": "news.ycombinator.com",
+        "visits": 2
+       }
+      ],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Research ycombinator.com",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {},
+      "urls": [
+       "https://news.ycombinator.com/item?id=2"
+      ]
+     },
+     "sources": {
+      "firefox": 2
+     },
+     "start_ts": 1793785287,
+     "tags": [],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 73,
+     "end_ts": 1793785752,
+     "event_count": 3,
+     "insights": {
+      "browser": [],
+      "editor": [
+       {
+        "file": "README.md",
+        "saves": 0,
+        "typed_chars": 8
+       }
+      ],
+      "shell": []
+     },
+     "label": "Run Git",
+     "prefix": [
+      "command",
+      "command",
+      "/home/dev/beta-api"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/beta-api/README.md"
+      ],
+      "shell": {
+       "cwd": "/home/dev/beta-api",
+       "last_cmd": "git log --oneline"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 2,
+      "vscode": 1
+     },
+     "start_ts": 1793785679,
+     "tags": [
+      "project:beta-api"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 56,
+     "end_ts": 1793786180,
+     "event_count": 2,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": [
+       {
+        "command_family": "pip",
+        "count": 1,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Pip",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/scratch",
+       "last_cmd": "python -m venv .venv"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 2
+     },
+     "start_ts": 1793786124,
+     "tags": [
+      "project:scratch"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 1367,
+   "end_ts": 1793786180,
+   "event_count": 25,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on alpha",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/beta-api/README.md",
+     "/home/dev/site/content/post.md",
+     "/home/dev/alpha/src/chart.ts"
+    ],
+    "shell": {
+     "cwd": "/home/dev/scratch",
+     "last_cmd": "python -m venv .venv"
+    },
+    "urls": [
+     "https://news.ycombinator.com/item?id=2",
+     "https://d3js.org/d3-axis"
+    ]
+   },
+   "sources": {
+    "firefox": 9,
+    "shell": 7,
+    "vscode": 9
+   },
+   "start_ts": 1793783689,
+   "tags": [
+    "project:alpha",
+    "project:beta-api",
+    "project:scratch"
+   ],
+   "todos": []
+  }
+ ]
+}

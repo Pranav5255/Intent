@@ -1,0 +1,287 @@
+{
+  "contexts": [
+    "# Work on project\n\nSession of 2 tasks that edited README.md, ran pytest commands and browsed docs.python.org and stackoverflow.com over 2 minutes (4 events).\n\n## Resume\n- File: /home/user/project/README.md\n- URL: https://stackoverflow.com/questions/12345/asyncio-timeout\n- URL: https://docs.python.org/3/library/asyncio-task.html\n- Shell: /home/user/project (last: pytest tests/test_async.py)\n\n## Insights\n- Editor: heavy edits on README.md\n- Browser: research on docs.python.org, stackoverflow.com\n- Shell: pytest tests failed (exit 1)\n"
+  ],
+  "digest": {
+    "date": "2026-07-30",
+    "headline": "Work on project",
+    "intent_count": 1,
+    "summary": "You worked on research python.org, run pytest, edited README.md, researched docs.python.org.",
+    "top_intent_ids": [
+      "c154f988-77b6-57ed-9f2f-3e426dc33645"
+    ],
+    "total_duration_seconds": 120
+  },
+  "outline": [
+    "Work on project (4 events) [\"project:project\"]",
+    "    Research python.org (2 events)",
+    "    Run Pytest (2 events)"
+  ],
+  "result": {
+    "cached": false,
+    "intents": [
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.75,
+            "date": "2026-07-30",
+            "depth": 1,
+            "end_ts": 1753881660,
+            "evidence": [
+              {
+                "field": "title",
+                "value": "Coroutines and Tasks"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "url",
+                "value": "https://docs.python.org/3/library/asyncio-task.html"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "asyncio timeout handling"
+              },
+              {
+                "field": "path",
+                "value": "/home/user/project/README.md"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/user/project"
+              }
+            ],
+            "id": "3c1fdafc-09f9-58ce-a929-338dc6a5fa42",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "docs.python.org",
+                  "visits": 1
+                }
+              ],
+              "editor": [
+                {
+                  "file": "README.md",
+                  "saves": 0,
+                  "typed_chars": 24
+                }
+              ],
+              "shell": []
+            },
+            "label": "Research python.org",
+            "parent_id": "c154f988-77b6-57ed-9f2f-3e426dc33645",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/user/project/README.md"
+              ],
+              "shell": {},
+              "urls": [
+                "https://docs.python.org/3/library/asyncio-task.html"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1753881600,
+            "stats": {
+              "duration_seconds": 60,
+              "event_count": 2,
+              "sources": {
+                "firefox": 1,
+                "vscode": 1
+              },
+              "unique_apps": [
+                "firefox",
+                "vscode"
+              ]
+            },
+            "summary": "Edited README.md and browsed docs.python.org over 1 minute (2 events).",
+            "tags": [
+              "project:project"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-07-30",
+            "depth": 1,
+            "end_ts": 1753881780,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "pytest tests/test_async.py"
+              },
+              {
+                "field": "title",
+                "value": "Python asyncio timeout pattern"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/user/project"
+              },
+              {
+                "field": "url",
+                "value": "https://stackoverflow.com/questions/12345/asyncio-timeout"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              }
+            ],
+            "id": "358f2daf-dac6-543d-a1f7-b1671cba8ab1",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "stackoverflow.com",
+                  "visits": 1
+                }
+              ],
+              "editor": [],
+              "shell": [
+                {
+                  "command_family": "pytest",
+                  "count": 1,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Pytest",
+            "parent_id": "c154f988-77b6-57ed-9f2f-3e426dc33645",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/user/project",
+                "last_cmd": "pytest tests/test_async.py"
+              },
+              "urls": [
+                "https://stackoverflow.com/questions/12345/asyncio-timeout"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1753881720,
+            "stats": {
+              "duration_seconds": 60,
+              "event_count": 2,
+              "sources": {
+                "firefox": 1,
+                "shell": 1
+              },
+              "unique_apps": [
+                "shell",
+                "firefox"
+              ]
+            },
+            "summary": "Ran pytest commands and browsed stackoverflow.com over 1 minute (2 events).",
+            "tags": [
+              "project:project"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-07-30",
+        "depth": 0,
+        "end_ts": 1753881780,
+        "evidence": [
+          {
+            "field": "title",
+            "value": "Coroutines and Tasks"
+          },
+          {
+            "field": "cmd",
+            "value": "pytest tests/test_async.py"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "title",
+            "value": "Python asyncio timeout pattern"
+          },
+          {
+            "field": "url",
+            "value": "https://docs.python.org/3/library/asyncio-task.html"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/user/project"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "asyncio timeout handling"
+          },
+          {
+            "field": "url",
+            "value": "https://stackoverflow.com/questions/12345/asyncio-timeout"
+          },
+          {
+            "field": "path",
+            "value": "/home/user/project/README.md"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/user/project"
+          }
+        ],
+        "id": "c154f988-77b6-57ed-9f2f-3e426dc33645",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on project",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/user/project/README.md"
+          ],
+          "shell": {
+            "cwd": "/home/user/project",
+            "last_cmd": "pytest tests/test_async.py"
+          },
+          "urls": [
+            "https://stackoverflow.com/questions/12345/asyncio-timeout",
+            "https://docs.python.org/3/library/asyncio-task.html"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1753881600,
+        "stats": {
+          "duration_seconds": 120,
+          "event_count": 4,
+          "sources": {
+            "firefox": 2,
+            "shell": 1,
+            "vscode": 1
+          },
+          "unique_apps": [
+            "firefox",
+            "vscode",
+            "shell"
+          ]
+        },
+        "summary": "Session of 2 tasks that edited README.md, ran pytest commands and browsed docs.python.org and stackoverflow.com over 2 minutes (4 events).",
+        "tags": [
+          "project:project"
+        ],
+        "todos": []
+      }
+    ],
+    "pipeline_version": "2.0.0",
+    "source_hash": "1756c23647eeee6a",
+    "warnings": []
+  }
+}

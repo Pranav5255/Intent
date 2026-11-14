@@ -1,0 +1,1118 @@
+{
+ "version": 1,
+ "date": "2026-11-04",
+ "exported_at": 1793786240,
+ "events": [
+  {
+   "id": "2026-11-04-e001",
+   "ts": 1793775669,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "code",
+    "title": "alpha"
+   }
+  },
+  {
+   "id": "2026-11-04-e002",
+   "ts": 1793775707,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "export function render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e003",
+   "ts": 1793775780,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "export function render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e004",
+   "ts": 1793775805,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "export function render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e005",
+   "ts": 1793775826,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "export function render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e006",
+   "ts": 1793775883,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "export function render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e007",
+   "ts": 1793775922,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://mail.google.com/mail/u/0/#inbox",
+    "title": "Inbox",
+    "tab_id": 51
+   }
+  },
+  {
+   "id": "2026-11-04-e008",
+   "ts": 1793775969,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://mail.google.com/mail/u/0/#inbox/abc",
+    "title": "Re: release",
+    "tab_id": 51
+   }
+  },
+  {
+   "id": "2026-11-04-e009",
+   "ts": 1793776013,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "func HandleRefund(w http.ResponseWriter",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e010",
+   "ts": 1793776066,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "func HandleRefund(w http.ResponseWriter",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e011",
+   "ts": 1793776108,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "func HandleRefund(w http.ResponseWriter",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e012",
+   "ts": 1793776136,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "go test ./...",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-04-e013",
+   "ts": 1793776202,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "go test ./...",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e014",
+   "ts": 1793776234,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "slack",
+    "title": "Slack"
+   }
+  },
+  {
+   "id": "2026-11-04-e015",
+   "ts": 1793776271,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "slack",
+    "title": "Slack"
+   }
+  },
+  {
+   "id": "2026-11-04-e016",
+   "ts": 1793776319,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/app.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "render()",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e017",
+   "ts": 1793776339,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "npm test",
+    "cwd": "/home/dev/alpha",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e018",
+   "ts": 1793776373,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "npm run build",
+    "cwd": "/home/dev/alpha",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e019",
+   "ts": 1793776432,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://www.youtube.com/watch?v=xyz",
+    "title": "Lo-fi beats",
+    "tab_id": 52
+   }
+  },
+  {
+   "id": "2026-11-04-e020",
+   "ts": 1793776481,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/site/content/post.md",
+    "workspace": "/home/dev/site",
+    "changes": [
+     {
+      "text": "Release notes for alpha 1.2",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e021",
+   "ts": 1793776502,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "make deploy",
+    "cwd": "/home/dev/site",
+    "exit_code": 2
+   }
+  },
+  {
+   "id": "2026-11-04-e022",
+   "ts": 1793776528,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/site/Makefile",
+    "workspace": "/home/dev/site",
+    "changes": [
+     {
+      "text": "deploy: build",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e023",
+   "ts": 1793776553,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "make deploy",
+    "cwd": "/home/dev/site",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e024",
+   "ts": 1793776618,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git commit -am 'release notes'",
+    "cwd": "/home/dev/site",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e025",
+   "ts": 1793776669,
+   "source": "linux",
+   "type": "idle_start",
+   "payload": {
+    "idle_seconds": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e026",
+   "ts": 1793779070,
+   "source": "linux",
+   "type": "idle_end",
+   "payload": {
+    "idle_seconds": 2400
+   }
+  },
+  {
+   "id": "2026-11-04-e027",
+   "ts": 1793779116,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "firefox",
+    "title": "Calendar"
+   }
+  },
+  {
+   "id": "2026-11-04-e028",
+   "ts": 1793779137,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://calendar.google.com/calendar/r",
+    "title": "Calendar",
+    "tab_id": 53
+   }
+  },
+  {
+   "id": "2026-11-04-e029",
+   "ts": 1793780189,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://calendar.google.com/calendar/r/week",
+    "title": "Calendar week",
+    "tab_id": 53
+   }
+  },
+  {
+   "id": "2026-11-04-e030",
+   "ts": 1793780249,
+   "source": "linux",
+   "type": "idle_start",
+   "payload": {
+    "idle_seconds": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e031",
+   "ts": 1793781150,
+   "source": "linux",
+   "type": "idle_end",
+   "payload": {
+    "idle_seconds": 900
+   }
+  },
+  {
+   "id": "2026-11-04-e032",
+   "ts": 1793781216,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "code",
+    "title": "beta-api"
+   }
+  },
+  {
+   "id": "2026-11-04-e033",
+   "ts": 1793781263,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e034",
+   "ts": 1793781305,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e035",
+   "ts": 1793781374,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e036",
+   "ts": 1793781397,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e037",
+   "ts": 1793781430,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e038",
+   "ts": 1793781500,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "go test ./api/...",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-04-e039",
+   "ts": 1793781522,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e040",
+   "ts": 1793781579,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e041",
+   "ts": 1793781622,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e042",
+   "ts": 1793781684,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e043",
+   "ts": 1793781715,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e044",
+   "ts": 1793781774,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "go test ./api/...",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-04-e045",
+   "ts": 1793781807,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e046",
+   "ts": 1793781874,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e047",
+   "ts": 1793781917,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e048",
+   "ts": 1793781973,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/handlers.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "ctx, cancel := context.WithTimeout",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e049",
+   "ts": 1793782041,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://pkg.go.dev/context",
+    "title": "context package",
+    "tab_id": 54
+   }
+  },
+  {
+   "id": "2026-11-04-e050",
+   "ts": 1793782116,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://go.dev/blog/context",
+    "title": "Go Concurrency Patterns: Context",
+    "tab_id": 55
+   }
+  },
+  {
+   "id": "2026-11-04-e051",
+   "ts": 1793782159,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e052",
+   "ts": 1793782215,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e053",
+   "ts": 1793782253,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e054",
+   "ts": 1793782315,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e055",
+   "ts": 1793782355,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e056",
+   "ts": 1793782411,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/api/middleware.go",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "http.TimeoutHandler",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e057",
+   "ts": 1793782436,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "docker build -t beta-api .",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e058",
+   "ts": 1793782508,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "kubectl apply -f deploy.yaml",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e059",
+   "ts": 1793782558,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "kubectl rollout status deploy/beta-api",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e060",
+   "ts": 1793783689,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e061",
+   "ts": 1793783754,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e062",
+   "ts": 1793783804,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e063",
+   "ts": 1793783861,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e064",
+   "ts": 1793783931,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e065",
+   "ts": 1793783979,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e066",
+   "ts": 1793784042,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e067",
+   "ts": 1793784103,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e068",
+   "ts": 1793784133,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e069",
+   "ts": 1793784164,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e070",
+   "ts": 1793784235,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e071",
+   "ts": 1793784266,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e072",
+   "ts": 1793784320,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/alpha/src/chart.ts",
+    "workspace": "/home/dev/alpha",
+    "changes": [
+     {
+      "text": "drawAxis(scale)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e073",
+   "ts": 1793784360,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://d3js.org/d3-axis",
+    "title": "d3-axis",
+    "tab_id": 56
+   }
+  },
+  {
+   "id": "2026-11-04-e074",
+   "ts": 1793784423,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "npm test",
+    "cwd": "/home/dev/alpha",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-04-e075",
+   "ts": 1793784495,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "npm test",
+    "cwd": "/home/dev/alpha",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e076",
+   "ts": 1793784868,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/site/content/post.md",
+    "workspace": "/home/dev/site",
+    "changes": [
+     {
+      "text": "Chart screenshots",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e077",
+   "ts": 1793784900,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "make deploy",
+    "cwd": "/home/dev/site",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e078",
+   "ts": 1793785287,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://news.ycombinator.com/",
+    "title": "Hacker News",
+    "tab_id": 57
+   }
+  },
+  {
+   "id": "2026-11-04-e079",
+   "ts": 1793785314,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://news.ycombinator.com/item?id=2",
+    "title": "Show HN",
+    "tab_id": 57
+   }
+  },
+  {
+   "id": "2026-11-04-e080",
+   "ts": 1793785679,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git status",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e081",
+   "ts": 1793785705,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git log --oneline",
+    "cwd": "/home/dev/beta-api",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-04-e082",
+   "ts": 1793785752,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/beta-api/README.md",
+    "workspace": "/home/dev/beta-api",
+    "changes": [
+     {
+      "text": "Timeouts",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-04-e083",
+   "ts": 1793786124,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pip install -r requirements.txt",
+    "cwd": "/home/dev/scratch",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-04-e084",
+   "ts": 1793786180,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "python -m venv .venv",
+    "cwd": "/home/dev/scratch",
+    "exit_code": 0
+   }
+  }
+ ]
+}

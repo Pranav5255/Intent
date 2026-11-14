@@ -1,0 +1,964 @@
+{
+  "contexts": [
+    "# Work on payments\n\nSession of 3 tasks that edited refunds.py, ran git and pytest commands and browsed stackoverflow.com and docs.python.org over 15 minutes (20 events).\n\n## Resume\n- File: /home/dev/payments/tests/test_refunds.py\n- File: /home/dev/payments/payments/refunds.py\n- URL: https://docs.python.org/3/library/decimal.html\n- URL: https://stackoverflow.com/questions/1/decimal-rounding\n- Shell: /home/dev/payments (last: git commit -am 'fix: refund rounding')\n\n## Insights\n- Editor: heavy edits on refunds.py\n- Browser: research on stackoverflow.com, docs.python.org\n- Shell: pytest tests failed 3 times (exit 1)\n",
+    "# Work on ledger-rs\n\nSession of 2 tasks that edited ledger.rs, ran cargo and git commands and browsed doc.rust-lang.org and github.com over 14 minutes (20 events).\n\n## Resume\n- File: /home/dev/ledger-rs/src/ledger.rs\n- URL: https://github.com/acme/ledger-rs/issues/88\n- URL: https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub\n- Shell: /home/dev/ledger-rs (last: git push)\n\n## Insights\n- Editor: heavy edits on ledger.rs\n- Browser: research on doc.rust-lang.org, github.com\n- Shell: cargo command failed 3 times (exit 101); git command failed (exit 128)\n",
+    "# Run Docker\n\nEdited docker-compose.yml and ran docker commands over 4 minutes (8 events).\n\n## Resume\n- File: /home/dev/infra/docker-compose.yml\n- Shell: /home/dev/infra (last: docker compose up -d)\n\n## Insights\n- Editor: heavy edits on docker-compose.yml\n- Shell: docker command failed 3 times (exit 1)\n"
+  ],
+  "digest": {
+    "date": "2026-11-03",
+    "headline": "Work on payments, plus ledger-rs and infra",
+    "intent_count": 3,
+    "summary": "You worked on run git, run pytest, edited refunds.py, researched stackoverflow.com.",
+    "top_intent_ids": [
+      "503a6691-cda6-561f-916a-5399f0ce536f",
+      "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+      "da0da1a6-69f8-5f9f-b713-a58579a04afc"
+    ],
+    "total_duration_seconds": 2100
+  },
+  "outline": [
+    "Work on payments (20 events) [\"project:payments\"]",
+    "    Run Git (2 events)",
+    "    Run Pytest (17 events)",
+    "    Run Git (1 events)",
+    "Work on ledger-rs (20 events) [\"project:ledger-rs\"]",
+    "    Run Cargo (18 events)",
+    "    Run Git (2 events)",
+    "Run Docker (8 events) [\"project:infra\"]"
+  ],
+  "result": {
+    "cached": false,
+    "intents": [
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-03",
+            "depth": 1,
+            "end_ts": 1793689323,
+            "evidence": [
+              {
+                "field": "app",
+                "value": "terminal"
+              },
+              {
+                "field": "cmd",
+                "value": "git pull"
+              },
+              {
+                "field": "title",
+                "value": "payments"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/payments"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "9e0aadc4-a3ae-5395-87f8-8208aba3d0f1",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": []
+            },
+            "label": "Run Git",
+            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/payments",
+                "last_cmd": "git pull"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793689248,
+            "stats": {
+              "duration_seconds": 75,
+              "event_count": 2,
+              "sources": {
+                "linux": 1,
+                "shell": 1
+              },
+              "unique_apps": [
+                "linux",
+                "shell"
+              ]
+            },
+            "summary": "Ran git commands over 1 minute (2 events).",
+            "tags": [
+              "project:payments"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-03",
+            "depth": 1,
+            "end_ts": 1793690257,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "pytest tests/test_refunds.py"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "tab_id",
+                "value": "31"
+              },
+              {
+                "field": "tab_id",
+                "value": "32"
+              },
+              {
+                "field": "cmd",
+                "value": "pytest tests/test_refunds.py -k rounding"
+              },
+              {
+                "field": "cmd",
+                "value": "pytest"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/payments"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "if amount <= 0: raise ValueError"
+              },
+              {
+                "field": "title",
+                "value": "Decimal rounding half even"
+              },
+              {
+                "field": "title",
+                "value": "decimal"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "quantize(Decimal('0.01'))"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "# TODO: handle partial refunds"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "# FIXME flaky on CI"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/payments/payments/refunds.py"
+              },
+              {
+                "field": "url",
+                "value": "https://stackoverflow.com/questions/1/decimal-rounding"
+              },
+              {
+                "field": "url",
+                "value": "https://docs.python.org/3/library/decimal.html"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/payments/tests/test_refunds.py"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/payments"
+              }
+            ],
+            "id": "b01eaff3-9bfc-52ec-94d7-71e271cecee4",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "stackoverflow.com",
+                  "visits": 1
+                },
+                {
+                  "domain": "docs.python.org",
+                  "visits": 1
+                }
+              ],
+              "editor": [
+                {
+                  "file": "refunds.py",
+                  "saves": 0,
+                  "typed_chars": 277
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "pytest",
+                  "count": 3,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Pytest",
+            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "prefix": [
+              "command",
+              "document_change",
+              "pytest"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/payments/tests/test_refunds.py",
+                "/home/dev/payments/payments/refunds.py"
+              ],
+              "shell": {
+                "cwd": "/home/dev/payments",
+                "last_cmd": "pytest"
+              },
+              "urls": [
+                "https://docs.python.org/3/library/decimal.html",
+                "https://stackoverflow.com/questions/1/decimal-rounding"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793689378,
+            "stats": {
+              "duration_seconds": 879,
+              "event_count": 17,
+              "sources": {
+                "firefox": 2,
+                "shell": 5,
+                "vscode": 10
+              },
+              "unique_apps": [
+                "shell",
+                "vscode",
+                "firefox"
+              ]
+            },
+            "summary": "Edited refunds.py and test_refunds.py, ran pytest commands and browsed stackoverflow.com and docs.python.org over 14 minutes (17 events).",
+            "tags": [
+              "project:payments"
+            ],
+            "todos": [
+              {
+                "marker": "TODO",
+                "observed_ts": 1793689935,
+                "path": "/home/dev/payments/payments/refunds.py"
+              },
+              {
+                "marker": "FIXME",
+                "observed_ts": 1793690226,
+                "path": "/home/dev/payments/tests/test_refunds.py"
+              }
+            ]
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-03",
+            "depth": 1,
+            "end_ts": 1793690283,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "git commit -am 'fix: refund rounding'"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/payments"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "17d5e070-ad7b-5256-a25f-174f94a0dc9d",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": []
+            },
+            "label": "Run Git",
+            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/payments",
+                "last_cmd": "git commit -am 'fix: refund rounding'"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793690283,
+            "stats": {
+              "duration_seconds": 0,
+              "event_count": 1,
+              "sources": {
+                "shell": 1
+              },
+              "unique_apps": [
+                "shell"
+              ]
+            },
+            "summary": "Ran git commands in under a minute (1 event).",
+            "tags": [
+              "project:payments"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-11-03",
+        "depth": 0,
+        "end_ts": 1793690283,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "terminal"
+          },
+          {
+            "field": "cmd",
+            "value": "pytest tests/test_refunds.py"
+          },
+          {
+            "field": "cmd",
+            "value": "git commit -am 'fix: refund rounding'"
+          },
+          {
+            "field": "cmd",
+            "value": "git pull"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/payments"
+          },
+          {
+            "field": "title",
+            "value": "payments"
+          },
+          {
+            "field": "tab_id",
+            "value": "31"
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "tab_id",
+            "value": "32"
+          },
+          {
+            "field": "cmd",
+            "value": "pytest tests/test_refunds.py -k rounding"
+          },
+          {
+            "field": "cmd",
+            "value": "pytest"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "if amount <= 0: raise ValueError"
+          },
+          {
+            "field": "title",
+            "value": "Decimal rounding half even"
+          },
+          {
+            "field": "title",
+            "value": "decimal"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "quantize(Decimal('0.01'))"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "# TODO: handle partial refunds"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "# FIXME flaky on CI"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/payments/payments/refunds.py"
+          },
+          {
+            "field": "url",
+            "value": "https://stackoverflow.com/questions/1/decimal-rounding"
+          },
+          {
+            "field": "url",
+            "value": "https://docs.python.org/3/library/decimal.html"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/payments/tests/test_refunds.py"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/payments"
+          }
+        ],
+        "id": "503a6691-cda6-561f-916a-5399f0ce536f",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on payments",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/payments/tests/test_refunds.py",
+            "/home/dev/payments/payments/refunds.py"
+          ],
+          "shell": {
+            "cwd": "/home/dev/payments",
+            "last_cmd": "git commit -am 'fix: refund rounding'"
+          },
+          "urls": [
+            "https://docs.python.org/3/library/decimal.html",
+            "https://stackoverflow.com/questions/1/decimal-rounding"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793689248,
+        "stats": {
+          "duration_seconds": 954,
+          "event_count": 20,
+          "sources": {
+            "firefox": 2,
+            "linux": 1,
+            "shell": 7,
+            "vscode": 10
+          },
+          "unique_apps": [
+            "linux",
+            "shell",
+            "vscode",
+            "firefox"
+          ]
+        },
+        "summary": "Session of 3 tasks that edited refunds.py, ran git and pytest commands and browsed stackoverflow.com and docs.python.org over 15 minutes (20 events).",
+        "tags": [
+          "project:payments"
+        ],
+        "todos": []
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-03",
+            "depth": 1,
+            "end_ts": 1793693004,
+            "evidence": [
+              {
+                "field": "app",
+                "value": "code"
+              },
+              {
+                "field": "cmd",
+                "value": "cargo test"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cmd",
+                "value": "cargo test ledger::tests"
+              },
+              {
+                "field": "tab_id",
+                "value": "41"
+              },
+              {
+                "field": "tab_id",
+                "value": "42"
+              },
+              {
+                "field": "cmd",
+                "value": "cargo clippy"
+              },
+              {
+                "field": "title",
+                "value": "ledger-rs"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/ledger-rs"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "checked_sub(amount).ok_or(Error::Overdraft)"
+              },
+              {
+                "field": "title",
+                "value": "u64 checked_sub"
+              },
+              {
+                "field": "title",
+                "value": "Overdraft panics"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "Ok(balance)"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "// XXX revisit overflow semantics"
+              },
+              {
+                "field": "exit_code",
+                "value": "101"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/ledger-rs/src/ledger.rs"
+              },
+              {
+                "field": "url",
+                "value": "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+              },
+              {
+                "field": "url",
+                "value": "https://github.com/acme/ledger-rs/issues/88"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/ledger-rs"
+              }
+            ],
+            "id": "8108db6d-30fe-59ab-825a-801cefef495d",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "doc.rust-lang.org",
+                  "visits": 1
+                },
+                {
+                  "domain": "github.com",
+                  "visits": 1
+                }
+              ],
+              "editor": [
+                {
+                  "file": "ledger.rs",
+                  "saves": 0,
+                  "typed_chars": 324
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "cargo",
+                  "count": 3,
+                  "exit_code": 101
+                }
+              ]
+            },
+            "label": "Run Cargo",
+            "parent_id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+            "prefix": [
+              "command",
+              "command",
+              "cargo"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/ledger-rs/src/ledger.rs"
+              ],
+              "shell": {
+                "cwd": "/home/dev/ledger-rs",
+                "last_cmd": "cargo clippy"
+              },
+              "urls": [
+                "https://github.com/acme/ledger-rs/issues/88",
+                "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793692171,
+            "stats": {
+              "duration_seconds": 833,
+              "event_count": 18,
+              "sources": {
+                "firefox": 2,
+                "linux": 1,
+                "shell": 5,
+                "vscode": 10
+              },
+              "unique_apps": [
+                "linux",
+                "shell",
+                "vscode",
+                "firefox"
+              ]
+            },
+            "summary": "Edited ledger.rs, ran cargo commands and browsed doc.rust-lang.org and github.com over 13 minutes (18 events).",
+            "tags": [
+              "project:ledger-rs"
+            ],
+            "todos": [
+              {
+                "marker": "XXX",
+                "observed_ts": 1793692775,
+                "path": "/home/dev/ledger-rs/src/ledger.rs"
+              }
+            ]
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-03",
+            "depth": 1,
+            "end_ts": 1793693130,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "git push"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/ledger-rs"
+              },
+              {
+                "field": "exit_code",
+                "value": "128"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "af823e8d-bbb9-5955-8f2b-bf0b178dfb10",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": [
+                {
+                  "command_family": "git",
+                  "count": 1,
+                  "exit_code": 128
+                }
+              ]
+            },
+            "label": "Run Git",
+            "parent_id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/ledger-rs",
+                "last_cmd": "git push"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793693077,
+            "stats": {
+              "duration_seconds": 53,
+              "event_count": 2,
+              "sources": {
+                "shell": 2
+              },
+              "unique_apps": [
+                "shell"
+              ]
+            },
+            "summary": "Ran git commands in under a minute (2 events).",
+            "tags": [
+              "project:ledger-rs"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-11-03",
+        "depth": 0,
+        "end_ts": 1793693130,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "code"
+          },
+          {
+            "field": "cmd",
+            "value": "git push"
+          },
+          {
+            "field": "cmd",
+            "value": "cargo test"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/ledger-rs"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "exit_code",
+            "value": "128"
+          },
+          {
+            "field": "cmd",
+            "value": "cargo test ledger::tests"
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "tab_id",
+            "value": "41"
+          },
+          {
+            "field": "tab_id",
+            "value": "42"
+          },
+          {
+            "field": "cmd",
+            "value": "cargo clippy"
+          },
+          {
+            "field": "title",
+            "value": "ledger-rs"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "checked_sub(amount).ok_or(Error::Overdraft)"
+          },
+          {
+            "field": "title",
+            "value": "u64 checked_sub"
+          },
+          {
+            "field": "title",
+            "value": "Overdraft panics"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "Ok(balance)"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "// XXX revisit overflow semantics"
+          },
+          {
+            "field": "exit_code",
+            "value": "101"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/ledger-rs/src/ledger.rs"
+          },
+          {
+            "field": "url",
+            "value": "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+          },
+          {
+            "field": "url",
+            "value": "https://github.com/acme/ledger-rs/issues/88"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/ledger-rs"
+          }
+        ],
+        "id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on ledger-rs",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/ledger-rs/src/ledger.rs"
+          ],
+          "shell": {
+            "cwd": "/home/dev/ledger-rs",
+            "last_cmd": "git push"
+          },
+          "urls": [
+            "https://github.com/acme/ledger-rs/issues/88",
+            "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793692171,
+        "stats": {
+          "duration_seconds": 886,
+          "event_count": 20,
+          "sources": {
+            "firefox": 2,
+            "linux": 1,
+            "shell": 7,
+            "vscode": 10
+          },
+          "unique_apps": [
+            "linux",
+            "shell",
+            "vscode",
+            "firefox"
+          ]
+        },
+        "summary": "Session of 2 tasks that edited ledger.rs, ran cargo and git commands and browsed doc.rust-lang.org and github.com over 14 minutes (20 events).",
+        "tags": [
+          "project:ledger-rs"
+        ],
+        "todos": []
+      },
+      {
+        "children": [],
+        "confidence": 0.8,
+        "date": "2026-11-03",
+        "depth": 0,
+        "end_ts": 1793694614,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "terminal"
+          },
+          {
+            "field": "cmd",
+            "value": "docker compose up -d"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "title",
+            "value": "infra"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/infra"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "ports: - 5433:5432"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/infra/docker-compose.yml"
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/infra"
+          }
+        ],
+        "id": "da0da1a6-69f8-5f9f-b713-a58579a04afc",
+        "insights": {
+          "browser": [],
+          "editor": [
+            {
+              "file": "docker-compose.yml",
+              "saves": 0,
+              "typed_chars": 54
+            }
+          ],
+          "shell": [
+            {
+              "command_family": "docker",
+              "count": 3,
+              "exit_code": 1
+            }
+          ]
+        },
+        "label": "Run Docker",
+        "parent_id": null,
+        "prefix": [
+          "command",
+          "document_change",
+          "docker"
+        ],
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/infra/docker-compose.yml"
+          ],
+          "shell": {
+            "cwd": "/home/dev/infra",
+            "last_cmd": "docker compose up -d"
+          },
+          "urls": []
+        },
+        "semantic": null,
+        "start_ts": 1793694354,
+        "stats": {
+          "duration_seconds": 260,
+          "event_count": 8,
+          "sources": {
+            "linux": 1,
+            "shell": 4,
+            "vscode": 3
+          },
+          "unique_apps": [
+            "linux",
+            "shell",
+            "vscode"
+          ]
+        },
+        "summary": "Edited docker-compose.yml and ran docker commands over 4 minutes (8 events).",
+        "tags": [
+          "project:infra"
+        ],
+        "todos": []
+      }
+    ],
+    "pipeline_version": "2.0.0",
+    "source_hash": "6002a56ca00ad2c2",
+    "warnings": []
+  }
+}

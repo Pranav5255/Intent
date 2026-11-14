@@ -1,0 +1,1760 @@
+{
+  "contexts": [
+    "# Work on alpha\n\nSession of 4 tasks that edited app.ts, handlers.go and post.md, ran go, npm and make commands and browsed mail.google.com and www.youtube.com over 14 minutes (24 events).\n\n## Resume\n- File: /home/dev/site/Makefile\n- File: /home/dev/site/content/post.md\n- File: /home/dev/alpha/src/app.ts\n- File: /home/dev/beta-api/api/handlers.go\n- URL: https://www.youtube.com/watch?v=xyz\n- URL: https://mail.google.com/mail/u/0/#inbox/abc\n- Shell: /home/dev/site (last: git commit -am 'release notes')\n\n## Insights\n- Editor: edits across app.ts, handlers.go, post.md\n- Browser: research on mail.google.com, www.youtube.com\n- Shell: go command failed (exit 1); make target failed (exit 2)\n",
+    "# Work Session\n\nBrowsed calendar.google.com in under a minute (2 events).\n\n## Resume\n- URL: https://calendar.google.com/calendar/r\n\n## Insights\n- Browser: research on calendar.google.com\n",
+    "# Research google.com\n\nBrowsed calendar.google.com in under a minute (1 event).\n\n## Resume\n- URL: https://calendar.google.com/calendar/r/week\n\n## Insights\n- Browser: research on calendar.google.com\n",
+    "# Work on beta-api\n\nSession of 3 tasks that edited handlers.go, ran go, docker and kubectl commands and browsed pkg.go.dev and go.dev over 20 minutes (28 events).\n\n## Resume\n- File: /home/dev/beta-api/api/middleware.go\n- File: /home/dev/beta-api/api/handlers.go\n- URL: https://go.dev/blog/context\n- URL: https://pkg.go.dev/context\n- Shell: /home/dev/beta-api (last: kubectl rollout status deploy/beta-api)\n\n## Insights\n- Editor: heavy edits on handlers.go\n- Browser: research on pkg.go.dev, go.dev\n- Shell: go command failed 2 times (exit 1)\n",
+    "# Work on alpha\n\nSession of 4 tasks that edited chart.ts and README.md, ran npm, git and pip commands and browsed d3js.org and news.ycombinator.com over 22 minutes (25 events).\n\n## Resume\n- File: /home/dev/beta-api/README.md\n- File: /home/dev/site/content/post.md\n- File: /home/dev/alpha/src/chart.ts\n- URL: https://news.ycombinator.com/item?id=2\n- URL: https://d3js.org/d3-axis\n- Shell: /home/dev/scratch (last: python -m venv .venv)\n\n## Insights\n- Editor: edits across chart.ts, README.md\n- Browser: research on d3js.org, news.ycombinator.com\n- Shell: npm script failed (exit 1); pip install failed (exit 1)\n"
+  ],
+  "digest": {
+    "date": "2026-11-04",
+    "headline": "Work on alpha, plus beta-api",
+    "intent_count": 5,
+    "summary": "You worked on run npm, research ycombinator.com, edited chart.ts, researched d3js.org.",
+    "top_intent_ids": [
+      "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+      "2da138b0-126c-503d-a40b-79a35c24fb71",
+      "b5f3f7cf-2982-5913-9d80-9422e7e36819"
+    ],
+    "total_duration_seconds": 3497
+  },
+  "outline": [
+    "Work on alpha (24 events) [\"project:alpha\", \"project:beta-api\", \"project:site\"]",
+    "    Edit app.ts (8 events)",
+    "    Run Go (8 events)",
+    "    Run Npm (4 events)",
+    "    Run Make (4 events)",
+    "Work Session (2 events) []",
+    "Research google.com (1 events) []",
+    "Work on beta-api (28 events) [\"project:beta-api\"]",
+    "    Run Go (25 events)",
+    "    Run Docker (1 events)",
+    "    Run Kubectl (2 events)",
+    "Work on alpha (25 events) [\"project:alpha\", \"project:beta-api\", \"project:scratch\"]",
+    "    Run Npm (18 events)",
+    "    Research ycombinator.com (2 events)",
+    "    Run Git (3 events)",
+    "    Run Pip (2 events)"
+  ],
+  "result": {
+    "cached": false,
+    "intents": [
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.75,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793775969,
+            "evidence": [
+              {
+                "field": "app",
+                "value": "code"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "tab_id",
+                "value": "51"
+              },
+              {
+                "field": "title",
+                "value": "alpha"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "export function render()"
+              },
+              {
+                "field": "title",
+                "value": "Inbox"
+              },
+              {
+                "field": "title",
+                "value": "Re: release"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/alpha/src/app.ts"
+              },
+              {
+                "field": "url",
+                "value": "https://mail.google.com/mail/u/0/#inbox"
+              },
+              {
+                "field": "url",
+                "value": "https://mail.google.com/mail/u/0/#inbox/abc"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/alpha"
+              }
+            ],
+            "id": "b5440eee-e14c-5523-b49e-453e0cf1ee56",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "mail.google.com",
+                  "visits": 2
+                }
+              ],
+              "editor": [
+                {
+                  "file": "app.ts",
+                  "saves": 0,
+                  "typed_chars": 120
+                }
+              ],
+              "shell": []
+            },
+            "label": "Edit app.ts",
+            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "prefix": [
+              "editor",
+              "tab_change",
+              ""
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/alpha/src/app.ts"
+              ],
+              "shell": {},
+              "urls": [
+                "https://mail.google.com/mail/u/0/#inbox/abc"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793775669,
+            "stats": {
+              "duration_seconds": 300,
+              "event_count": 8,
+              "sources": {
+                "firefox": 2,
+                "linux": 1,
+                "vscode": 5
+              },
+              "unique_apps": [
+                "linux",
+                "vscode",
+                "firefox"
+              ]
+            },
+            "summary": "Edited app.ts and browsed mail.google.com over 5 minutes (8 events).",
+            "tags": [
+              "project:alpha"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793776319,
+            "evidence": [
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cmd",
+                "value": "go test ./..."
+              },
+              {
+                "field": "app",
+                "value": "slack"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "func HandleRefund(w http.ResponseWriter"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "title",
+                "value": "Slack"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "render()"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/beta-api/api/handlers.go"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/alpha/src/app.ts"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/alpha"
+              }
+            ],
+            "id": "c9400424-47b3-5d48-9abe-10a4105b74ad",
+            "insights": {
+              "browser": [],
+              "editor": [
+                {
+                  "file": "handlers.go",
+                  "saves": 0,
+                  "typed_chars": 125
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "go",
+                  "count": 1,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Go",
+            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "prefix": [
+              "focus",
+              "app_focus",
+              "/home/dev/alpha"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/alpha/src/app.ts",
+                "/home/dev/beta-api/api/handlers.go"
+              ],
+              "shell": {
+                "cwd": "/home/dev/beta-api",
+                "last_cmd": "go test ./..."
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793776013,
+            "stats": {
+              "duration_seconds": 306,
+              "event_count": 8,
+              "sources": {
+                "linux": 2,
+                "shell": 2,
+                "vscode": 4
+              },
+              "unique_apps": [
+                "vscode",
+                "shell",
+                "linux"
+              ]
+            },
+            "summary": "Edited handlers.go and app.ts and ran go commands over 5 minutes (8 events).",
+            "tags": [
+              "project:beta-api"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793776481,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "npm test"
+              },
+              {
+                "field": "cmd",
+                "value": "npm run build"
+              },
+              {
+                "field": "tab_id",
+                "value": "52"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/alpha"
+              },
+              {
+                "field": "title",
+                "value": "Lo-fi beats"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "Release notes for alpha 1.2"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "url",
+                "value": "https://www.youtube.com/watch?v=xyz"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/site/content/post.md"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/site"
+              }
+            ],
+            "id": "c9483628-681c-5bf8-be0e-8da4d1a7e605",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "www.youtube.com",
+                  "visits": 1
+                }
+              ],
+              "editor": [
+                {
+                  "file": "post.md",
+                  "saves": 0,
+                  "typed_chars": 27
+                }
+              ],
+              "shell": []
+            },
+            "label": "Run Npm",
+            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "prefix": [
+              "command",
+              "tab_change",
+              "/home/dev/site"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/site/content/post.md"
+              ],
+              "shell": {
+                "cwd": "/home/dev/alpha",
+                "last_cmd": "npm run build"
+              },
+              "urls": [
+                "https://www.youtube.com/watch?v=xyz"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793776339,
+            "stats": {
+              "duration_seconds": 142,
+              "event_count": 4,
+              "sources": {
+                "firefox": 1,
+                "shell": 2,
+                "vscode": 1
+              },
+              "unique_apps": [
+                "shell",
+                "firefox",
+                "vscode"
+              ]
+            },
+            "summary": "Edited post.md, ran npm commands and browsed www.youtube.com over 2 minutes (4 events).",
+            "tags": [
+              "project:alpha"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793776618,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "make deploy"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cmd",
+                "value": "git commit -am 'release notes'"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/site"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "deploy: build"
+              },
+              {
+                "field": "exit_code",
+                "value": "2"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/site/Makefile"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/site"
+              }
+            ],
+            "id": "0ac59c89-9a29-5a89-98be-6eb61f8b3b80",
+            "insights": {
+              "browser": [],
+              "editor": [
+                {
+                  "file": "Makefile",
+                  "saves": 0,
+                  "typed_chars": 13
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "make",
+                  "count": 1,
+                  "exit_code": 2
+                }
+              ]
+            },
+            "label": "Run Make",
+            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "prefix": [
+              "editor",
+              "command",
+              "git"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/site/Makefile"
+              ],
+              "shell": {
+                "cwd": "/home/dev/site",
+                "last_cmd": "git commit -am 'release notes'"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793776502,
+            "stats": {
+              "duration_seconds": 116,
+              "event_count": 4,
+              "sources": {
+                "shell": 3,
+                "vscode": 1
+              },
+              "unique_apps": [
+                "shell",
+                "vscode"
+              ]
+            },
+            "summary": "Edited Makefile and ran make and git commands over 1 minute (4 events).",
+            "tags": [
+              "project:site"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-11-04",
+        "depth": 0,
+        "end_ts": 1793776618,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "code"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "cmd",
+            "value": "npm test"
+          },
+          {
+            "field": "cmd",
+            "value": "make deploy"
+          },
+          {
+            "field": "cmd",
+            "value": "go test ./..."
+          },
+          {
+            "field": "cmd",
+            "value": "npm run build"
+          },
+          {
+            "field": "tab_id",
+            "value": "51"
+          },
+          {
+            "field": "app",
+            "value": "slack"
+          },
+          {
+            "field": "tab_id",
+            "value": "52"
+          },
+          {
+            "field": "cmd",
+            "value": "git commit -am 'release notes'"
+          },
+          {
+            "field": "title",
+            "value": "alpha"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "func HandleRefund(w http.ResponseWriter"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/site"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "export function render()"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/beta-api"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/alpha"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "deploy: build"
+          },
+          {
+            "field": "title",
+            "value": "Inbox"
+          },
+          {
+            "field": "title",
+            "value": "Slack"
+          },
+          {
+            "field": "title",
+            "value": "Lo-fi beats"
+          },
+          {
+            "field": "exit_code",
+            "value": "2"
+          },
+          {
+            "field": "title",
+            "value": "Re: release"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "render()"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "Release notes for alpha 1.2"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/site/Makefile"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/alpha/src/app.ts"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/beta-api/api/handlers.go"
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "url",
+            "value": "https://mail.google.com/mail/u/0/#inbox"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "url",
+            "value": "https://www.youtube.com/watch?v=xyz"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/site"
+          },
+          {
+            "field": "url",
+            "value": "https://mail.google.com/mail/u/0/#inbox/abc"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/site/content/post.md"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/alpha"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/beta-api"
+          }
+        ],
+        "id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on alpha",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/site/Makefile",
+            "/home/dev/site/content/post.md",
+            "/home/dev/alpha/src/app.ts",
+            "/home/dev/beta-api/api/handlers.go"
+          ],
+          "shell": {
+            "cwd": "/home/dev/site",
+            "last_cmd": "git commit -am 'release notes'"
+          },
+          "urls": [
+            "https://www.youtube.com/watch?v=xyz",
+            "https://mail.google.com/mail/u/0/#inbox/abc"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793775669,
+        "stats": {
+          "duration_seconds": 864,
+          "event_count": 24,
+          "sources": {
+            "firefox": 3,
+            "linux": 3,
+            "shell": 7,
+            "vscode": 11
+          },
+          "unique_apps": [
+            "linux",
+            "vscode",
+            "firefox",
+            "shell"
+          ]
+        },
+        "summary": "Session of 4 tasks that edited app.ts, handlers.go and post.md, ran go, npm and make commands and browsed mail.google.com and www.youtube.com over 14 minutes (24 events).",
+        "tags": [
+          "project:alpha",
+          "project:beta-api",
+          "project:site"
+        ],
+        "todos": []
+      },
+      {
+        "children": [],
+        "confidence": 0.5,
+        "date": "2026-11-04",
+        "depth": 0,
+        "end_ts": 1793779137,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "firefox"
+          },
+          {
+            "field": "tab_id",
+            "value": "53"
+          },
+          {
+            "field": "title",
+            "value": "Calendar"
+          },
+          {
+            "field": "url",
+            "value": "https://calendar.google.com/calendar/r"
+          }
+        ],
+        "id": "ae2b1172-7696-55b4-a9c5-07c687d8654d",
+        "insights": {
+          "browser": [
+            {
+              "domain": "calendar.google.com",
+              "visits": 1
+            }
+          ],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work Session",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [],
+          "shell": {},
+          "urls": [
+            "https://calendar.google.com/calendar/r"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793779116,
+        "stats": {
+          "duration_seconds": 21,
+          "event_count": 2,
+          "sources": {
+            "firefox": 1,
+            "linux": 1
+          },
+          "unique_apps": [
+            "linux",
+            "firefox"
+          ]
+        },
+        "summary": "Browsed calendar.google.com in under a minute (2 events).",
+        "tags": [],
+        "todos": []
+      },
+      {
+        "children": [],
+        "confidence": 0.75,
+        "date": "2026-11-04",
+        "depth": 0,
+        "end_ts": 1793780189,
+        "evidence": [
+          {
+            "field": "tab_id",
+            "value": "53"
+          },
+          {
+            "field": "title",
+            "value": "Calendar week"
+          },
+          {
+            "field": "url",
+            "value": "https://calendar.google.com/calendar/r/week"
+          }
+        ],
+        "id": "f612a790-6fe5-5f00-98ad-2293bc5c96e5",
+        "insights": {
+          "browser": [
+            {
+              "domain": "calendar.google.com",
+              "visits": 1
+            }
+          ],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Research google.com",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [],
+          "shell": {},
+          "urls": [
+            "https://calendar.google.com/calendar/r/week"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793780189,
+        "stats": {
+          "duration_seconds": 0,
+          "event_count": 1,
+          "sources": {
+            "firefox": 1
+          },
+          "unique_apps": [
+            "firefox"
+          ]
+        },
+        "summary": "Browsed calendar.google.com in under a minute (1 event).",
+        "tags": [],
+        "todos": []
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793782411,
+            "evidence": [
+              {
+                "field": "app",
+                "value": "code"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cmd",
+                "value": "go test ./api/..."
+              },
+              {
+                "field": "tab_id",
+                "value": "54"
+              },
+              {
+                "field": "tab_id",
+                "value": "55"
+              },
+              {
+                "field": "title",
+                "value": "beta-api"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "ctx, cancel := context.WithTimeout"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "title",
+                "value": "context package"
+              },
+              {
+                "field": "title",
+                "value": "Go Concurrency Patterns: Context"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "http.TimeoutHandler"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/beta-api/api/handlers.go"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              },
+              {
+                "field": "url",
+                "value": "https://pkg.go.dev/context"
+              },
+              {
+                "field": "url",
+                "value": "https://go.dev/blog/context"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/beta-api/api/middleware.go"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/beta-api"
+              }
+            ],
+            "id": "6ffe805e-e9da-59a6-9e80-e41f7876746d",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "pkg.go.dev",
+                  "visits": 1
+                },
+                {
+                  "domain": "go.dev",
+                  "visits": 1
+                }
+              ],
+              "editor": [
+                {
+                  "file": "handlers.go",
+                  "saves": 0,
+                  "typed_chars": 590
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "go",
+                  "count": 2,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Go",
+            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "prefix": [
+              "editor",
+              "document_change",
+              "/home/dev/beta-api"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/beta-api/api/middleware.go",
+                "/home/dev/beta-api/api/handlers.go"
+              ],
+              "shell": {
+                "cwd": "/home/dev/beta-api",
+                "last_cmd": "go test ./api/..."
+              },
+              "urls": [
+                "https://go.dev/blog/context",
+                "https://pkg.go.dev/context"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793781216,
+            "stats": {
+              "duration_seconds": 1195,
+              "event_count": 25,
+              "sources": {
+                "firefox": 2,
+                "linux": 1,
+                "shell": 2,
+                "vscode": 20
+              },
+              "unique_apps": [
+                "linux",
+                "vscode",
+                "shell",
+                "firefox"
+              ]
+            },
+            "summary": "Edited handlers.go and middleware.go, ran go commands and browsed pkg.go.dev and go.dev over 19 minutes (25 events).",
+            "tags": [
+              "project:beta-api"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793782436,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "docker build -t beta-api ."
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "82b2fc37-de4d-5122-a6ce-4e05e77adde4",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": []
+            },
+            "label": "Run Docker",
+            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/beta-api",
+                "last_cmd": "docker build -t beta-api ."
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793782436,
+            "stats": {
+              "duration_seconds": 0,
+              "event_count": 1,
+              "sources": {
+                "shell": 1
+              },
+              "unique_apps": [
+                "shell"
+              ]
+            },
+            "summary": "Ran docker commands in under a minute (1 event).",
+            "tags": [
+              "project:beta-api"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793782558,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "kubectl apply -f deploy.yaml"
+              },
+              {
+                "field": "cmd",
+                "value": "kubectl rollout status deploy/beta-api"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "34a00338-003d-5b38-a0b9-c4829255ec20",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": []
+            },
+            "label": "Run Kubectl",
+            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/beta-api",
+                "last_cmd": "kubectl rollout status deploy/beta-api"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793782508,
+            "stats": {
+              "duration_seconds": 50,
+              "event_count": 2,
+              "sources": {
+                "shell": 2
+              },
+              "unique_apps": [
+                "shell"
+              ]
+            },
+            "summary": "Ran kubectl commands in under a minute (2 events).",
+            "tags": [
+              "project:beta-api"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-11-04",
+        "depth": 0,
+        "end_ts": 1793782558,
+        "evidence": [
+          {
+            "field": "app",
+            "value": "code"
+          },
+          {
+            "field": "cmd",
+            "value": "docker build -t beta-api ."
+          },
+          {
+            "field": "cmd",
+            "value": "kubectl apply -f deploy.yaml"
+          },
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/beta-api"
+          },
+          {
+            "field": "cmd",
+            "value": "kubectl rollout status deploy/beta-api"
+          },
+          {
+            "field": "cmd",
+            "value": "go test ./api/..."
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "tab_id",
+            "value": "54"
+          },
+          {
+            "field": "tab_id",
+            "value": "55"
+          },
+          {
+            "field": "title",
+            "value": "beta-api"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "ctx, cancel := context.WithTimeout"
+          },
+          {
+            "field": "title",
+            "value": "context package"
+          },
+          {
+            "field": "title",
+            "value": "Go Concurrency Patterns: Context"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "http.TimeoutHandler"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/beta-api/api/handlers.go"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "url",
+            "value": "https://pkg.go.dev/context"
+          },
+          {
+            "field": "url",
+            "value": "https://go.dev/blog/context"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/beta-api/api/middleware.go"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/beta-api"
+          }
+        ],
+        "id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on beta-api",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/beta-api/api/middleware.go",
+            "/home/dev/beta-api/api/handlers.go"
+          ],
+          "shell": {
+            "cwd": "/home/dev/beta-api",
+            "last_cmd": "kubectl rollout status deploy/beta-api"
+          },
+          "urls": [
+            "https://go.dev/blog/context",
+            "https://pkg.go.dev/context"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793781216,
+        "stats": {
+          "duration_seconds": 1245,
+          "event_count": 28,
+          "sources": {
+            "firefox": 2,
+            "linux": 1,
+            "shell": 5,
+            "vscode": 20
+          },
+          "unique_apps": [
+            "linux",
+            "vscode",
+            "shell",
+            "firefox"
+          ]
+        },
+        "summary": "Session of 3 tasks that edited handlers.go, ran go, docker and kubectl commands and browsed pkg.go.dev and go.dev over 20 minutes (28 events).",
+        "tags": [
+          "project:beta-api"
+        ],
+        "todos": []
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793784900,
+            "evidence": [
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "tab_id",
+                "value": "56"
+              },
+              {
+                "field": "cmd",
+                "value": "npm test"
+              },
+              {
+                "field": "cmd",
+                "value": "make deploy"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "drawAxis(scale)"
+              },
+              {
+                "field": "title",
+                "value": "d3-axis"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/alpha"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "Chart screenshots"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/site"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/alpha/src/chart.ts"
+              },
+              {
+                "field": "url",
+                "value": "https://d3js.org/d3-axis"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/site/content/post.md"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/alpha"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/site"
+              }
+            ],
+            "id": "0ee368c9-0895-55fa-bc22-7530a0913098",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "d3js.org",
+                  "visits": 7
+                }
+              ],
+              "editor": [
+                {
+                  "file": "chart.ts",
+                  "saves": 0,
+                  "typed_chars": 122
+                }
+              ],
+              "shell": [
+                {
+                  "command_family": "npm",
+                  "count": 1,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Npm",
+            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "prefix": [
+              "command",
+              "document_change",
+              "make"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/site/content/post.md",
+                "/home/dev/alpha/src/chart.ts"
+              ],
+              "shell": {
+                "cwd": "/home/dev/site",
+                "last_cmd": "make deploy"
+              },
+              "urls": [
+                "https://d3js.org/d3-axis"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793783689,
+            "stats": {
+              "duration_seconds": 1211,
+              "event_count": 18,
+              "sources": {
+                "firefox": 7,
+                "shell": 3,
+                "vscode": 8
+              },
+              "unique_apps": [
+                "vscode",
+                "firefox",
+                "shell"
+              ]
+            },
+            "summary": "Edited chart.ts and post.md, ran npm and make commands and browsed d3js.org over 20 minutes (18 events).",
+            "tags": [
+              "project:alpha"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.75,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793785314,
+            "evidence": [
+              {
+                "field": "tab_id",
+                "value": "57"
+              },
+              {
+                "field": "title",
+                "value": "Hacker News"
+              },
+              {
+                "field": "title",
+                "value": "Show HN"
+              },
+              {
+                "field": "url",
+                "value": "https://news.ycombinator.com/"
+              },
+              {
+                "field": "url",
+                "value": "https://news.ycombinator.com/item?id=2"
+              }
+            ],
+            "id": "9e6dc9d4-b9ff-570f-b0a2-c7e7ac1954b5",
+            "insights": {
+              "browser": [
+                {
+                  "domain": "news.ycombinator.com",
+                  "visits": 2
+                }
+              ],
+              "editor": [],
+              "shell": []
+            },
+            "label": "Research ycombinator.com",
+            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {},
+              "urls": [
+                "https://news.ycombinator.com/item?id=2"
+              ]
+            },
+            "semantic": null,
+            "start_ts": 1793785287,
+            "stats": {
+              "duration_seconds": 27,
+              "event_count": 2,
+              "sources": {
+                "firefox": 2
+              },
+              "unique_apps": [
+                "firefox"
+              ]
+            },
+            "summary": "Browsed news.ycombinator.com in under a minute (2 events).",
+            "tags": [],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793785752,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "git status"
+              },
+              {
+                "field": "cmd",
+                "value": "git log --oneline"
+              },
+              {
+                "field": "changes[0].redacted",
+                "value": "false"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/beta-api"
+              },
+              {
+                "field": "changes[0].text",
+                "value": "Timeouts"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              },
+              {
+                "field": "path",
+                "value": "/home/dev/beta-api/README.md"
+              },
+              {
+                "field": "workspace",
+                "value": "/home/dev/beta-api"
+              }
+            ],
+            "id": "b8b55f29-8475-51b2-8159-13b263048e57",
+            "insights": {
+              "browser": [],
+              "editor": [
+                {
+                  "file": "README.md",
+                  "saves": 0,
+                  "typed_chars": 8
+                }
+              ],
+              "shell": []
+            },
+            "label": "Run Git",
+            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "prefix": [
+              "command",
+              "command",
+              "/home/dev/beta-api"
+            ],
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [
+                "/home/dev/beta-api/README.md"
+              ],
+              "shell": {
+                "cwd": "/home/dev/beta-api",
+                "last_cmd": "git log --oneline"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793785679,
+            "stats": {
+              "duration_seconds": 73,
+              "event_count": 3,
+              "sources": {
+                "shell": 2,
+                "vscode": 1
+              },
+              "unique_apps": [
+                "shell",
+                "vscode"
+              ]
+            },
+            "summary": "Edited README.md and ran git commands over 1 minute (3 events).",
+            "tags": [
+              "project:beta-api"
+            ],
+            "todos": []
+          },
+          {
+            "children": [],
+            "confidence": 0.8,
+            "date": "2026-11-04",
+            "depth": 1,
+            "end_ts": 1793786180,
+            "evidence": [
+              {
+                "field": "cmd",
+                "value": "pip install -r requirements.txt"
+              },
+              {
+                "field": "cmd",
+                "value": "python -m venv .venv"
+              },
+              {
+                "field": "cwd",
+                "value": "/home/dev/scratch"
+              },
+              {
+                "field": "exit_code",
+                "value": "1"
+              },
+              {
+                "field": "exit_code",
+                "value": "0"
+              }
+            ],
+            "id": "a8def60d-854b-5d5b-8b01-a4ad5183b2a5",
+            "insights": {
+              "browser": [],
+              "editor": [],
+              "shell": [
+                {
+                  "command_family": "pip",
+                  "count": 1,
+                  "exit_code": 1
+                }
+              ]
+            },
+            "label": "Run Pip",
+            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "prefix": null,
+            "privacy_policy_version": "safe-intent-features-v2",
+            "resume_payload": {
+              "files": [],
+              "shell": {
+                "cwd": "/home/dev/scratch",
+                "last_cmd": "python -m venv .venv"
+              },
+              "urls": []
+            },
+            "semantic": null,
+            "start_ts": 1793786124,
+            "stats": {
+              "duration_seconds": 56,
+              "event_count": 2,
+              "sources": {
+                "shell": 2
+              },
+              "unique_apps": [
+                "shell"
+              ]
+            },
+            "summary": "Ran pip and python commands in under a minute (2 events).",
+            "tags": [
+              "project:scratch"
+            ],
+            "todos": []
+          }
+        ],
+        "confidence": 0.7,
+        "date": "2026-11-04",
+        "depth": 0,
+        "end_ts": 1793786180,
+        "evidence": [
+          {
+            "field": "changes[0].redacted",
+            "value": "false"
+          },
+          {
+            "field": "tab_id",
+            "value": "57"
+          },
+          {
+            "field": "cmd",
+            "value": "git status"
+          },
+          {
+            "field": "cmd",
+            "value": "pip install -r requirements.txt"
+          },
+          {
+            "field": "tab_id",
+            "value": "56"
+          },
+          {
+            "field": "title",
+            "value": "Hacker News"
+          },
+          {
+            "field": "cmd",
+            "value": "git log --oneline"
+          },
+          {
+            "field": "cmd",
+            "value": "python -m venv .venv"
+          },
+          {
+            "field": "cmd",
+            "value": "npm test"
+          },
+          {
+            "field": "title",
+            "value": "Show HN"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/scratch"
+          },
+          {
+            "field": "cmd",
+            "value": "make deploy"
+          },
+          {
+            "field": "url",
+            "value": "https://news.ycombinator.com/"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/beta-api"
+          },
+          {
+            "field": "exit_code",
+            "value": "1"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "drawAxis(scale)"
+          },
+          {
+            "field": "url",
+            "value": "https://news.ycombinator.com/item?id=2"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "Timeouts"
+          },
+          {
+            "field": "exit_code",
+            "value": "0"
+          },
+          {
+            "field": "title",
+            "value": "d3-axis"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/alpha"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/beta-api/README.md"
+          },
+          {
+            "field": "changes[0].text",
+            "value": "Chart screenshots"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/beta-api"
+          },
+          {
+            "field": "cwd",
+            "value": "/home/dev/site"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/alpha/src/chart.ts"
+          },
+          {
+            "field": "url",
+            "value": "https://d3js.org/d3-axis"
+          },
+          {
+            "field": "path",
+            "value": "/home/dev/site/content/post.md"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/alpha"
+          },
+          {
+            "field": "workspace",
+            "value": "/home/dev/site"
+          }
+        ],
+        "id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+        "insights": {
+          "browser": [],
+          "editor": [],
+          "shell": []
+        },
+        "label": "Work on alpha",
+        "parent_id": null,
+        "prefix": null,
+        "privacy_policy_version": "safe-intent-features-v2",
+        "resume_payload": {
+          "files": [
+            "/home/dev/beta-api/README.md",
+            "/home/dev/site/content/post.md",
+            "/home/dev/alpha/src/chart.ts"
+          ],
+          "shell": {
+            "cwd": "/home/dev/scratch",
+            "last_cmd": "python -m venv .venv"
+          },
+          "urls": [
+            "https://news.ycombinator.com/item?id=2",
+            "https://d3js.org/d3-axis"
+          ]
+        },
+        "semantic": null,
+        "start_ts": 1793783689,
+        "stats": {
+          "duration_seconds": 1367,
+          "event_count": 25,
+          "sources": {
+            "firefox": 9,
+            "shell": 7,
+            "vscode": 9
+          },
+          "unique_apps": [
+            "vscode",
+            "firefox",
+            "shell"
+          ]
+        },
+        "summary": "Session of 4 tasks that edited chart.ts and README.md, ran npm, git and pip commands and browsed d3js.org and news.ycombinator.com over 22 minutes (25 events).",
+        "tags": [
+          "project:alpha",
+          "project:beta-api",
+          "project:scratch"
+        ],
+        "todos": []
+      }
+    ],
+    "pipeline_version": "2.0.0",
+    "source_hash": "6601c02a95649c7c",
+    "warnings": []
+  }
+}

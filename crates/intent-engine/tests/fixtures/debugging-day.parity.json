@@ -1,0 +1,379 @@
+{
+ "date": "2026-11-03",
+ "intents": [
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 75,
+     "end_ts": 1793689323,
+     "event_count": 2,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Git",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/payments",
+       "last_cmd": "git pull"
+      },
+      "urls": []
+     },
+     "sources": {
+      "linux": 1,
+      "shell": 1
+     },
+     "start_ts": 1793689248,
+     "tags": [
+      "project:payments"
+     ],
+     "todos": []
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 879,
+     "end_ts": 1793690257,
+     "event_count": 17,
+     "insights": {
+      "browser": [
+       {
+        "domain": "stackoverflow.com",
+        "visits": 1
+       },
+       {
+        "domain": "docs.python.org",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "refunds.py",
+        "saves": 0,
+        "typed_chars": 277
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "pytest",
+        "count": 3,
+        "exit_code": 1
+       }
+      ]
+     },
+     "label": "Run Pytest",
+     "prefix": [
+      "command",
+      "document_change",
+      "pytest"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/payments/tests/test_refunds.py",
+       "/home/dev/payments/payments/refunds.py"
+      ],
+      "shell": {
+       "cwd": "/home/dev/payments",
+       "last_cmd": "pytest"
+      },
+      "urls": [
+       "https://docs.python.org/3/library/decimal.html",
+       "https://stackoverflow.com/questions/1/decimal-rounding"
+      ]
+     },
+     "sources": {
+      "firefox": 2,
+      "shell": 5,
+      "vscode": 10
+     },
+     "start_ts": 1793689378,
+     "tags": [
+      "project:payments"
+     ],
+     "todos": [
+      {
+       "observed_ts": 1793689935,
+       "path": "/home/dev/payments/payments/refunds.py"
+      },
+      {
+       "observed_ts": 1793690226,
+       "path": "/home/dev/payments/tests/test_refunds.py"
+      }
+     ]
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 0,
+     "end_ts": 1793690283,
+     "event_count": 1,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": []
+     },
+     "label": "Run Git",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/payments",
+       "last_cmd": "git commit -am 'fix: refund rounding'"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 1
+     },
+     "start_ts": 1793690283,
+     "tags": [
+      "project:payments"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 954,
+   "end_ts": 1793690283,
+   "event_count": 20,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on payments",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/payments/tests/test_refunds.py",
+     "/home/dev/payments/payments/refunds.py"
+    ],
+    "shell": {
+     "cwd": "/home/dev/payments",
+     "last_cmd": "git commit -am 'fix: refund rounding'"
+    },
+    "urls": [
+     "https://docs.python.org/3/library/decimal.html",
+     "https://stackoverflow.com/questions/1/decimal-rounding"
+    ]
+   },
+   "sources": {
+    "firefox": 2,
+    "linux": 1,
+    "shell": 7,
+    "vscode": 10
+   },
+   "start_ts": 1793689248,
+   "tags": [
+    "project:payments"
+   ],
+   "todos": []
+  },
+  {
+   "children": [
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 833,
+     "end_ts": 1793693004,
+     "event_count": 18,
+     "insights": {
+      "browser": [
+       {
+        "domain": "doc.rust-lang.org",
+        "visits": 1
+       },
+       {
+        "domain": "github.com",
+        "visits": 1
+       }
+      ],
+      "editor": [
+       {
+        "file": "ledger.rs",
+        "saves": 0,
+        "typed_chars": 324
+       }
+      ],
+      "shell": [
+       {
+        "command_family": "cargo",
+        "count": 3,
+        "exit_code": 101
+       }
+      ]
+     },
+     "label": "Run Cargo",
+     "prefix": [
+      "command",
+      "command",
+      "cargo"
+     ],
+     "resume_payload": {
+      "files": [
+       "/home/dev/ledger-rs/src/ledger.rs"
+      ],
+      "shell": {
+       "cwd": "/home/dev/ledger-rs",
+       "last_cmd": "cargo clippy"
+      },
+      "urls": [
+       "https://github.com/acme/ledger-rs/issues/88",
+       "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+      ]
+     },
+     "sources": {
+      "firefox": 2,
+      "linux": 1,
+      "shell": 5,
+      "vscode": 10
+     },
+     "start_ts": 1793692171,
+     "tags": [
+      "project:ledger-rs"
+     ],
+     "todos": [
+      {
+       "observed_ts": 1793692775,
+       "path": "/home/dev/ledger-rs/src/ledger.rs"
+      }
+     ]
+    },
+    {
+     "children": [],
+     "confidence": 0.8,
+     "depth": 1,
+     "duration_seconds": 53,
+     "end_ts": 1793693130,
+     "event_count": 2,
+     "insights": {
+      "browser": [],
+      "editor": [],
+      "shell": [
+       {
+        "command_family": "git",
+        "count": 1,
+        "exit_code": 128
+       }
+      ]
+     },
+     "label": "Run Git",
+     "prefix": null,
+     "resume_payload": {
+      "files": [],
+      "shell": {
+       "cwd": "/home/dev/ledger-rs",
+       "last_cmd": "git push"
+      },
+      "urls": []
+     },
+     "sources": {
+      "shell": 2
+     },
+     "start_ts": 1793693077,
+     "tags": [
+      "project:ledger-rs"
+     ],
+     "todos": []
+    }
+   ],
+   "confidence": 0.7,
+   "depth": 0,
+   "duration_seconds": 886,
+   "end_ts": 1793693130,
+   "event_count": 20,
+   "insights": {
+    "browser": [],
+    "editor": [],
+    "shell": []
+   },
+   "label": "Work on ledger-rs",
+   "prefix": null,
+   "resume_payload": {
+    "files": [
+     "/home/dev/ledger-rs/src/ledger.rs"
+    ],
+    "shell": {
+     "cwd": "/home/dev/ledger-rs",
+     "last_cmd": "git push"
+    },
+    "urls": [
+     "https://github.com/acme/ledger-rs/issues/88",
+     "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub"
+    ]
+   },
+   "sources": {
+    "firefox": 2,
+    "linux": 1,
+    "shell": 7,
+    "vscode": 10
+   },
+   "start_ts": 1793692171,
+   "tags": [
+    "project:ledger-rs"
+   ],
+   "todos": []
+  },
+  {
+   "children": [],
+   "confidence": 0.8,
+   "depth": 0,
+   "duration_seconds": 260,
+   "end_ts": 1793694614,
+   "event_count": 8,
+   "insights": {
+    "browser": [],
+    "editor": [
+     {
+      "file": "docker-compose.yml",
+      "saves": 0,
+      "typed_chars": 54
+     }
+    ],
+    "shell": [
+     {
+      "command_family": "docker",
+      "count": 3,
+      "exit_code": 1
+     }
+    ]
+   },
+   "label": "Run Docker",
+   "prefix": [
+    "command",
+    "document_change",
+    "docker"
+   ],
+   "resume_payload": {
+    "files": [
+     "/home/dev/infra/docker-compose.yml"
+    ],
+    "shell": {
+     "cwd": "/home/dev/infra",
+     "last_cmd": "docker compose up -d"
+    },
+    "urls": []
+   },
+   "sources": {
+    "linux": 1,
+    "shell": 4,
+    "vscode": 3
+   },
+   "start_ts": 1793694354,
+   "tags": [
+    "project:infra"
+   ],
+   "todos": []
+  }
+ ]
+}

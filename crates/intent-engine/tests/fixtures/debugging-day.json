@@ -1,0 +1,665 @@
+{
+ "version": 1,
+ "date": "2026-11-03",
+ "exported_at": 1793694674,
+ "events": [
+  {
+   "id": "2026-11-03-e001",
+   "ts": 1793689248,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "terminal",
+    "title": "payments"
+   }
+  },
+  {
+   "id": "2026-11-03-e002",
+   "ts": 1793689323,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git pull",
+    "cwd": "/home/dev/payments",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e003",
+   "ts": 1793689378,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pytest tests/test_refunds.py",
+    "cwd": "/home/dev/payments",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e004",
+   "ts": 1793689452,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "if amount <= 0: raise ValueError",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e005",
+   "ts": 1793689521,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "if amount <= 0: raise ValueError",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e006",
+   "ts": 1793689570,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "if amount <= 0: raise ValueError",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e007",
+   "ts": 1793689618,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "if amount <= 0: raise ValueError",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e008",
+   "ts": 1793689670,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pytest tests/test_refunds.py",
+    "cwd": "/home/dev/payments",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e009",
+   "ts": 1793689744,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://stackoverflow.com/questions/1/decimal-rounding",
+    "title": "Decimal rounding half even",
+    "tab_id": 31
+   }
+  },
+  {
+   "id": "2026-11-03-e010",
+   "ts": 1793689801,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://docs.python.org/3/library/decimal.html",
+    "title": "decimal",
+    "tab_id": 32
+   }
+  },
+  {
+   "id": "2026-11-03-e011",
+   "ts": 1793689833,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "quantize(Decimal('0.01'))",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e012",
+   "ts": 1793689864,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "quantize(Decimal('0.01'))",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e013",
+   "ts": 1793689935,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "# TODO: handle partial refunds",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e014",
+   "ts": 1793689987,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "quantize(Decimal('0.01'))",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e015",
+   "ts": 1793690037,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/payments/refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "quantize(Decimal('0.01'))",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e016",
+   "ts": 1793690097,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pytest tests/test_refunds.py -k rounding",
+    "cwd": "/home/dev/payments",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e017",
+   "ts": 1793690156,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pytest tests/test_refunds.py -k rounding",
+    "cwd": "/home/dev/payments",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e018",
+   "ts": 1793690226,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/payments/tests/test_refunds.py",
+    "workspace": "/home/dev/payments",
+    "changes": [
+     {
+      "text": "# FIXME flaky on CI",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e019",
+   "ts": 1793690257,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "pytest",
+    "cwd": "/home/dev/payments",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e020",
+   "ts": 1793690283,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git commit -am 'fix: refund rounding'",
+    "cwd": "/home/dev/payments",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e021",
+   "ts": 1793690331,
+   "source": "linux",
+   "type": "idle_start",
+   "payload": {
+    "idle_seconds": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e022",
+   "ts": 1793692132,
+   "source": "linux",
+   "type": "idle_end",
+   "payload": {
+    "idle_seconds": 1800
+   }
+  },
+  {
+   "id": "2026-11-03-e023",
+   "ts": 1793692171,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "code",
+    "title": "ledger-rs"
+   }
+  },
+  {
+   "id": "2026-11-03-e024",
+   "ts": 1793692200,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 101
+   }
+  },
+  {
+   "id": "2026-11-03-e025",
+   "ts": 1793692225,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e026",
+   "ts": 1793692279,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e027",
+   "ts": 1793692350,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e028",
+   "ts": 1793692414,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e029",
+   "ts": 1793692474,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e030",
+   "ts": 1793692496,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "checked_sub(amount).ok_or(Error::Overdraft)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e031",
+   "ts": 1793692554,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test ledger::tests",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 101
+   }
+  },
+  {
+   "id": "2026-11-03-e032",
+   "ts": 1793692599,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://doc.rust-lang.org/std/primitive.u64.html#method.checked_sub",
+    "title": "u64 checked_sub",
+    "tab_id": 41
+   }
+  },
+  {
+   "id": "2026-11-03-e033",
+   "ts": 1793692647,
+   "source": "firefox",
+   "type": "tab_change",
+   "payload": {
+    "url": "https://github.com/acme/ledger-rs/issues/88",
+    "title": "Overdraft panics",
+    "tab_id": 42
+   }
+  },
+  {
+   "id": "2026-11-03-e034",
+   "ts": 1793692708,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "Ok(balance)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e035",
+   "ts": 1793692775,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "// XXX revisit overflow semantics",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e036",
+   "ts": 1793692834,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "Ok(balance)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e037",
+   "ts": 1793692895,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/ledger-rs/src/ledger.rs",
+    "workspace": "/home/dev/ledger-rs",
+    "changes": [
+     {
+      "text": "Ok(balance)",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e038",
+   "ts": 1793692925,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 101
+   }
+  },
+  {
+   "id": "2026-11-03-e039",
+   "ts": 1793692984,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo test",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e040",
+   "ts": 1793693004,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "cargo clippy",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e041",
+   "ts": 1793693077,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git push",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 128
+   }
+  },
+  {
+   "id": "2026-11-03-e042",
+   "ts": 1793693130,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "git push",
+    "cwd": "/home/dev/ledger-rs",
+    "exit_code": 0
+   }
+  },
+  {
+   "id": "2026-11-03-e043",
+   "ts": 1793694354,
+   "source": "linux",
+   "type": "app_focus",
+   "payload": {
+    "app": "terminal",
+    "title": "infra"
+   }
+  },
+  {
+   "id": "2026-11-03-e044",
+   "ts": 1793694377,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "docker compose up -d",
+    "cwd": "/home/dev/infra",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e045",
+   "ts": 1793694399,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/infra/docker-compose.yml",
+    "workspace": "/home/dev/infra",
+    "changes": [
+     {
+      "text": "ports: - 5433:5432",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e046",
+   "ts": 1793694431,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "docker compose up -d",
+    "cwd": "/home/dev/infra",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e047",
+   "ts": 1793694466,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/infra/docker-compose.yml",
+    "workspace": "/home/dev/infra",
+    "changes": [
+     {
+      "text": "ports: - 5433:5432",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e048",
+   "ts": 1793694524,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "docker compose up -d",
+    "cwd": "/home/dev/infra",
+    "exit_code": 1
+   }
+  },
+  {
+   "id": "2026-11-03-e049",
+   "ts": 1793694545,
+   "source": "vscode",
+   "type": "document_change",
+   "payload": {
+    "path": "/home/dev/infra/docker-compose.yml",
+    "workspace": "/home/dev/infra",
+    "changes": [
+     {
+      "text": "ports: - 5433:5432",
+      "redacted": false
+     }
+    ]
+   }
+  },
+  {
+   "id": "2026-11-03-e050",
+   "ts": 1793694614,
+   "source": "shell",
+   "type": "command",
+   "payload": {
+    "cmd": "docker compose up -d",
+    "cwd": "/home/dev/infra",
+    "exit_code": 0
+   }
+  }
+ ]
+}
