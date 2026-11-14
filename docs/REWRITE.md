@@ -102,11 +102,21 @@ failures, queue high-water mark, average wait/write ms) are in `/v1/status.inges
   GNOME extension, the companions found under `capture/integrations/*/dist` (skipped with a
   warning otherwise) and the Firefox policy logic ported from 1.x (policy only installed for a
   release build with a signed XPI, never over an administrator-managed policy). Depends:
-  `libc6, libgcc-s1` only. The Tauri app is a marked hook (`INTENT_BUILD_APP=1`); its launcher
-  runs `intentctl enable` only when the service is not enabled yet (1.x did it every launch).
+  `libc6, libgcc-s1` only. With `INTENT_BUILD_APP=1` it also builds the Tauri app
+  (`npm ci` + `tauri build --no-bundle`) and ships `/usr/lib/intent/intent-app` behind the
+  `/usr/bin/intent` launcher, `io.github.pranav5255.Intent.desktop` and hicolor icons; Depends
+  then come from `dpkg-shlibdeps` plus `libayatana-appindicator3-1 | libappindicator3-1`
+  (dlopen()ed for the tray). No system-wide XDG autostart: "Launch at login" in the app writes
+  the per-user entry. The launcher runs `intentctl enable` only when the service is not enabled
+  yet (1.x did it every launch). The app disables WebKit accelerated compositing unless
+  `WEBKIT_DISABLE_COMPOSITING_MODE` is set (≈ 320 MB vs 680 MB PSS idle in the VM).
 - `dev/lima/e2e.sh` installs the .deb in the VM, drives an Xvfb + openbox session (xdotool focus
   switches, an interactive bash with the hook, file writes in an approved workspace, companion
   payloads) and checks events, intents, search, digest and status through the API.
+- `dev/lima/e2e-app.sh` (after `e2e.sh`, or it runs it) drives the installed app in the same
+  session: main window views, `intent --preview <id>`, Super+Space palette toggling, pause from
+  the palette, tray registration (stalonetray), a loopback capture proving no 401s, and idle
+  RSS/PSS. Screenshots: `docs/screenshots/vm-*.png`.
 - `dev/lima/measure.sh idle|ingest|pipeline` reports RSS/PSS, idle CPU, ingest events/s
   (`crates/intentd/examples/ingest_load.rs`) and pipeline latency.
 
