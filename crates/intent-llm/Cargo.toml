@@ -4,9 +4,39 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = []
+# Amazon Bedrock with the full AWS credential chain (profiles, SSO, IAM roles) via SigV4.
+# Bedrock API keys (bearer tokens) work in the default build without this feature.
+bedrock = ["dep:aws-config", "dep:aws-sigv4", "dep:aws-credential-types"]
+# Offline static embeddings (Model2Vec, e.g. potion-base-8M) loaded from a local directory.
+model2vec = ["dep:model2vec-rs"]
+
 [dependencies]
 intent-types = { path = "../intent-types" }
 async-trait = "0.1"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+tracing = "0.1"
+sha2 = "0.10"
+regex = "1"
+fastrand = "2"
+toml = "0.9"
+jsonwebtoken = "9"
+
+aws-config = { version = "1", optional = true, features = ["behavior-version-latest"] }
+aws-sigv4 = { version = "1", optional = true }
+aws-credential-types = { version = "1", optional = true }
+model2vec-rs = { version = "0.4", optional = true, default-features = false, features = ["fancy-regex", "local-only"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+
+[[bin]]
+name = "intent-eval"
+path = "src/bin/intent-eval.rs"

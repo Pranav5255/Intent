@@ -1,0 +1,20 @@
+{
+  "name": "auth_bugfix_with_docs",
+  "description": "Fixing JWT validation in an API: edits, tests, docs research, a distraction, then a return to the same work.",
+  "events": [
+    {"id": "a1", "t": 0, "source": "vscode", "type": "document_change", "task": "auth", "project": "/home/u/api", "file": "auth.rs"},
+    {"id": "a2", "t": 30, "source": "vscode", "type": "document_change", "task": "auth", "project": "/home/u/api", "file": "auth.rs"},
+    {"id": "a3", "t": 60, "source": "shell", "type": "command", "task": "auth", "project": "/home/u/api", "command": "cargo test auth"},
+    {"id": "a4", "t": 420, "source": "firefox", "type": "navigation", "task": "auth", "domain": "docs.rs", "title": "jsonwebtoken - Rust"},
+    {"id": "a5", "t": 450, "source": "firefox", "type": "navigation", "task": "auth", "domain": "stackoverflow.com", "title": "jwt validation rust expired token"},
+    {"id": "a6", "t": 480, "source": "firefox", "type": "user_action", "task": "auth", "domain": "docs.rs", "title": "Validation in jsonwebtoken"},
+    {"id": "a7", "t": 900, "source": "vscode", "type": "document_change", "task": "auth", "project": "/home/u/api", "file": "auth.rs"},
+    {"id": "a8", "t": 940, "source": "shell", "type": "command", "task": "auth", "project": "/home/u/api", "command": "cargo test auth"},
+    {"id": "a9", "t": 970, "source": "shell", "type": "command", "task": "auth", "project": "/home/u/api", "command": "git commit -m fix-jwt-expiry"},
+    {"id": "f1", "t": 1400, "source": "firefox", "type": "navigation", "task": "fun", "domain": "youtube.com", "title": "lofi beats"},
+    {"id": "f2", "t": 1430, "source": "firefox", "type": "navigation", "task": "fun", "domain": "reddit.com", "title": "r/rust memes"},
+    {"id": "f3", "t": 1460, "source": "firefox", "type": "navigation", "task": "fun", "domain": "reddit.com", "title": "r/pics"},
+    {"id": "a10", "t": 1900, "source": "vscode", "type": "document_change", "task": "auth", "project": "/home/u/api", "file": "auth_test.rs"},
+    {"id": "a11", "t": 1930, "source": "shell", "type": "command", "task": "auth", "project": "/home/u/api", "command": "cargo test"}
+  ]
+}
