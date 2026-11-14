@@ -62,5 +62,33 @@ case "${1:-idle}" in
     echo "$out" | jq -r '.intents[] | "  \(.label) — \(.summary)"' | head -20
     mem
     ;;
-  *) echo "usage: $0 idle|ingest [N] [C]|pipeline [N]" >&2; exit 2 ;;
+  labels)
+    # Pipeline with the local provider over the engine's sample days, vs templates.
+    model=${2:-qwen2.5:3b}
+    put() { curl -fsS -X PUT -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "$1" "$API/settings/llm"; }
+    for mode in ${MODES:-template local}; do
+      if [[ $mode == template ]]; then
+        put '{"provider":"none"}' | jq -c '{provider}'
+      else
+        put "{\"provider\":\"local\",\"model\":\"$model\",\"embedding_model\":\"nomic-embed-text\",\"enable_semantic_cluster\":true}" |
+          jq -c '{provider, model, embedding_model, semantic_cluster_enabled, local_server_reachable}'
+      fi
+      for f in sample-day coding-research-day debugging-day interrupted-day; do
+        start=$(date +%s%N)
+        out=$(curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+          --data-binary @"$ROOT/crates/intent-engine/tests/fixtures/$f.json" "$API/pipeline/run-replay")
+        end=$(date +%s%N)
+        echo "[$mode] $f: $(( (end - start) / 1000000 )) ms, $(echo "$out" | jq '.intents|length') roots, warnings $(echo "$out" | jq -c '[.warnings[].message]')"
+        echo "$out" | jq -r '.intents[] | .. | objects | select(has("label") and has("depth")) | "   \("  " * .depth)\(.label) — \(.summary) (conf \(.confidence))"'
+      done
+    done
+    curl -fsS -H "Authorization: Bearer $TOKEN" "$API/v1/status" | jq -c '.llm | {provider, reachable, semantic_enabled, harness, embedder}'
+    ;;
+  eval)
+    # Real local-model correlation eval (needs Ollama with the model pulled).
+    (cd "$ROOT" && cargo build --release -q -p intent-llm --bin intent-eval)
+    shift
+    time "$TARGET_DIR/release/intent-eval" --provider local --model "${1:-qwen2.5:3b}" "${@:2}"
+    ;;
+  *) echo "usage: $0 idle|ingest [N] [C]|pipeline [N]|eval [MODEL] [intent-eval flags]" >&2; exit 2 ;;
 esac
