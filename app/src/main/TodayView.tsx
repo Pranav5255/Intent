@@ -60,6 +60,11 @@ export function TodayView({ actions }: { actions: MainActions }) {
     : [];
   const resumeCards = [...new Set([...ordered.filter(hasResume).slice(0, 1), ...top, ...ordered.filter(hasResume)])]
     .filter(hasResume)
+    // Two sessions of the same work read as duplicate cards; keep the most recent one.
+    .filter(
+      (i, _, all) =>
+        !all.some((o) => o !== i && o.label === i.label && projectOf(o) === projectOf(i) && o.end_ts > i.end_ts),
+    )
     .slice(0, 4);
 
   return (

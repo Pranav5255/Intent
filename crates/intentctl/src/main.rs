@@ -171,7 +171,8 @@ fn run(cli: Cli) -> Result<()> {
                 Some(d) => format!("/pipeline/run?date={d}"),
                 None => "/pipeline/run".to_string(),
             };
-            let res = api.send("POST", &path, None)?;
+            // A local model can take minutes per day on CPU; don't give up at the default 30 s.
+            let res = Api { agent: agent(Duration::from_secs(900)), ..api }.send("POST", &path, None)?;
             let count = res["intents"].as_array().map_or(0, Vec::len);
             println!("{count} intents (cached: {})", res["cached"]);
             Ok(())
