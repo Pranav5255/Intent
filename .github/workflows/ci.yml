@@ -221,7 +221,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config dpkg-dev jq \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
-            xvfb openbox xdotool x11-utils xterm dbus-x11 imagemagick tcpdump stalonetray xcompmgr
+            xvfb openbox xdotool x11-utils xterm wmctrl dbus-x11 imagemagick tcpdump stalonetray xcompmgr
       - name: Set up Rust
         run: rustup update stable --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3

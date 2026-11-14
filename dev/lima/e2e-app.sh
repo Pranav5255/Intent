@@ -36,6 +36,7 @@ rm -f "$SHOTS"/*.png
 need tcpdump
 need stalonetray
 need xcompmgr
+need wmctrl
 need desktop-file-validate desktop-file-utils
 
 if [[ "${SKIP_SEED:-0}" != "1" ]]; then
