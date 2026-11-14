@@ -328,9 +328,17 @@ pub struct PauseBody {
     paused: bool,
     #[serde(default)]
     duration_seconds: Option<i64>,
+    /// Absolute resume time (epoch seconds), as the Tauri app sends it.
+    #[serde(default)]
+    until: Option<i64>,
 }
 
-pub async fn pause(State(state): State<AppState>, JsonBody(body): JsonBody<PauseBody>) -> ApiResult<Json<Value>> {
+pub async fn pause(State(state): State<AppState>, JsonBody(mut body): JsonBody<PauseBody>) -> ApiResult<Json<Value>> {
+    if body.duration_seconds.is_none()
+        && let Some(until) = body.until
+    {
+        body.duration_seconds = Some((until - now_ts()).max(1));
+    }
     if let Some(s) = body.duration_seconds
         && !(1..=MAX_PAUSE_SECONDS).contains(&s)
     {
@@ -341,7 +349,7 @@ pub async fn pause(State(state): State<AppState>, JsonBody(body): JsonBody<Pause
         .await?
         .map_err(|e| ApiError::store(e, UNPROCESSABLE))?;
     tracing::info!(paused = record.paused, until = ?record.until, "capture pause changed");
-    Ok(Json(json!({"ok": true, "paused": record.paused, "paused_until": record.until})))
+    Ok(Json(json!({"ok": true, "paused": record.paused, "paused_until": record.until, "until": record.until})))
 }
 
 // ---------------------------------------------------------------------------
@@ -400,6 +408,7 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
     let mut detailed = state.config.public_detailed_config().map_err(config_read)?;
     detailed["event_counts"] = json!(detailed_counts);
     let pause = state.pause.current();
+    let db_size = util::database_size(state.store.path());
     let probe = state.local_probe(false).await;
     let llm = state.llm();
     let parse = |raw: Option<String>| raw.and_then(|r| serde_json::from_str::<Value>(&r).ok());
@@ -410,6 +419,7 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
         "session_type": std::env::var("XDG_SESSION_TYPE").unwrap_or_else(|_| "unknown".into()),
         "capture_paused": pause.paused,
         "paused_until": pause.until,
+        "capture_paused_until": pause.until,
         "ingestion": state.writer.snapshot(),
         "sources": sources,
         "services": {
@@ -422,7 +432,8 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
         "activity": state.feed.snapshot(),
         "detailed_capture": detailed,
         "llm": llm.status(probe.as_ref()),
-        "database": {"path": state.store.path(), "size_bytes": util::database_size(state.store.path())},
+        "database": {"path": state.store.path(), "size_bytes": db_size},
+        "db_size_bytes": db_size,
         "pipeline": {"last_run": parse(last_run)},
         "retention": {"policy": state.config.retention_policy().ok().map(|p| *p), "last_run": parse(retention)},
         "uptime_seconds": now - state.started_at,

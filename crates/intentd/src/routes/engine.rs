@@ -64,6 +64,8 @@ pub struct SearchQuery {
     limit: Option<i64>,
     date_from: Option<String>,
     date_to: Option<String>,
+    /// Restrict hits to intents tagged `project:<name>` (the overlay's scope chip).
+    project: Option<String>,
 }
 
 pub async fn search(State(state): State<AppState>, QueryParams(q): QueryParams<SearchQuery>) -> ApiResult<Response> {
@@ -72,9 +74,27 @@ pub async fn search(State(state): State<AppState>, QueryParams(q): QueryParams<S
         return Err(ApiError::bad_request("q must be non-empty and limit must be between 1 and 100"));
     }
     let embedder = state.llm().providers.embedder.clone();
-    let hits = hybrid_search(&state.store, embedder.as_ref(), &q.q, limit as usize, q.date_from, q.date_to)
+    let project = q.project.filter(|p| !p.trim().is_empty());
+    // Over-fetch when scoped so filtering by project still fills the page.
+    let fetch = if project.is_some() { (limit * 4).min(100) } else { limit };
+    let hits = hybrid_search(&state.store, embedder.as_ref(), &q.q, fetch as usize, q.date_from, q.date_to)
         .await
         .map_err(|e| ApiError::store(e, BAD))?;
+    let hits = match project {
+        None => hits,
+        Some(project) => {
+            let store = state.store.clone();
+            blocking(move || {
+                hits.into_iter()
+                    .filter(|h| {
+                        store.intent_by_id(&h.id).ok().flatten().is_some_and(|i| i.project_tag() == Some(project.as_str()))
+                    })
+                    .take(limit as usize)
+                    .collect::<Vec<_>>()
+            })
+            .await?
+        }
+    };
     Ok(Json(hits).into_response())
 }
 

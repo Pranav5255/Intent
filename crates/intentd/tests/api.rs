@@ -141,6 +141,15 @@ async fn pause_persists_across_restart_and_expires() {
     assert_eq!(body["paused_until"], Value::Null);
     let (s, _) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "duration_seconds": 0}))).await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // The Tauri app sends an absolute `until` and reads `capture_paused_until`.
+    let until = intent_store::now_ts() + 900;
+    let (s, body) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "until": until}))).await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(body["until"], until);
+    let (_, status) = d.call(Method::GET, "/v1/status", None).await;
+    assert_eq!(status["capture_paused_until"], until);
+    assert!(status["db_size_bytes"].as_u64().unwrap() > 0);
     d.stop().await;
 }
 
@@ -395,6 +404,14 @@ async fn pipeline_search_digest_resume_restore() {
     assert!(hits.as_array().unwrap().iter().any(|h| h["date"] == date.as_str()), "{hits}");
     let (s, _) = d.call(Method::GET, "/intents/search?q=%20", None).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
+
+    // The overlay scopes search to a project tag.
+    if let Some(tag) = root["tags"].as_array().unwrap().iter().filter_map(Value::as_str).find_map(|t| t.strip_prefix("project:")) {
+        let (_, scoped) = d.call(Method::GET, &format!("/intents/search?q={word}&project={tag}"), None).await;
+        assert!(!scoped.as_array().unwrap().is_empty(), "{scoped}");
+    }
+    let (_, other) = d.call(Method::GET, &format!("/intents/search?q={word}&project=no-such-project"), None).await;
+    assert!(other.as_array().unwrap().is_empty(), "{other}");
 
     let (_, digest) = d.call(Method::GET, &format!("/intents/digest?date={date}"), None).await;
     assert_eq!(digest["date"], date.as_str());
