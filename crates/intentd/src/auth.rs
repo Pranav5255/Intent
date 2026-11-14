@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use axum::extract::{Request, State};
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 
@@ -38,6 +38,11 @@ impl Token {
             }
         }
         Err(last_err.unwrap_or_else(|| anyhow::anyhow!("no token path configured")))
+    }
+
+    /// The secret itself (for in-process clients and tests).
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     fn matches(&self, presented: &str) -> bool {
@@ -73,18 +78,22 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 
-/// axum middleware: rejects requests without the daemon's bearer token.
-pub async fn require_token(State(token): State<Token>, request: Request, next: Next) -> Response {
-    let presented = request
-        .headers()
+/// Whether `headers` carry this daemon's bearer token.
+pub fn authorized(token: &Token, headers: &HeaderMap) -> bool {
+    headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "));
-    match presented {
-        Some(p) if token.matches(p.trim()) => next.run(request).await,
-        _ => (StatusCode::UNAUTHORIZED, axum::Json(serde_json::json!({ "detail": "missing or invalid token" })))
-            .into_response(),
-    }
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .is_some_and(|p| token.matches(p.trim()))
+}
+
+pub fn unauthorized() -> Response {
+    (StatusCode::UNAUTHORIZED, axum::Json(serde_json::json!({ "detail": "missing or invalid token" }))).into_response()
+}
+
+/// axum middleware: rejects requests without the daemon's bearer token.
+pub async fn require_token(State(token): State<Token>, request: Request, next: Next) -> Response {
+    if authorized(&token, request.headers()) { next.run(request).await } else { unauthorized() }
 }
 
 #[cfg(test)]
@@ -97,7 +106,7 @@ mod tests {
         let path = dir.join("intent/token");
         let (first, at) = Token::load_or_create(std::slice::from_ref(&path)).unwrap();
         assert_eq!(at, path);
-        let (second, _) = Token::load_or_create(&[path.clone()]).unwrap();
+        let (second, _) = Token::load_or_create(std::slice::from_ref(&path)).unwrap();
         assert!(first.matches(&second.0));
         #[cfg(unix)]
         {

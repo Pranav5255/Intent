@@ -8,6 +8,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
 
+use futures::future::BoxFuture;
 use futures::stream::{self, StreamExt};
 use intent_llm::{ClusterSemantics, Embedder, LabelLevel, LabelProvider, SemanticFallback, SemanticRefiner};
 use intent_types::{
@@ -409,8 +410,13 @@ pub async fn run(input: PipelineInput, deps: &PipelineDeps) -> PipelineResult {
 
     // Stage 1: cluster / correlate / refine sessions concurrently.
     let sessions = sessionize(&events, config.session_gap_minutes);
-    let plans: Vec<SessionPlan> = stream::iter(sessions.into_iter().enumerate())
-        .map(|(index, range)| plan_session(index, range, &events, deps))
+    // Eager + boxed for the same `Send` reason as in `label_all`.
+    let session_futures: Vec<BoxFuture<'_, SessionPlan>> = sessions
+        .into_iter()
+        .enumerate()
+        .map(|(index, range)| -> BoxFuture<'_, SessionPlan> { Box::pin(plan_session(index, range, &events, deps)) })
+        .collect();
+    let plans: Vec<SessionPlan> = stream::iter(session_futures)
         .buffered(config.session_concurrency.max(1))
         .collect()
         .await;
@@ -502,8 +508,16 @@ async fn label_all(
     fallbacks: &mut usize,
 ) -> Vec<intent_llm::LabelResult> {
     let provider = deps.label_provider.as_ref();
-    let results: Vec<_> = stream::iter(jobs)
-        .map(|features| label_with_fallback(provider, &deps.fallback, features, level, deps.config.label_timeout))
+    // The futures are built eagerly and boxed as `Send`: a borrowing `.map(closure)`
+    // stream held across `.await` makes rustc unable to prove `run()`'s future is `Send`
+    // for every lifetime, so it could not be spawned on a multi-threaded runtime.
+    let futures: Vec<BoxFuture<'_, _>> = jobs
+        .into_iter()
+        .map(|features| -> BoxFuture<'_, _> {
+            Box::pin(label_with_fallback(provider, &deps.fallback, features, level, deps.config.label_timeout))
+        })
+        .collect();
+    let results: Vec<_> = stream::iter(futures)
         .buffered(deps.config.label_concurrency.max(1))
         .collect()
         .await;
@@ -706,6 +720,15 @@ mod tests {
         assert_eq!(out.len(), 40);
         assert_eq!(out[1].field, "b");
         assert_eq!(out[1].value.len(), MAX_EVIDENCE_VALUE_CHARS);
+    }
+
+    #[tokio::test]
+    async fn run_future_can_be_spawned() {
+        // Regression: the daemon runs the pipeline from axum handlers / tokio::spawn,
+        // which require a `Send + 'static` future.
+        let deps = Arc::new(PipelineDeps::template_only());
+        let handle = tokio::spawn(async move { run(day(), &deps).await });
+        assert!(!handle.await.unwrap().intents.is_empty());
     }
 
     #[test]
