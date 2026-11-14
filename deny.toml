@@ -1,0 +1,56 @@
+# cargo-deny policy for the workspace and app/src-tauri (CI job `audit`).
+#   cargo deny check                                  # workspace
+#   cargo deny --manifest-path app/src-tauri/Cargo.toml check
+
+[graph]
+all-features = true
+
+[advisories]
+# Vulnerabilities, unsound and yanked crates fail anywhere in the tree. "Unmaintained"
+# fails only for crates we depend on directly: the transitive ones (tokenizers' and
+# Tauri's dependencies, zbus internals) can only move when those crates do, and
+# Dependabot plus the nightly run surface that. Exceptions need a reason and a date.
+version = 2
+yanked = "deny"
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "0BSD",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "Unlicense",
+  "CC0-1.0",
+  "BSL-1.0",
+  "CDLA-Permissive-2.0",
+  # File-level copyleft, only reached through Tauri (cssparser, selectors) and
+  # dirs (option-ext). Shipping a binary that links them is fine; modified copies of
+  # those files would have to stay MPL.
+  "MPL-2.0",
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# The crate ships an MIT LICENSE file but declares it with `license-file` only.
+[[licenses.clarify]]
+crate = "model2vec-rs"
+expression = "MIT"
+license-files = [{ path = "LICENSE", hash = 0x1f86646e }]

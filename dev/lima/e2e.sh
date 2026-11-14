@@ -7,7 +7,6 @@
 # events, runs the pipeline and checks the API. Exits non-zero on any failure.
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 DEB=${1:-$HOME/dist/intent_2.0.0_$(dpkg --print-architecture).deb}
 API=http://127.0.0.1:9477
 export DISPLAY=:99 XDG_SESSION_TYPE=x11

@@ -31,8 +31,8 @@ count() {
 }
 settle() {
   # background senders are detached; give them a moment
-  local i
-  for i in 1 2 3 4 5 6 7 8 9 10; do
+  local _
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
     sleep 0.2
   done
 }

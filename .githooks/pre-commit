@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fast checks on what is being committed. Enable with: git config core.hooksPath .githooks
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+fail=0
+dev/ci/tree-hygiene.sh --staged || fail=1
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+if grep -qE '\.rs$' <<<"$staged"; then
+  cargo fmt --all --check >/dev/null 2>&1 && (cd app/src-tauri && cargo fmt --check >/dev/null 2>&1) ||
+    { echo "✗ rustfmt: run cargo fmt --all (and in app/src-tauri)" >&2; fail=1; }
+fi
+if command -v shellcheck >/dev/null; then
+  scripts=$(grep -E '\.sh$|^shell/intent\.bash$|^packaging/debian/maintainer-scripts/' <<<"$staged" || true)
+  if [[ -n $scripts ]]; then
+    # shellcheck disable=SC2086 # one path per word
+    shellcheck -S warning $scripts || fail=1
+  fi
+fi
+exit "$fail"

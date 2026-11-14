@@ -142,6 +142,7 @@ _intent_pc_is_array() {
 _intent_install_string=$'_intent_old_trap=$(trap -p DEBUG)\ntrap - DEBUG\n_intent_install'
 
 _intent_install() {
+  # shellcheck disable=SC2154 # set by the PROMPT_COMMAND snippet above
   local old=$_intent_old_trap q="'\\''"
   unset _intent_old_trap
   old=${old#"trap -- '"}
@@ -163,6 +164,7 @@ _intent_install() {
     PROMPT_COMMAND=(_intent_precmd "${kept[@]}" _intent_arm)
   else
     local pc=${PROMPT_COMMAND//"$_intent_install_string"/}
+    # shellcheck disable=SC2178 # PROMPT_COMMAND is a string in this branch
     PROMPT_COMMAND=$'_intent_precmd\n'"${pc}"$'\n_intent_arm'
   fi
   unset -f _intent_install _intent_pc_is_array

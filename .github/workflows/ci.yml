@@ -1,0 +1,284 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  # Nightly on main with the newest stable Rust and fresh advisories: catches a new
+  # clippy lint, a yanked crate or a RustSec advisory before the next change does.
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+# One run per PR branch; a newer push cancels the older run. Pushes to main always
+# finish, so every commit on main has a complete verdict.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only by default; nothing in this workflow writes to the repo.
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # Formatting and static checks for everything that isn't compiled.
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add rustfmt
+      - name: rustfmt (workspace)
+        run: cargo fmt --all --check
+      - name: rustfmt (app)
+        working-directory: app/src-tauri
+        run: cargo fmt --check
+      - name: shellcheck
+        run: |
+          shellcheck --version
+          git ls-files -z '*.sh' 'shell/intent.bash' 'packaging/debian/maintainer-scripts/*' '.githooks/*' |
+            xargs -0 shellcheck -S warning
+      - name: No secrets, env files or stray build output in the tree
+        run: dev/ci/tree-hygiene.sh
+
+  # Clippy and tests on Linux, where the collectors, D-Bus and inotify code compile.
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --locked
+      - name: test
+        run: cargo test --workspace --locked
+      - name: test (release, as packaged)
+        run: cargo test --workspace --locked --release
+
+  # The workspace must keep building and testing on macOS (Linux-only code is cfg-gated).
+  rust-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo clippy --workspace --all-targets --locked
+      - run: cargo test --workspace --locked
+
+  # The declared rust-version is a promise; check it.
+  msrv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the declared rust-version
+        run: |
+          msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml)
+          echo "MSRV=$msrv" >> "$GITHUB_ENV"
+          rustup toolchain install "$msrv" --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo +"$MSRV" check --workspace --all-targets --locked
+        env:
+          RUSTFLAGS: ''
+
+  # The Tauri app: TypeScript, frontend build, and its Rust crate.
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install WebKitGTK and tray build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: app/src-tauri
+      - working-directory: app
+        run: npm ci --no-audit --no-fund
+      - name: typecheck
+        working-directory: app
+        run: npm run typecheck
+      - name: build (mock data)
+        working-directory: app
+        run: npm run build:mock
+      - name: build
+        working-directory: app
+        run: npm run build
+      - name: clippy (app crate)
+        working-directory: app/src-tauri
+        run: cargo clippy --all-targets --locked
+      - name: test (app crate)
+        working-directory: app/src-tauri
+        run: cargo test --locked
+
+  # The bash and zsh hooks, driven as real interactive shells.
+  shell-hooks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh
+      - run: bash shell/test_hooks.sh
+
+  # Known vulnerabilities, yanked crates, licenses and sources.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-deny
+      - name: cargo deny (workspace)
+        run: cargo deny --locked check
+      - name: cargo deny (app)
+        run: cargo deny --locked --manifest-path app/src-tauri/Cargo.toml check
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: npm audit (app runtime dependencies)
+        working-directory: app
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: npm audit (app build tooling)
+        working-directory: app
+        run: npm audit --audit-level=high
+      - name: npm audit (companions)
+        run: |
+          for dir in integrations/firefox-extension integrations/vscode-extension; do
+            (cd "$dir" && npm audit --audit-level=high)
+          done
+
+  # Build the .deb (daemon, CLI and app) on both architectures, install it on a clean
+  # runner and exercise it for real: capture → pipeline → API, the app against the
+  # daemon, and the resource budgets.
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install build and desktop-session dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config dpkg-dev jq \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
+            xvfb openbox xdotool x11-utils xterm dbus-x11 imagemagick tcpdump stalonetray xcompmgr
+      - name: Set up Rust
+        run: rustup update stable --no-self-update && rustup default stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            . -> target
+            app/src-tauri -> ../../target
+      - name: Build the .deb
+        run: |
+          arch=$(dpkg --print-architecture)
+          echo "DEB=$HOME/dist/intent_2.0.0_$arch.deb" >> "$GITHUB_ENV"
+          echo "ARCH=$arch" >> "$GITHUB_ENV"
+          INTENT_BUILD_APP=1 packaging/build-deb.sh --output "$HOME/dist/intent_2.0.0_$arch.deb"
+          dpkg-deb --info "$HOME/dist/intent_2.0.0_$arch.deb"
+      - name: Start a systemd user session
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          uid=$(id -u)
+          for _ in $(seq 60); do [ -S "/run/user/$uid/bus" ] && break; sleep 0.5; done
+          echo "XDG_RUNTIME_DIR=/run/user/$uid" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus" >> "$GITHUB_ENV"
+          XDG_RUNTIME_DIR=/run/user/$uid systemctl --user is-system-running || true
+      - name: End to end (install, real capture, pipeline, API)
+        run: dev/lima/e2e.sh "$DEB"
+      - name: Budgets (memory, CPU, ingest, pipeline)
+        run: dev/ci/budgets.sh
+      - name: End to end (desktop app against the daemon)
+        env:
+          SKIP_SEED: '1'
+          IDLE_SECONDS: '20'
+          SHOTS: ${{ runner.temp }}/shots
+        run: dev/lima/e2e-app.sh "$DEB"
+      - name: Daemon journal
+        if: always()
+        run: journalctl --user -u intentd --no-pager -o short-precise | tail -200 || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: deb-and-screenshots-${{ env.ARCH }}
+          path: |
+            ~/dist/*.deb
+            ${{ runner.temp }}/shots/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
+  # The single required check. Every job that can fail a change is listed here; a job
+  # missing from this list runs but cannot block a merge.
+  gate:
+    if: always()
+    needs: [lint, rust, rust-macos, msrv, app, shell-hooks, audit, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "results: $results"
+          for r in $results; do
+            [ "$r" = success ] || { echo "a required gate reported '$r'"; exit 1; }
+          done

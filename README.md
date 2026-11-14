@@ -28,12 +28,13 @@ Everything runs and stays on your machine. An LLM is optional and local by defau
 | `dev/lima/` | Ubuntu test VM, end-to-end and measurement scripts |
 
 Architecture, API and auth details: [`docs/REWRITE.md`](docs/REWRITE.md).
+Test gates: [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Develop
 
 ```bash
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+git config core.hooksPath .githooks   # pre-commit and pre-push checks
+dev/ci/check.sh                       # local gates: fmt, clippy, tests, hooks, typecheck
 
 # UI against mock data (no daemon needed), http://localhost:1420
 cd app && npm ci && npm run dev:mock

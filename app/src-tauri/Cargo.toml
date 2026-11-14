@@ -5,6 +5,7 @@ description = "Intent desktop app: palette overlay, main window and tray"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
+publish = false
 repository = "https://github.com/Pranav5255/Intent"
 
 # Standalone crate: the repository workspace excludes app/src-tauri, and this
