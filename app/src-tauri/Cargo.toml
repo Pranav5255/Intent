@@ -1,0 +1,47 @@
+[package]
+name = "intent-app"
+version = "2.0.0"
+description = "Intent desktop app: palette overlay, main window and tray"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+repository = "https://github.com/Pranav5255/Intent"
+
+# Standalone crate: the repository workspace excludes app/src-tauri, and this
+# empty table stops Cargo from searching further up for a workspace root.
+[workspace]
+
+[lib]
+name = "intent_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+intent-types = { path = "../../crates/intent-types" }
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+tokio = { version = "1", features = ["time", "sync"] }
+
+# XDG desktop portal (GNOME accent colour). Compiled on every Unix so it is
+# type-checked on macOS too; only called on Linux.
+[target.'cfg(unix)'.dependencies]
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
+
+[profile.dev]
+debug = "line-tables-only"
