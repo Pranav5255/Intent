@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::Store;
 use crate::day::{DayZone, now_ts, validate_date};
 use crate::error::{Result, invalid};
+use crate::forget::drop_date_intents;
 
 /// `(source, type)` pairs that carry content-level ("detailed") capture.
 /// This is the ONE list used for retention tiers, counts and purges.
@@ -114,7 +115,11 @@ impl RetentionCutoffs {
 pub struct RetentionCounts {
     pub detailed: i64,
     pub metadata: i64,
+    /// Total events (`detailed + metadata`).
     pub total: i64,
+    /// Intent rows (roots and children) of days past the metadata cutoff.
+    #[serde(default)]
+    pub intents: i64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -459,9 +464,10 @@ impl Store {
         })
     }
 
-    /// How many events each tier would delete for `cutoffs`.
+    /// How many events each tier, and how many intents, a purge would delete.
     pub fn retention_preview(&self, cutoffs: &RetentionCutoffs) -> Result<RetentionCounts> {
         let clause = detailed_clause();
+        let intent_cutoff = self.intent_cutoff(cutoffs);
         self.read(|c| {
             let detailed = match cutoffs.effective_detailed() {
                 Some(cut) => c
@@ -475,16 +481,25 @@ impl Store {
                     .query_row([cut], |r| r.get(0))?,
                 None => 0,
             };
-            Ok(RetentionCounts { detailed, metadata, total: detailed + metadata })
+            let intents = match &intent_cutoff {
+                Some(day) => {
+                    c.prepare_cached("SELECT COUNT(*) FROM intents WHERE date < ?1")?.query_row([day], |r| r.get(0))?
+                }
+                None => 0,
+            };
+            Ok(RetentionCounts { detailed, metadata, total: detailed + metadata, intents })
         })
     }
 
     /// Delete events past the retention cutoffs and recompute stats for only the
     /// days that actually lost rows (collected via `DELETE ... RETURNING day`).
+    /// Intents of whole days before the metadata cutoff go too, with their search
+    /// rows and vectors.
     pub fn purge_retention(&self, cutoffs: &RetentionCutoffs) -> Result<PurgeReport> {
         let clause = detailed_clause();
         let now = now_ts();
-        self.write(|tx| {
+        let intent_cutoff = self.intent_cutoff(cutoffs);
+        let report = self.write(|tx| {
             let mut days = BTreeSet::new();
             let detailed = match cutoffs.effective_detailed() {
                 Some(cut) => delete_collecting_days(
@@ -507,18 +522,39 @@ impl Store {
             for day in &days {
                 recompute_day(tx, day, now)?;
             }
+            let mut intents = 0;
+            if let Some(cutoff) = &intent_cutoff {
+                let dates: Vec<String> = {
+                    let mut stmt = tx.prepare_cached("SELECT DISTINCT date FROM intents WHERE date < ?1")?;
+                    stmt.query_map([cutoff], |r| r.get(0))?.collect::<rusqlite::Result<_>>()?
+                };
+                for date in &dates {
+                    intents += drop_date_intents(tx, date)?.len() as i64;
+                }
+                tx.execute("DELETE FROM pipeline_runs WHERE date < ?1", [cutoff])?;
+            }
             Ok(PurgeReport {
-                deleted: RetentionCounts { detailed, metadata, total: detailed + metadata },
+                deleted: RetentionCounts { detailed, metadata, total: detailed + metadata, intents },
                 affected_days: days.into_iter().collect(),
             })
-        })
+        })?;
+        if report.deleted.total > 0 || report.deleted.intents > 0 {
+            self.scrub()?;
+        }
+        Ok(report)
+    }
+
+    /// Intents of days before this date are past the metadata cutoff. Whole days
+    /// only: every event of such a day is older than the cutoff too.
+    fn intent_cutoff(&self, cutoffs: &RetentionCutoffs) -> Option<String> {
+        cutoffs.metadata_before.map(|cut| self.local_day(cut))
     }
 
     /// Delete every detailed-tier event regardless of age (consent withdrawn).
     pub fn purge_detailed_events(&self) -> Result<PurgeReport> {
         let clause = detailed_clause();
         let now = now_ts();
-        self.write(|tx| {
+        let report = self.write(|tx| {
             let mut days = BTreeSet::new();
             let detailed = delete_collecting_days(
                 tx,
@@ -530,10 +566,14 @@ impl Store {
                 recompute_day(tx, day, now)?;
             }
             Ok(PurgeReport {
-                deleted: RetentionCounts { detailed, metadata: 0, total: detailed },
+                deleted: RetentionCounts { detailed, metadata: 0, total: detailed, intents: 0 },
                 affected_days: days.into_iter().collect(),
             })
-        })
+        })?;
+        if report.deleted.total > 0 {
+            self.scrub()?;
+        }
+        Ok(report)
     }
 
     /// Recompute every event's `day` with the current [`DayZone`] and rebuild all day

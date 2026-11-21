@@ -173,7 +173,7 @@ export function IntentDrawer({ id, actions, onClose }: { id: string; actions: Ma
                 onClick={() =>
                   setConfirm({
                     title: `Forget ${relativeDay(intent.date)}?`,
-                    text: 'Every thread, summary and search entry for this day is deleted from this computer. This can’t be undone.',
+                    text: 'Everything recorded on this day is deleted from this computer, with its threads and search entries. This can’t be undone.',
                     confirm: 'Forget day',
                     destructive: true,
                     onConfirm: async () => {
