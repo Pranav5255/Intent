@@ -51,7 +51,9 @@ impl DayZone {
     /// `YYYY-MM-DD` of the day containing unix timestamp `ts` (seconds) in this zone.
     pub fn day_for_ts(&self, ts: i64) -> String {
         let Ok(instant) = Timestamp::from_second(ts) else {
-            // Outside jiff's range (years -9999..=9999); bucket deterministically.
+            // jiff covers years -9999..=9999, so only absurd values land here. Ingest
+            // refuses a negative ts or one more than a day ahead, but the 1.x importer and
+            // old rows bypass that check. Bucket them deterministically instead of failing.
             return "1970-01-01".to_string();
         };
         let zone = match self {

@@ -441,6 +441,36 @@ fn hybrid_search_ordering() {
 }
 
 #[test]
+fn hybrid_search_ignores_empty_and_distant_vectors() {
+    let dir = TempDir::new().unwrap();
+    let store = open_with(&dir, Some(EmbedderSpec { identity: "t".into(), dims: 3 }));
+    let a = intent("a", None, 0, "Kubernetes deploy", "Rolled out the cluster upgrade", &[]);
+    let b = intent("b", None, 0, "Container networking", "Read CNI documentation", &[]);
+    let z = intent("z", None, 0, "Empty vector", "An intent whose text embedded to nothing", &[]);
+    store.save_pipeline_run("2024-01-01", &result(vec![a, b, z], "h")).unwrap();
+    store.upsert_embedding("a", &[1.0, 0.0, 0.0]).unwrap();
+    store.upsert_embedding("b", &[0.0, 1.0, 0.0]).unwrap();
+    store.upsert_embedding("z", &[0.0, 0.0, 0.0]).unwrap();
+
+    // A zero-norm query (text with no tokens) has no cosine distance: no semantic hits.
+    assert!(store.hybrid_search("*", Some(&[0.0, 0.0, 0.0]), 10, None, None).unwrap().is_empty());
+    assert!(store.vector_search(&[0.0, 0.0, 0.0], 10, None, None).unwrap().is_empty());
+    // A non-finite query falls back to keyword ranking.
+    let hits = store.hybrid_search("kubernetes", Some(&[f32::NAN, 0.0, 0.0]), 10, None, None).unwrap();
+    assert_eq!(hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(), vec!["a"]);
+    // A stored zero vector has a NULL distance: it is no match, not an error.
+    let hits = store.vector_search(&[1.0, 0.0, 0.0], 10, None, None).unwrap();
+    assert!(hits.iter().all(|h| h.id != "z"), "{hits:?}");
+    // KNN always returns the nearest vectors; semantic-only hits need some similarity.
+    assert!(store.hybrid_search("zzqqxx", Some(&[0.0, 0.0, 1.0]), 10, None, None).unwrap().is_empty());
+    let hits = store.hybrid_search("zzqqxx", Some(&[0.1, 1.0, 0.0]), 10, None, None).unwrap();
+    assert_eq!(hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(), vec!["b"]);
+    // A keyword match stays even when its vector is far away.
+    let hits = store.hybrid_search("kubernetes", Some(&[0.0, 1.0, 0.0]), 10, None, None).unwrap();
+    assert_eq!(hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(), vec!["a", "b"]);
+}
+
+#[test]
 fn facts_and_metadata() {
     let dir = TempDir::new().unwrap();
     let store = open_with(&dir, Some(EmbedderSpec { identity: "t".into(), dims: 2 }));

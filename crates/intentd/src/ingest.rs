@@ -382,14 +382,14 @@ pub enum Delivery {
     Enqueue,
 }
 
-/// Validate a raw JSON body the way 1.x pydantic did.
-pub fn parse_event(body: &[u8]) -> Result<RawEvent, IngestError> {
+/// Validate a raw JSON body the way 1.x pydantic did. `now` bounds future timestamps.
+pub fn parse_event(body: &[u8], now: i64) -> Result<RawEvent, IngestError> {
     let event: EventIn = serde_json::from_slice(body).map_err(|e| IngestError::Invalid(e.to_string()))?;
-    validate_event(event).map_err(|e| IngestError::Invalid(e.message))
+    validate_event(event, now).map_err(|e| IngestError::Invalid(e.message))
 }
 
 /// Re-validate an event produced in-process (collectors use the same rules).
-pub fn revalidate(event: RawEvent) -> Result<RawEvent, IngestError> {
+pub fn revalidate(event: RawEvent, now: i64) -> Result<RawEvent, IngestError> {
     let input = EventIn {
         id: event.id,
         schema_version: event.schema_version,
@@ -398,7 +398,7 @@ pub fn revalidate(event: RawEvent) -> Result<RawEvent, IngestError> {
         kind: event.kind,
         payload: event.payload,
     };
-    validate_event(input).map_err(|e| IngestError::Invalid(e.message))
+    validate_event(input, now).map_err(|e| IngestError::Invalid(e.message))
 }
 
 /// pause → admit → writer.

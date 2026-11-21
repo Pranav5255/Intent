@@ -30,7 +30,7 @@ app and `intentctl` read it.
 | Route | Methods | Token | Notes |
 |---|---|---|---|
 | `/healthz` | GET | open | `{ok, version, pipeline_version, database}` |
-| `/v1/event`, `/event` | POST | open | 201 stored · 200 duplicate id · 204 dropped (paused / no consent / workspace not approved) · 422 invalid or rejected by redaction · 503 writer queue full / unavailable |
+| `/v1/event`, `/event` | POST | open | 201 stored · 200 duplicate id · 204 dropped (paused / no consent / workspace not approved) · 415 content type is not `application/json` · 422 invalid, `ts` more than 1 day ahead, or rejected by redaction · 503 writer queue full / unavailable |
 | `/v1/detailed-capture/config` | GET | open | read by the Firefox and VS Code companions |
 | `/v1/config` | GET | open | blocked domains |
 | `/v1/detailed-capture/config` | PUT | **token** | |
@@ -42,7 +42,7 @@ app and `intentctl` read it.
 | `/v1/detailed-capture/purge` | POST | **token** | |
 | `/v1/intelligence/preview-sample` | GET | **token** | |
 | `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
-| `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?}`; persisted with its resume time |
+| `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?, until?}`; persisted with its resume time · 422 unless the pause lasts 1 s to 7 days (`until` in the past is refused) |
 | `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention`, `config_warnings[]` (config entries intentd ignores, in words for the user) |
 | `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
 | `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
@@ -53,6 +53,23 @@ app and `intentctl` read it.
 **CORS.** Only `INTENT_FIREFOX_EXTENSION_ORIGIN` (the companion's `moz-extension://…` origin),
 `tauri://localhost` and `http://tauri.localhost` are allowed (debug builds add the Tauri dev
 server on `:1420`); Vite/localhost dev origins are never allowed in release builds.
+
+**Browser guards.** CORS only hides responses, so three more checks run before auth:
+
+- **Host.** Every request needs a `Host` of `127.0.0.1`, `localhost` or `[::1]`, with any
+  port or none. Anything else gets 421. This stops DNS rebinding: a page that rebinds its own
+  hostname to `127.0.0.1` still sends its own `Host`.
+- **Origin.** A POST, PUT or DELETE that carries an `Origin` must come from a
+  `moz-extension://` origin (a page cannot send that scheme), `tauri://localhost` or
+  `http://tauri.localhost` (debug builds add the dev server on `:1420`). Anything else,
+  `null` included, gets 403. Clients without an `Origin` (the shell hook, `intentctl`, the
+  VS Code companion, the app's Rust side) pass.
+- **Content type.** `POST /v1/event` and `/event` need `application/json` (parameters such as
+  `charset` are fine) and answer 415 otherwise. A page can send `text/plain` without a
+  preflight; JSON forces one, which CORS refuses.
+
+**Event time.** Ingest refuses a `ts` more than 1 day after the daemon's clock (422). Small
+clock skew passes. A larger `ts` is almost always milliseconds sent as seconds.
 
 ### Background work inside `intentd`
 

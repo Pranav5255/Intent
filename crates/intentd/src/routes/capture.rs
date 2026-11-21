@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use intent_capture::ConfigError;
 use intent_capture::config::{
@@ -24,6 +24,7 @@ use crate::ingest::{Delivery, IngestError, Ingested, SubmitError, ingest, parse_
 use crate::jobs::RETENTION_KEY;
 use crate::pause::MAX_PAUSE_SECONDS;
 use crate::pipeline::LAST_RUN_KEY;
+use crate::routes::guard;
 use crate::state::AppState;
 use crate::util;
 
@@ -57,8 +58,13 @@ pub async fn healthz(State(state): State<AppState>) -> Json<Value> {
 // Ingest
 // ---------------------------------------------------------------------------
 
-pub async fn ingest_event(State(state): State<AppState>, body: Bytes) -> Response {
-    let event = match parse_event(&body) {
+pub async fn ingest_event(State(state): State<AppState>, headers: HeaderMap, body: Bytes) -> Response {
+    // A web page can post `text/plain` without a CORS preflight; JSON forces one.
+    if !guard::is_json(&headers) {
+        return ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, "content-type must be application/json")
+            .into_response();
+    }
+    let event = match parse_event(&body, now_ts()) {
         Ok(event) => event,
         Err(IngestError::Invalid(msg)) => return ApiError::unprocessable(msg).into_response(),
         Err(_) => return ApiError::unprocessable("invalid event").into_response(),
@@ -348,10 +354,14 @@ pub struct PauseBody {
 }
 
 pub async fn pause(State(state): State<AppState>, JsonBody(mut body): JsonBody<PauseBody>) -> ApiResult<Json<Value>> {
-    if body.duration_seconds.is_none()
+    if body.paused
+        && body.duration_seconds.is_none()
         && let Some(until) = body.until
     {
-        body.duration_seconds = Some((until - now_ts()).max(1));
+        match until.checked_sub(now_ts()) {
+            Some(left) if left > 0 => body.duration_seconds = Some(left),
+            _ => return Err(ApiError::unprocessable("until must be in the future")),
+        }
     }
     if let Some(s) = body.duration_seconds
         && !(1..=MAX_PAUSE_SECONDS).contains(&s)
