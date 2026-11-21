@@ -156,7 +156,12 @@ for round in 1 2 3 4 5 6; do   # every reopen must take keyboard input (Escape c
   sleep 0.5
   xdotool key super+space
   wait_palette shown || fail "Super+Space did not reopen the palette (round $round)"
-  sleep 0.5
+  # Wait for the palette to hold the keyboard (a fixed 0.5 s raced on busy arm64
+  # runners); a palette that never takes focus still fails below.
+  for _ in $(seq 12); do
+    [[ $(xdotool getactivewindow 2>/dev/null) == "$(palette)" ]] && break
+    sleep 0.25
+  done
   xdotool key Escape
   wait_palette hidden || fail "the reopened palette ignored Escape (round $round)"
 done
