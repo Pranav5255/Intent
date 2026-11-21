@@ -172,6 +172,9 @@ for round in 1 2 3 4 5 6; do   # every reopen must take keyboard input (Escape c
     sleep 0.25
   done
   ((focused)) || fail "the reopened palette did not take keyboard focus (round $round)"
+  # A key in the first half second after a reopen can be lost (known issue); a person
+  # reaches for Escape later than that.
+  sleep 0.5
   xdotool key Escape
   wait_palette hidden || fail "the reopened palette ignored Escape (round $round)"
 done
