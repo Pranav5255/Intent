@@ -164,7 +164,7 @@ fn toggle_overlay(app: &AppHandle) {
     if just_blurred {
         return;
     }
-    place_overlay(app, &win);
+    let _ = place_overlay(app, &win);
     let _ = win.show();
     focus_when_shown(&win, true);
     let _ = win.emit("overlay-shown", ());
@@ -185,11 +185,16 @@ fn focus_when_shown(win: &WebviewWindow, reposition: bool) {
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
+        let _ = win.set_focus();
+        let _ = AsRef::<Webview>::as_ref(&win).set_focus();
         if reposition {
             // Before the first map, X11 can report a 0×0 size (centring the left edge,
             // x = 640 on a 1280 px screen) and the window manager's placement can land
             // after ours. Re-place until the window sits where it should, for up to 1 s.
             for _ in 0..20 {
+                if !win.is_visible().unwrap_or(false) {
+                    break;
+                }
                 let placed = place_overlay(win.app_handle(), &win);
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 if placed.is_some() && placed == win.outer_position().ok() {
@@ -197,8 +202,6 @@ fn focus_when_shown(win: &WebviewWindow, reposition: bool) {
                 }
             }
         }
-        let _ = win.set_focus();
-        let _ = AsRef::<Webview>::as_ref(&win).set_focus();
     });
 }
 
