@@ -28,14 +28,14 @@ pub fn start(state: &AppState) -> Spawned {
     let (tx, rx) = mpsc::channel::<RawEvent>(256);
     let cancel = state.cancel.child_token();
     let feed = Arc::clone(&state.feed);
+    // Intent's own writes (database, logs, token, configs) must never feed the watcher.
+    let mut never_watch = vec![state.paths.data_dir(), state.paths.config_dir()];
+    never_watch.extend(state.paths.runtime_dir());
+    let fs_options = FsOptions { never_watch, ..FsOptions::default() };
     let handles = vec![
         spawn(FocusCollector::new(FocusConfig::default(), Some(Arc::clone(&feed))), tx.clone(), cancel.clone()),
         spawn(IdleCollector::new(IdleConfig::default(), Arc::clone(&feed)), tx.clone(), cancel.clone()),
-        spawn(
-            FilesystemCollector::new(state.fs_watch.subscribe(), Arc::new(is_sensitive), FsOptions::default()),
-            tx,
-            cancel,
-        ),
+        spawn(FilesystemCollector::new(state.fs_watch.subscribe(), Arc::new(is_sensitive), fs_options), tx, cancel),
     ];
     {
         let mut statuses = state.collectors.lock().unwrap_or_else(|e| e.into_inner());

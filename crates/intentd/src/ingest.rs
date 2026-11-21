@@ -369,8 +369,6 @@ pub enum Ingested {
 pub enum IngestError {
     /// 422: the event failed validation or redaction.
     Invalid(String),
-    /// 500: a consent config file is unreadable.
-    Config(String),
     /// 503: the writer cannot accept the event.
     Unavailable(SubmitError),
 }
@@ -410,7 +408,8 @@ pub async fn ingest(shared: &Shared, event: RawEvent, delivery: Delivery) -> Res
         metrics.record_drop("capture_paused");
         return Ok(Ingested::Dropped("capture_paused"));
     }
-    let policy = shared.config.admission_policy().map_err(|e| IngestError::Config(e.to_string()))?;
+    // Never fails: a broken config file falls back to its safe side (see `admission_policy`).
+    let policy = shared.config.admission_policy();
     let event = match admit(event, &policy) {
         Ok(Admission::Accept(event)) => event,
         Ok(Admission::Drop(reason)) => {
