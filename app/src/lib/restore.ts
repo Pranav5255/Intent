@@ -1,7 +1,7 @@
 import { api } from './api';
 import { plural } from './format';
 import { errorText, toast, updateToast } from './store';
-import type { ResumePayload } from './types';
+import type { RestoreResult, ResumePayload } from './types';
 
 export interface RestoreSelection {
   files: string[];
@@ -27,15 +27,48 @@ export function describeSelection(sel: RestoreSelection): string {
 }
 
 /**
+ * Split a selection by what the daemon reports as opened. The daemon counts
+ * per kind: one editor launch opens every file that exists, and a missing file
+ * fails again on a retry. So a kind with any count is treated as done.
+ */
+export function splitResult(sel: RestoreSelection, result: RestoreResult): { opened: RestoreSelection; left: RestoreSelection } {
+  const files = result.restored.files > 0;
+  const urls = result.restored.urls > 0;
+  const terminal = sel.terminal && result.restored.shell;
+  return {
+    // For the message only: the counts, not which items.
+    opened: {
+      files: sel.files.slice(0, result.restored.files),
+      urls: sel.urls.slice(0, result.restored.urls),
+      terminal,
+    },
+    left: { files: files ? [] : sel.files, urls: urls ? [] : sel.urls, terminal: sel.terminal && !terminal },
+  };
+}
+
+export interface RestoreOutcome {
+  ok: boolean;
+  /** What is still to open after a partial failure. */
+  left: RestoreSelection;
+}
+
+// A double-click or a second Enter must not open everything twice.
+const inFlight = new Set<string>();
+
+/**
  * Restore only the selected items. The last shell command is never sent for
  * execution: only the working directory is passed so a terminal opens there.
+ * A second call for the same items while the first runs does nothing.
  */
-export async function restoreSelection(label: string, payload: ResumePayload, sel: RestoreSelection): Promise<boolean> {
+export async function restoreSelection(label: string, payload: ResumePayload, sel: RestoreSelection): Promise<RestoreOutcome> {
   const size = selectionSize(sel);
   if (size === 0) {
     toast({ tone: 'neutral', text: 'Nothing selected to reopen.' });
-    return false;
+    return { ok: false, left: sel };
   }
+  const key = JSON.stringify([label, sel]);
+  if (inFlight.has(key)) return { ok: false, left: sel };
+  inFlight.add(key);
   const id = toast({ tone: 'progress', text: `Reopening ${describeSelection(sel)}…`, detail: label });
   try {
     const result = await api.restore({
@@ -44,11 +77,7 @@ export async function restoreSelection(label: string, payload: ResumePayload, se
       urls: sel.urls,
       shell: sel.terminal ? { cwd: payload.shell.cwd ?? null } : {},
     });
-    const opened: RestoreSelection = {
-      files: sel.files.slice(0, result.restored.files),
-      urls: sel.urls.slice(0, result.restored.urls),
-      terminal: result.restored.shell,
-    };
+    const { opened, left } = splitResult(sel, result);
     if (result.ok && result.failed.length === 0) {
       updateToast(id, {
         tone: 'success',
@@ -66,9 +95,11 @@ export async function restoreSelection(label: string, payload: ResumePayload, se
         8000,
       );
     }
-    return result.ok;
+    return { ok: result.ok, left };
   } catch (reason) {
     updateToast(id, { tone: 'error', text: 'Couldn’t reopen this work', detail: errorText(reason) }, 8000);
-    return false;
+    return { ok: false, left: sel };
+  } finally {
+    inFlight.delete(key);
   }
 }

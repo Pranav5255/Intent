@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { RestoreReview, type ReviewTarget } from '../components/RestoreReview';
 import { Keys, StatusDot, Toasts } from '../components/ui';
-import { api } from '../lib/api';
+import { api, TOKEN_REFUSED } from '../lib/api';
 import { listen, takePendingRoute } from '../lib/bridge';
 import { modHeld } from '../lib/env';
 import { clock } from '../lib/format';
@@ -16,6 +16,7 @@ import {
   toast,
   useAsync,
   useCapture,
+  useLiveVersion,
 } from '../lib/store';
 import { SettingsView } from '../settings/SettingsView';
 import { IntentDrawer } from './IntentDrawer';
@@ -55,7 +56,8 @@ export function MainWindow() {
   const [onboarding, setOnboarding] = useState(() => !onboardingDone());
   const capture = useCapture();
   const summary = summarizeCapture(capture);
-  const current = useAsync(() => api.current(), [capture.status?.capture_paused]);
+  const live = useLiveVersion();
+  const current = useAsync(() => api.current(), [capture.status?.capture_paused, live]);
 
   const navigate = useCallback((target: string) => {
     if (target.startsWith('intent:')) {
@@ -149,7 +151,7 @@ export function MainWindow() {
               <span className="mono t3">since {clock(current.data.since_ts)}</span>
             </button>
           )}
-          <button className={`rail-status is-${summary.tone}`} onClick={() => navigate('settings:capture')}>
+          <button className={`rail-status is-${summary.tone}`} onClick={() => navigate('settings:capture')} title={summary.text}>
             <StatusDot tone={summary.tone} />
             <span className="ellipsis">{summary.text}</span>
           </button>
@@ -181,6 +183,15 @@ export function MainWindow() {
             <span className="dot" />
             <span>Intent isn’t running</span>
             <span className="banner-meta">· nothing is being captured</span>
+            <button className="btn btn-sm" onClick={() => void refreshCapture()}>
+              Try again
+            </button>
+          </div>
+        )}
+        {capture.denied && capture.reachable !== false && (
+          <div className="banner is-offline" role="status">
+            <span className="dot" />
+            <span>{TOKEN_REFUSED}</span>
             <button className="btn btn-sm" onClick={() => void refreshCapture()}>
               Try again
             </button>

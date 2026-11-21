@@ -1,7 +1,8 @@
 // In-memory stand-in for intentd used with VITE_MOCK=1. Fixtures describe one
 // believable developer's last two weeks. "Now" is frozen (see env.ts) so the
 // screenshots are reproducible. URL flags: ?paused=1 starts paused,
-// ?firstrun=1 shows onboarding, ?offline=1 simulates an unreachable daemon.
+// ?firstrun=1 shows onboarding, ?offline=1 simulates an unreachable daemon,
+// ?denied=1 a daemon that refuses the app's token.
 
 import type { ApiResponse, Method } from './api';
 import { nowSec } from './env';
@@ -410,6 +411,7 @@ function findIntent(id: string): Intent | undefined {
 
 const state = {
   offline: params.get('offline') === '1',
+  denied: params.get('denied') === '1',
   paused: params.get('paused') === '1',
   pausedUntil: params.get('paused') === '1' ? at(TODAY, '16:30') : (null as number | null),
   workspaces: [`${HOME}/code/intent`, `${HOME}/work/storefront`, `${HOME}/work/ledger-api`],
@@ -656,6 +658,8 @@ export async function mockRequest(method: Method, rawPath: string, body: unknown
   }
   const url = new URL(rawPath, 'http://mock');
   const path = url.pathname;
+  // The daemon's own 401 body; /healthz needs no token.
+  if (state.denied && path !== '/healthz') return { status: 401, body: { error: 'missing or invalid token' } };
   const q = url.searchParams;
   await delay(path.startsWith('/copilot') ? 900 : path.startsWith('/v1/restore') ? 500 : 40);
 

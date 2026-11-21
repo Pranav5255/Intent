@@ -4,16 +4,17 @@ import { api } from '../lib/api';
 import { ago, basename, clock, duration, hostOf, longDate, plural, range, tildify, todayIso } from '../lib/format';
 import { byRecency, hasResume, laneFor, projectOf, whereLeftOff } from '../lib/intent';
 import { restoreSelection, selectAll } from '../lib/restore';
-import { resumeCapture, useAsync, useCapture } from '../lib/store';
+import { resumeCapture, useAsync, useCapture, useLiveVersion } from '../lib/store';
 import type { Digest, Intent } from '../lib/types';
 import type { MainActions } from './MainWindow';
 
 export function TodayView({ actions }: { actions: MainActions }) {
+  const live = useLiveVersion();
   const date = todayIso();
   const data = useAsync(async () => {
     const [digest, intents] = await Promise.all([api.digest(date), api.intentsFor(date)]);
     return { digest, intents };
-  }, [date]);
+  }, [date, live]);
   const capture = useCapture();
 
   if (data.loading && !data.data) return <TodaySkeleton />;

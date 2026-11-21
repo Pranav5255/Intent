@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import { nowSec } from '../lib/env';
 import { clock, duration, longDate, relativeDay, shiftIso, shortDate, todayIso } from '../lib/format';
 import { laneColor, laneFor, projectOf } from '../lib/intent';
-import { useAsync } from '../lib/store';
+import { useAsync, useIntentsVersion, useLiveVersion } from '../lib/store';
 import type { Intent } from '../lib/types';
 import type { MainActions } from './MainWindow';
 
@@ -142,7 +142,8 @@ export function TimelineView({ actions }: { actions: MainActions }) {
 }
 
 function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
-  const data = useAsync(() => api.intentsFor(date), [date]);
+  const live = useLiveVersion();
+  const data = useAsync(() => api.intentsFor(date), [date, live]);
   const [trackRef, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<Intent | null>(null);
   const roots = useMemo(() => (data.data ?? []).filter((i) => i.depth === 0).sort((a, b) => a.start_ts - b.start_ts), [data.data]);
@@ -263,10 +264,12 @@ function DayLanes({ date, actions }: { date: string; actions: MainActions }) {
 function Fortnight({ onPick }: { onPick: (date: string) => void }) {
   const today = todayIso();
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => shiftIso(today, i - 13)), [today]);
+  // Fourteen requests: reload on a real change only, not on the minute timer.
+  const changed = useIntentsVersion();
   const data = useAsync(async () => {
     const lists = await Promise.all(days.map((d) => api.intentsFor(d).catch(() => [] as Intent[])));
     return lists;
-  }, [days.join()]);
+  }, [days.join(), changed]);
   const [hover, setHover] = useState<string | null>(null);
 
   const lanes = useMemo(() => {
