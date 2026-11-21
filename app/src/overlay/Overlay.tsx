@@ -2,15 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { Icon } from '../components/Icon';
 import { RestoreReview, type ReviewTarget } from '../components/RestoreReview';
 import { ConfirmDialog, Empty, Keys, Snippet, StatusDot, Toasts, type ConfirmSpec } from '../components/ui';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, TOKEN_REFUSED } from '../lib/api';
 import { copyText, hideOverlay, listen, openMain } from '../lib/bridge';
 import { modHeld } from '../lib/env';
 import { ago, daysAgoIso, duration, relativeDay, todayIso } from '../lib/format';
 import { fuzzyFilter, fuzzyRank } from '../lib/fuzzy';
 import { byRecency, flatten, hasResume, laneFor, projectOf } from '../lib/intent';
-import { restoreSelection, selectAll, type RestoreSelection } from '../lib/restore';
+import { restoreSelection, selectAll, selectionSize, type RestoreSelection } from '../lib/restore';
 import {
   errorText,
+  intentsChanged,
   pauseCapture,
   pausedUntilLabel,
   resumeCapture,
@@ -18,6 +19,7 @@ import {
   toast,
   updateToast,
   useCapture,
+  useIntentsVersion,
 } from '../lib/store';
 import type { CitedIntent, Intent, SearchHit } from '../lib/types';
 import { ActionPanel } from './ActionPanel';
@@ -72,6 +74,8 @@ export function Overlay() {
   const [offline, setOffline] = useState(false);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchFailure, setSearchFailure] = useState<string | null>(null);
+  const [searchRetry, setSearchRetry] = useState(0);
   const [cache, setCache] = useState<Record<string, Intent>>({});
   const [selections, setSelections] = useState<Record<string, RestoreSelection>>({});
   const [copilot, setCopilot] = useState<CopilotState>({ status: 'idle' });
@@ -84,6 +88,10 @@ export function Overlay() {
   const listRef = useRef<HTMLDivElement>(null);
 
   const { mode, text } = parse(raw);
+  const changed = useIntentsVersion();
+  // Rows stay hidden while the daemon is away, but `selected` would still be
+  // the first command; Enter must not run it then.
+  const down = offline || capture.reachable === false || capture.denied;
 
   // ------------------------------------------------------------------ data
 
@@ -128,6 +136,23 @@ export function Overlay() {
     return () => void unlisten.then((fn) => fn());
   }, [load, reset]);
 
+  // A forget or pipeline run in any window: drop what this palette cached.
+  const seenChange = useRef(changed);
+  useEffect(() => {
+    if (changed === seenChange.current) return;
+    seenChange.current = changed;
+    setCache({});
+    void load();
+  }, [changed, load]);
+
+  // The capture poll sees the daemon again: load instead of waiting for a reopen.
+  useEffect(() => {
+    if (offline && capture.reachable && capture.status) void load();
+  }, [offline, capture.reachable, capture.status, load]);
+  useEffect(() => {
+    if (capture.reconnects) void load();
+  }, [capture.reconnects, load]);
+
   // Each open remounts the dialog (`key={opening}`), so the input that reset()
   // focused may be the one being thrown away; focus the new one once it exists.
   useEffect(() => {
@@ -138,6 +163,7 @@ export function Overlay() {
   useEffect(() => {
     if (mode !== 'search' || text.trim().length < 2) {
       setHits([]);
+      setSearchFailure(null);
       setSearching(false);
       return;
     }
@@ -146,15 +172,23 @@ export function Overlay() {
     const timer = window.setTimeout(() => {
       api
         .search(text.trim(), { limit: 12, date_from: daysAgoIso(SEARCH_WINDOW_DAYS), project: scope ?? undefined })
-        .then((result) => live && setHits(result))
-        .catch(() => live && setHits([]))
+        .then((result) => {
+          if (!live) return;
+          setHits(result);
+          setSearchFailure(null);
+        })
+        .catch((reason: unknown) => {
+          if (!live) return;
+          setHits([]);
+          setSearchFailure(errorText(reason, 'The search request failed.'));
+        })
         .finally(() => live && setSearching(false));
     }, 120);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [mode, text, scope]);
+  }, [mode, text, scope, searchRetry, changed]);
 
   // ------------------------------------------------------------------ rows
 
@@ -272,8 +306,10 @@ export function Overlay() {
       setReview(toReview(intent));
       return;
     }
-    const ok = await restoreSelection(intent.label, intent.resume_payload, selectionFor(intent));
+    const { ok, left } = await restoreSelection(intent.label, intent.resume_payload, selectionFor(intent));
     if (ok) finish();
+    // Keep only what did not open, so a retry does not open it twice.
+    else if (selectionSize(left) > 0) setSelections((prev) => ({ ...prev, [intent.id]: left }));
   };
 
   const runCommand = async (c: Command) => {
@@ -300,7 +336,7 @@ export function Overlay() {
           try {
             await api.runPipeline(todayIso());
             updateToast(id, { tone: 'success', text: 'Today’s threads are up to date' });
-            void load();
+            intentsChanged();
           } catch (reason) {
             updateToast(id, { tone: 'error', text: 'Couldn’t process today', detail: errorText(reason) });
           }
@@ -383,7 +419,7 @@ export function Overlay() {
             try {
               await api.forgetDate(intent.date);
               toast({ tone: 'success', text: `Forgot ${relativeDay(intent.date)}` });
-              void load();
+              intentsChanged();
             } catch (reason) {
               toast({ tone: 'error', text: 'Couldn’t forget that day', detail: errorText(reason) });
             }
@@ -401,7 +437,7 @@ export function Overlay() {
             try {
               await api.forgetProject(project);
               toast({ tone: 'success', text: `Forgot ${project}` });
-              void load();
+              intentsChanged();
             } catch (reason) {
               toast({ tone: 'error', text: 'Couldn’t forget that project', detail: errorText(reason) });
             }
@@ -412,7 +448,7 @@ export function Overlay() {
   };
 
   const activate = async (row: Row | undefined, withMod: boolean) => {
-    if (!row) return;
+    if (!row || down) return;
     if (row.kind === 'command') return runCommand(row.command);
     if (row.kind === 'ask') {
       setRaw(`? ${row.question}`);
@@ -509,7 +545,7 @@ export function Overlay() {
   // ------------------------------------------------------------------ render
 
   const footerHints = (): Array<[string, string[]]> => {
-    if (review) return [];
+    if (review || down) return [];
     if (mode === 'ask') {
       return copilot.status === 'done' && copilot.question === text.trim()
         ? [['Open source', ['↵']], ['Review', ['mod', '↵']]]
@@ -535,7 +571,13 @@ export function Overlay() {
         : 'Resume, search, or type ? to ask, > for commands, @ for a project';
 
   const showEmpty =
-    loaded && mode === 'search' && text.trim().length >= 2 && !searching && rows.every((r) => r.kind === 'ask' || r.kind === 'command');
+    loaded &&
+    !down &&
+    !searchFailure &&
+    mode === 'search' &&
+    text.trim().length >= 2 &&
+    !searching &&
+    rows.every((r) => r.kind === 'ask' || r.kind === 'command');
 
   return (
     <div className="ov-stage" onMouseDown={(e) => e.target === e.currentTarget && finish()}>
@@ -585,8 +627,11 @@ export function Overlay() {
         ) : (
           <div className="ov-body">
             <div className="ov-list" id="ov-list" role="listbox" ref={listRef}>
-              {offline && (
+              {(offline || capture.reachable === false) && (
                 <Empty icon="alert" title="Intent isn’t running" text="Start it from the app menu, or run “systemctl --user start intentd”." />
+              )}
+              {!offline && capture.reachable !== false && capture.denied && (
+                <Empty icon="alert" title="Intent refused the app’s access token" text={TOKEN_REFUSED} />
               )}
               {mode === 'ask' && (
                 <CopilotPanel
@@ -603,7 +648,7 @@ export function Overlay() {
                   citationLane={(c) => (cache[c.intent_id] ? laneFor(cache[c.intent_id]!) : null)}
                 />
               )}
-              {!offline &&
+              {!down &&
                 mode !== 'ask' &&
                 rows.map((row, i) => {
                   const header = row.section !== lastSection ? row.section : null;
@@ -629,6 +674,13 @@ export function Overlay() {
                     </div>
                   );
                 })}
+              {!down && searchFailure && mode === 'search' && !searching && (
+                <Empty icon="alert" title="Couldn’t search" text={searchFailure}>
+                  <button className="btn btn-sm" onClick={() => setSearchRetry((n) => n + 1)}>
+                    Try again
+                  </button>
+                </Empty>
+              )}
               {showEmpty && (
                 <Empty
                   icon="search"
@@ -640,7 +692,7 @@ export function Overlay() {
                   </button>
                 </Empty>
               )}
-              {loaded && !offline && mode === 'search' && !text && rows.every((r) => r.kind === 'command') && (
+              {loaded && !down && mode === 'search' && !text && rows.every((r) => r.kind === 'command') && (
                 <Empty icon="today" title="No threads yet today" text="Intent groups your activity a few minutes after you start working." />
               )}
             </div>

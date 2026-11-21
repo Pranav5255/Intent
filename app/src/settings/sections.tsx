@@ -7,6 +7,7 @@ import { IS_MAC } from '../lib/env';
 import { ago, bytes, count, tildify } from '../lib/format';
 import {
   errorText,
+  intentsChanged,
   pauseCapture,
   pausedUntilLabel,
   refreshCapture,
@@ -14,6 +15,7 @@ import {
   toast,
   useAsync,
   useCapture,
+  useRetryOnReconnect,
   type PauseSpan,
 } from '../lib/store';
 import { saveTheme, storedTheme, type Theme } from '../lib/theme';
@@ -149,6 +151,7 @@ export function CaptureSection() {
   const config = useAsync(() => api.captureConfig(), []);
   const workspaces = useAsync(() => api.workspaces(), []);
   const fs = useAsync(() => api.filesystemCapture(), []);
+  useRetryOnReconnect(config, workspaces, fs);
   const [newPath, setNewPath] = useState('');
   const status = capture.status;
   const paused = Boolean(status?.capture_paused);
@@ -373,6 +376,7 @@ export function PrivacySection() {
   const blocked = useAsync(() => api.blockedDomains(), []);
   const policy = useAsync(() => api.retentionPolicy(), []);
   const config = useAsync(() => api.captureConfig(), []);
+  useRetryOnReconnect(blocked, policy, config);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   // Initialise from the SAVED policy (1.x always showed the first preset).
   const current = presetFor(policy.data);
@@ -411,6 +415,7 @@ export function PrivacySection() {
         onConfirm: async () => {
           try {
             await api.purgeRetention(p);
+            intentsChanged();
             toast({ tone: 'success', text: `Deleted ${count(preview.eligible.total)} old events` });
             void refreshCapture();
           } catch (r) {
@@ -573,6 +578,7 @@ export function ShortcutsSection() {
 
 export function AboutSection() {
   const health = useAsync(() => api.health(), []);
+  useRetryOnReconnect(health);
   const [version, setVersion] = useState('');
   useEffect(() => {
     void appVersion().then(setVersion);

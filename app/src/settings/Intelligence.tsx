@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { StatusDot, Switch } from '../components/ui';
 import { api } from '../lib/api';
-import { errorText, toast, useAsync } from '../lib/store';
+import { errorText, toast, useAsync, useRetryOnReconnect } from '../lib/store';
 import type { LlmProvider, LlmSettingsSummary, LlmSettingsUpdate } from '../lib/types';
 import { Group, Row, Section } from './kit';
 
@@ -66,6 +66,7 @@ function isLoopback(url: string): boolean {
 
 export function IntelligenceSection() {
   const settings = useAsync(() => api.llmSettings(), []);
+  useRetryOnReconnect(settings);
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
   const [tested, setTested] = useState<boolean | null>(null);
