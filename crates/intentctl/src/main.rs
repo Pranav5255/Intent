@@ -339,10 +339,8 @@ fn uninstall(keep_data: bool) -> Result<()> {
     for shell in [ShellKind::Bash, ShellKind::Zsh] {
         remove_shell_hook(shell)?;
     }
-    for editor in ["code", "codium", "cursor"] {
-        if which(editor) {
-            let _ = Command::new(editor).args(["--uninstall-extension", "intent.intent-vscode"]).status();
-        }
+    for editor in editor_clis() {
+        let _ = Command::new(editor).args(["--uninstall-extension", "intent.intent-vscode"]).status();
     }
     if !keep_data {
         for dir in [config_dir(), data_dir()] {
@@ -497,11 +495,36 @@ fn install_vscode_extension() {
     if !vsix.is_file() {
         return;
     }
-    for editor in ["code", "codium", "cursor"] {
-        if which(editor) {
-            let _ = Command::new(editor).arg("--install-extension").arg(vsix).arg("--force").status();
-        }
+    for editor in editor_clis() {
+        let _ = Command::new(editor).arg("--install-extension").arg(vsix).arg("--force").status();
     }
+}
+
+/// VS Code-family editors and their bundled CLIs on macOS.
+const MAC_EDITOR_CLIS: &[(&str, &str)] =
+    &[("Visual Studio Code", "code"), ("VSCodium", "codium"), ("Cursor", "cursor")];
+
+/// The command-line tools of the installed VS Code-family editors.
+///
+/// On macOS the CLI inside each app bundle, because a command of the same name on
+/// PATH can be another program (`cursor` is also the Cursor Agent CLI).
+fn editor_clis() -> Vec<PathBuf> {
+    if cfg!(target_os = "macos") {
+        return mac_editor_clis(&[PathBuf::from("/Applications"), home().join("Applications")]);
+    }
+    ["code", "codium", "cursor"].into_iter().filter(|e| which(e)).map(PathBuf::from).collect()
+}
+
+fn mac_editor_clis(app_dirs: &[PathBuf]) -> Vec<PathBuf> {
+    MAC_EDITOR_CLIS
+        .iter()
+        .filter_map(|(app, bin)| {
+            app_dirs
+                .iter()
+                .map(|dir| dir.join(format!("{app}.app")).join("Contents/Resources/app/bin").join(bin))
+                .find(|cli| cli.is_file())
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -582,6 +605,17 @@ fn parse_duration(text: &str) -> Result<u64> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mac_editor_clis_come_from_app_bundles() {
+        let dir = std::env::temp_dir().join(format!("intentctl-apps-{}", std::process::id()));
+        let bin = dir.join("Cursor.app/Contents/Resources/app/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("cursor"), "").unwrap();
+        let found = super::mac_editor_clis(std::slice::from_ref(&dir));
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(found, vec![bin.join("cursor")]);
+    }
+
     use super::*;
 
     #[test]
