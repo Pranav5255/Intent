@@ -186,14 +186,25 @@ fn focus_when_shown(win: &WebviewWindow, reposition: bool) {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         if reposition {
-            place_overlay(win.app_handle(), &win);
+            // Before the first map, X11 can report a 0×0 size (centring the left edge,
+            // x = 640 on a 1280 px screen) and the window manager's placement can land
+            // after ours. Re-place until the window sits where it should, for up to 1 s.
+            for _ in 0..20 {
+                let placed = place_overlay(win.app_handle(), &win);
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                if placed.is_some() && placed == win.outer_position().ok() {
+                    break;
+                }
+            }
         }
         let _ = win.set_focus();
         let _ = AsRef::<Webview>::as_ref(&win).set_focus();
     });
 }
 
-fn place_overlay(app: &AppHandle, win: &WebviewWindow) {
+/// Place the palette and return the position it was given, or `None` when its size
+/// is not known yet (an unmapped X11 window can report 0×0).
+fn place_overlay(app: &AppHandle, win: &WebviewWindow) -> Option<PhysicalPosition<i32>> {
     let monitor = app
         .cursor_position()
         .ok()
@@ -201,12 +212,26 @@ fn place_overlay(app: &AppHandle, win: &WebviewWindow) {
         .or_else(|| app.primary_monitor().ok().flatten());
     let (Some(monitor), Ok(size)) = (monitor, win.outer_size()) else {
         let _ = win.center();
-        return;
+        return None;
     };
+    if size.width <= 1 || size.height <= 1 {
+        return None;
+    }
     let area = monitor.work_area();
-    let x = area.position.x + (area.size.width as i32 - size.width as i32) / 2;
-    let y = area.position.y + (area.size.height as i32 / 5).max(0);
-    let _ = win.set_position(PhysicalPosition::new(x, y));
+    let position = overlay_position(area.position, area.size, size);
+    let _ = win.set_position(position);
+    Some(position)
+}
+
+/// Centred horizontally in the work area, a fifth of the way down.
+fn overlay_position(
+    origin: PhysicalPosition<i32>,
+    area: tauri::PhysicalSize<u32>,
+    window: tauri::PhysicalSize<u32>,
+) -> PhysicalPosition<i32> {
+    let x = origin.x + (area.width as i32 - window.width as i32) / 2;
+    let y = origin.y + (area.height as i32 / 5).max(0);
+    PhysicalPosition::new(x, y)
 }
 
 fn shortcut_file(app: &AppHandle) -> Option<PathBuf> {
@@ -344,6 +369,16 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overlay_is_centred_in_the_work_area() {
+        let p = overlay_position(
+            PhysicalPosition::new(0, 32),
+            tauri::PhysicalSize::new(1280, 768),
+            tauri::PhysicalSize::new(920, 540),
+        );
+        assert_eq!((p.x, p.y), (180, 32 + 153));
+    }
 
     fn args(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
