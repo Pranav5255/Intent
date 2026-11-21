@@ -1,8 +1,8 @@
 // Small shared stores (no state library): capture status and toasts.
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { api, ApiError } from './api';
-import { listen } from './bridge';
+import { api, ApiError, TOKEN_REFUSED } from './api';
+import { emit, listen } from './bridge';
 import { nowMs, nowSec } from './env';
 import { clock } from './format';
 import type { CaptureStatus } from './types';
@@ -30,20 +30,38 @@ function createStore<T>(initial: T) {
 export interface CaptureState {
   status: CaptureStatus | null;
   reachable: boolean | null;
+  /** The daemon answered 401 even after the app re-read its token. */
+  denied: boolean;
   loading: boolean;
+  /** Counts each return of the daemon after it was down or refused the token. */
+  reconnects: number;
 }
 
-const captureStore = createStore<CaptureState>({ status: null, reachable: null, loading: true });
+const captureStore = createStore<CaptureState>({
+  status: null,
+  reachable: null,
+  denied: false,
+  loading: true,
+  reconnects: 0,
+});
 let pollTimer: number | null = null;
 let pollers = 0;
 
 export async function refreshCapture(): Promise<void> {
   try {
     const status = await api.status();
-    captureStore.set({ status, reachable: true, loading: false });
+    captureStore.set((prev) => ({
+      status,
+      reachable: true,
+      denied: false,
+      loading: false,
+      reconnects: prev.reachable === false || prev.denied ? prev.reconnects + 1 : prev.reconnects,
+    }));
   } catch (reason) {
     const unreachable = reason instanceof ApiError ? reason.unreachable : true;
-    captureStore.set((prev) => ({ ...prev, reachable: !unreachable, loading: false }));
+    // The Rust side already re-read the token once before this 401.
+    const denied = reason instanceof ApiError && reason.status === 401;
+    captureStore.set((prev) => ({ ...prev, reachable: !unreachable, denied, loading: false }));
   }
 }
 
@@ -63,6 +81,75 @@ export function useCapture(): CaptureState {
     };
   }, []);
   return useSyncExternalStore(captureStore.subscribe, captureStore.get);
+}
+
+/** Reload the given data when the daemon comes back, if it failed while it was away. */
+export function useRetryOnReconnect(...states: Array<Pick<AsyncState<unknown>, 'error' | 'reload'>>): void {
+  const { reconnects } = useCapture();
+  const latest = useRef(states);
+  latest.current = states;
+  useEffect(() => {
+    if (reconnects === 0) return;
+    for (const s of latest.current) if (s.error) s.reload();
+  }, [reconnects]);
+}
+
+// ---------------------------------------------------------------------------
+// Intents changed
+// ---------------------------------------------------------------------------
+
+// Forget, a pipeline run and the like change intents in every window. Each
+// window bumps its own counter and tells the other windows by an app event.
+const INTENTS_EVENT = 'intents-changed';
+const WINDOW_ID = Math.random().toString(36).slice(2);
+const intentsStore = createStore(0);
+let intentsListening = false;
+
+export function intentsChanged(): void {
+  intentsStore.set((n) => n + 1);
+  void emit(INTENTS_EVENT, WINDOW_ID).catch(() => undefined);
+}
+
+export function useIntentsVersion(): number {
+  useEffect(() => {
+    if (intentsListening) return;
+    intentsListening = true;
+    void listen<string>(INTENTS_EVENT, (from) => from !== WINDOW_ID && intentsStore.set((n) => n + 1));
+  }, []);
+  return useSyncExternalStore(intentsStore.subscribe, intentsStore.get);
+}
+
+const LIVE_INTERVAL_MS = 60_000;
+const FOCUS_GAP_MS = 5_000;
+
+/**
+ * A counter for views that show live data. It changes when intents change,
+ * when the daemon comes back, when the window gets focus or is shown, and
+ * once a minute while the window is visible. Nothing reloads while hidden.
+ */
+export function useLiveVersion(): number {
+  const intents = useIntentsVersion();
+  const { reconnects } = useCapture();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let last = nowMs();
+    const bump = (minGap: number) => {
+      if (document.visibilityState === 'hidden' || nowMs() - last < minGap) return;
+      last = nowMs();
+      setTick((t) => t + 1);
+    };
+    const onTimer = () => bump(0);
+    const onShow = () => bump(FOCUS_GAP_MS);
+    const timer = window.setInterval(onTimer, LIVE_INTERVAL_MS);
+    window.addEventListener('focus', onShow);
+    document.addEventListener('visibilitychange', onShow);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onShow);
+      document.removeEventListener('visibilitychange', onShow);
+    };
+  }, []);
+  return intents + reconnects + tick;
 }
 
 export type PauseSpan = '15m' | '1h' | 'tomorrow';
@@ -101,6 +188,7 @@ export interface CaptureSummary {
 
 export function summarizeCapture(state: CaptureState): CaptureSummary {
   if (state.reachable === false) return { tone: 'offline', text: 'Intent isn’t running' };
+  if (state.denied) return { tone: 'offline', text: TOKEN_REFUSED };
   const s = state.status;
   if (!s) return { tone: 'idle', text: 'Checking capture…' };
   if (s.capture_paused) {

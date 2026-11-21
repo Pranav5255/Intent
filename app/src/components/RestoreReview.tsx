@@ -46,12 +46,19 @@ export function RestoreReview({
   const size = selectionSize(selection);
   const project = projectOf(target);
 
+  // State updates land after the next render; a ref stops a second Enter or click at once.
+  const running = useRef(false);
+
   const confirm = async () => {
-    if (busy || size === 0) return;
+    if (running.current || size === 0) return;
+    running.current = true;
     setBusy(true);
-    const ok = await restoreSelection(target.label, target.payload, selection);
+    const { ok, left } = await restoreSelection(target.label, target.payload, selection);
+    running.current = false;
     setBusy(false);
-    if (ok) onDone();
+    // After a partial failure, keep only what did not open, so a retry does not open it twice.
+    if (ok || selectionSize(left) === 0) onDone();
+    else setSelection(left);
   };
 
   useEffect(() => {

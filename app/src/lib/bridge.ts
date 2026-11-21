@@ -17,6 +17,12 @@ export async function listen<T>(event: string, handler: (payload: T) => void): P
   return tauriListen<T>(event, (e) => handler(e.payload));
 }
 
+export async function emit<T>(event: string, payload: T): Promise<void> {
+  if (!IN_TAURI) return;
+  const { emit: tauriEmit } = await import('@tauri-apps/api/event');
+  await tauriEmit(event, payload);
+}
+
 export async function hideOverlay(): Promise<void> {
   if (!IN_TAURI) return;
   await command('hide_overlay').catch(() => undefined);
