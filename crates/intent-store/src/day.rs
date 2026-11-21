@@ -50,7 +50,9 @@ impl DayZone {
     /// `YYYY-MM-DD` of the day containing unix timestamp `ts` (seconds) in this zone.
     pub fn day_for_ts(&self, ts: i64) -> String {
         let Some(utc) = DateTime::<Utc>::from_timestamp(ts, 0) else {
-            // Out-of-range timestamps are rejected upstream; bucket them deterministically.
+            // chrono covers about ±262,000 years, so only absurd values land here. Ingest
+            // refuses a negative ts or one more than a day ahead, but the 1.x importer and
+            // old rows bypass that check. Bucket them deterministically instead of failing.
             return "1970-01-01".to_string();
         };
         let date = match self {

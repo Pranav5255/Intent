@@ -64,7 +64,7 @@ pub async fn ingest_event(State(state): State<AppState>, headers: HeaderMap, bod
         return ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, "content-type must be application/json")
             .into_response();
     }
-    let event = match parse_event(&body) {
+    let event = match parse_event(&body, now_ts()) {
         Ok(event) => event,
         Err(IngestError::Invalid(msg)) => return ApiError::unprocessable(msg).into_response(),
         Err(_) => return ApiError::unprocessable("invalid event").into_response(),

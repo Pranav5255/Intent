@@ -30,7 +30,7 @@ app and `intentctl` read it.
 | Route | Methods | Token | Notes |
 |---|---|---|---|
 | `/healthz` | GET | open | `{ok, version, pipeline_version, database}` |
-| `/v1/event`, `/event` | POST | open | 201 stored · 200 duplicate id · 204 dropped (paused / no consent / workspace not approved) · 415 content type is not `application/json` · 422 invalid or rejected by redaction · 503 writer queue full / unavailable |
+| `/v1/event`, `/event` | POST | open | 201 stored · 200 duplicate id · 204 dropped (paused / no consent / workspace not approved) · 415 content type is not `application/json` · 422 invalid, `ts` more than 1 day ahead, or rejected by redaction · 503 writer queue full / unavailable |
 | `/v1/detailed-capture/config` | GET | open | read by the Firefox and VS Code companions |
 | `/v1/config` | GET | open | blocked domains |
 | `/v1/detailed-capture/config` | PUT | **token** | |
@@ -67,6 +67,9 @@ server on `:1420`); Vite/localhost dev origins are never allowed in release buil
 - **Content type.** `POST /v1/event` and `/event` need `application/json` (parameters such as
   `charset` are fine) and answer 415 otherwise. A page can send `text/plain` without a
   preflight; JSON forces one, which CORS refuses.
+
+**Event time.** Ingest refuses a `ts` more than 1 day after the daemon's clock (422). Small
+clock skew passes. A larger `ts` is almost always milliseconds sent as seconds.
 
 ### Background work inside `intentd`
 

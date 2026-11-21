@@ -793,3 +793,20 @@ async fn foreign_host_is_refused() {
     assert_eq!(resp.status(), StatusCode::MISDIRECTED_REQUEST);
     d.stop().await;
 }
+
+#[tokio::test]
+async fn impossible_timestamps_are_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let now = intent_store::now_ts();
+    for ts in [now * 1000, now + 400 * 86_400, now + 86_401] {
+        let (s, body) = d.post_event(&shell(ts, "ls", "/", 0)).await;
+        assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY, "ts {ts}: {body}");
+        assert!(body["detail"].as_str().unwrap().starts_with("ts must"), "{body}");
+    }
+    let (s, _) = d.post_event(&shell(now + 30, "ls", "/", 0)).await;
+    assert_eq!(s, StatusCode::CREATED, "small clock skew is accepted");
+    let (s, _) = d.post_event(&shell(now + 3600, "pwd", "/", 0)).await;
+    assert_eq!(s, StatusCode::CREATED);
+    d.stop().await;
+}
