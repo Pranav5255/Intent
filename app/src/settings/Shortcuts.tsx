@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { Icon } from '../components/Icon';
 import { Keys } from '../components/ui';
+import { IS_MAC } from '../lib/env';
 
 const GROUPS: Array<{ title: string; items: Array<[string, string[]]> }> = [
   {
     title: 'Palette',
     items: [
-      ['Open Intent from anywhere', ['Super', 'Space']],
+      ['Open Intent from anywhere', IS_MAC ? ['⌥', 'Space'] : ['Super', 'Space']],
       ['Resume the selected thread', ['↵']],
       ['Review before reopening', ['mod', '↵']],
       ['Actions for the selected item', ['mod', 'K']],

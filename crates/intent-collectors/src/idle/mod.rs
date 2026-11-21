@@ -18,6 +18,8 @@ use crate::feed::ActivityFeed;
 use crate::session::{SessionEnv, SessionKind};
 use crate::{Collector, CollectorContext, EventSink, SinkClosed};
 
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(target_os = "linux")]
 mod mutter;
 #[cfg(target_os = "linux")]
@@ -70,7 +72,7 @@ impl IdleTracker {
     }
 }
 
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
 pub(crate) async fn emit(sink: &EventSink, t: IdleTransition) -> Result<(), SinkClosed> {
     sink.emit("linux", t.event_type(), Payload::new()).await
 }
@@ -99,6 +101,8 @@ pub enum IdleBackendPref {
 pub(crate) enum Candidate {
     Mutter,
     X11,
+    /// The macOS HID system state.
+    MacOs,
 }
 
 pub(crate) fn candidates(pref: IdleBackendPref, env: &SessionEnv) -> Vec<Candidate> {
@@ -107,6 +111,7 @@ pub(crate) fn candidates(pref: IdleBackendPref, env: &SessionEnv) -> Vec<Candida
         IdleBackendPref::Mutter => vec![Candidate::Mutter],
         IdleBackendPref::X11 => vec![Candidate::X11],
         IdleBackendPref::Auto => match env.kind() {
+            SessionKind::MacOs => vec![Candidate::MacOs],
             // XWayland's screensaver extension only sees X11 clients' input.
             SessionKind::Wayland => vec![Candidate::Mutter],
             SessionKind::X11 => vec![Candidate::Mutter, Candidate::X11],
@@ -197,10 +202,25 @@ async fn run_candidate(
     match cand {
         Candidate::Mutter => mutter::run(threshold_ms, &c.feed, ctx).await,
         Candidate::X11 => x11::run(env, threshold_ms, &c.feed, ctx).await,
+        Candidate::MacOs => BackendEnd::NotAvailable("the macOS HID state exists only on macOS".into()),
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+async fn run_candidate(
+    cand: Candidate,
+    c: &IdleCollector,
+    ctx: &CollectorContext,
+    _env: &SessionEnv,
+    threshold_ms: u64,
+) -> BackendEnd {
+    match cand {
+        Candidate::MacOs => macos::run(threshold_ms, &c.feed, ctx).await,
+        Candidate::Mutter | Candidate::X11 => BackendEnd::NotAvailable("Mutter and X11 exist only on Linux".into()),
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 async fn run_candidate(
     _cand: Candidate,
     _c: &IdleCollector,
@@ -208,7 +228,7 @@ async fn run_candidate(
     _env: &SessionEnv,
     _threshold_ms: u64,
 ) -> BackendEnd {
-    BackendEnd::NotAvailable("idle detection is only implemented on Linux".into())
+    BackendEnd::NotAvailable("idle detection is only implemented on Linux and macOS".into())
 }
 
 #[cfg(test)]
@@ -246,8 +266,11 @@ mod tests {
             display: Some(":0".into()),
             wayland_display: Some("wayland-0".into()),
             current_desktop: Some("GNOME".into()),
+            macos: false,
         };
         assert_eq!(candidates(IdleBackendPref::Auto, &wl), vec![Candidate::Mutter]);
+        let mac = SessionEnv { macos: true, ..Default::default() };
+        assert_eq!(candidates(IdleBackendPref::Auto, &mac), vec![Candidate::MacOs]);
         let x = SessionEnv { session_type: Some("x11".into()), display: Some(":0".into()), ..Default::default() };
         assert_eq!(candidates(IdleBackendPref::Auto, &x), vec![Candidate::Mutter, Candidate::X11]);
         assert!(candidates(IdleBackendPref::Auto, &SessionEnv::default()).is_empty());

@@ -26,6 +26,10 @@ pub const MAX_LAST_CMD_CHARS: usize = 500;
 pub const EDITORS: &[&str] = &["code", "codium", "cursor"];
 /// Terminal emulators tried in order.
 pub const TERMINALS: &[&str] = &["gnome-terminal", "ptyxis", "kgx", "konsole", "xfce4-terminal", "x-terminal-emulator"];
+/// macOS editor apps tried in order when no editor command is on `$PATH`.
+pub const MAC_EDITORS: &[&str] = &["Visual Studio Code", "Cursor", "VSCodium"];
+/// macOS terminal apps tried in order. Terminal ships with every Mac.
+pub const MAC_TERMINALS: &[&str] = &["iTerm", "Terminal"];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -158,6 +162,14 @@ pub trait SystemProbe {
     fn env(&self, key: &str) -> Option<String>;
     /// Titles of open top-level windows (`wmctrl -l`), when they can be listed.
     fn window_titles(&self) -> Option<String>;
+    /// Whether this is macOS, where apps open through `open -a`.
+    fn is_macos(&self) -> bool {
+        false
+    }
+    /// Whether a macOS app bundle (`/Applications/<name>.app`) is installed.
+    fn has_mac_app(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 /// The real host.
@@ -190,6 +202,34 @@ impl SystemProbe for HostProbe {
         let wmctrl = self.which("wmctrl")?;
         run_with_timeout(Command::new(wmctrl).arg("-l"), Duration::from_secs(1))
     }
+
+    fn is_macos(&self) -> bool {
+        cfg!(target_os = "macos")
+    }
+
+    fn has_mac_app(&self, name: &str) -> bool {
+        let bundle = format!("{name}.app");
+        let system = Path::new("/Applications").join(&bundle);
+        let user = std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Applications").join(&bundle));
+        system.is_dir() || user.is_some_and(|path| path.is_dir())
+    }
+}
+
+/// `open -a <app> <args…>` on macOS, when `open` and the app exist.
+fn mac_open(probe: &dyn SystemProbe, app: Option<&str>, rest: Vec<String>) -> Option<(PathBuf, Vec<String>)> {
+    if !probe.is_macos() {
+        return None;
+    }
+    let open = probe.which("open")?;
+    let mut args = Vec::new();
+    if let Some(app) = app {
+        if !probe.has_mac_app(app) {
+            return None;
+        }
+        args.extend(["-a".to_string(), app.to_string()]);
+    }
+    args.extend(rest);
+    Some((open, args))
 }
 
 fn is_x11_session(probe: &dyn SystemProbe) -> bool {
@@ -298,7 +338,8 @@ fn plan_files(payload: &ResumePayload, mode: RestoreMode, probe: &dyn SystemProb
             let mut words = visual.split_whitespace();
             let program = probe.which(words.next()?)?;
             Some((program, words.map(str::to_owned).collect()))
-        });
+        })
+        .or_else(|| MAC_EDITORS.iter().find_map(|app| mac_open(probe, Some(app), Vec::new())));
     match editor {
         Some((program, mut args)) => {
             let count = existing.len();
@@ -325,7 +366,17 @@ fn plan_urls(payload: &ResumePayload, probe: &dyn SystemProbe, plan: &mut Restor
     if urls.is_empty() {
         return;
     }
-    if let Some(firefox) = probe.which("firefox") {
+    let mac = mac_open(probe, Some("Firefox"), urls.clone()).or_else(|| mac_open(probe, None, urls.clone()));
+    if let Some((program, args)) = mac {
+        // `open` takes every URL at once; without -a it uses the default browser.
+        plan.commands.push(LaunchCommand {
+            target: LaunchTarget::Browser,
+            program,
+            args,
+            cwd: None,
+            restores: RestoredCounts { urls: urls.len(), ..Default::default() },
+        });
+    } else if let Some(firefox) = probe.which("firefox") {
         let mut args = vec!["--new-window".to_string(), urls[0].clone()];
         for url in &urls[1..] {
             args.push("--new-tab".into());
@@ -390,6 +441,18 @@ fn plan_terminal(shell: &ShellResume, mode: RestoreMode, probe: &dyn SystemProbe
         return;
     }
     let resolved = resolve_lenient(&expanded);
+    let dir = resolved.to_string_lossy().into_owned();
+    if let Some((program, args)) = MAC_TERMINALS.iter().find_map(|app| mac_open(probe, Some(app), vec![dir.clone()])) {
+        // `open -a Terminal <dir>` opens a new window in that directory.
+        plan.commands.push(LaunchCommand {
+            target: LaunchTarget::Terminal,
+            program,
+            args,
+            cwd: Some(resolved),
+            restores: RestoredCounts { shell: true, ..Default::default() },
+        });
+        return;
+    }
     let Some((name, program)) = TERMINALS.iter().find_map(|name| probe.which(name).map(|path| (*name, path))) else {
         plan.failed.push(format!("no terminal emulator found (tried {})", TERMINALS.join(", ")));
         return;
@@ -469,6 +532,8 @@ mod tests {
         dirs: HashSet<PathBuf>,
         env: HashMap<&'static str, String>,
         titles: Option<String>,
+        macos: bool,
+        mac_apps: HashSet<&'static str>,
     }
 
     impl FakeProbe {
@@ -497,6 +562,59 @@ mod tests {
         fn window_titles(&self) -> Option<String> {
             self.titles.clone()
         }
+        fn is_macos(&self) -> bool {
+            self.macos
+        }
+        fn has_mac_app(&self, name: &str) -> bool {
+            self.mac_apps.contains(name)
+        }
+    }
+
+    fn mac_probe(programs: &[&'static str], apps: &[&'static str], files: &[&str]) -> FakeProbe {
+        let mut probe = probe_with_files(programs, files);
+        probe.macos = true;
+        probe.mac_apps = apps.iter().copied().collect();
+        probe
+    }
+
+    fn args(cmd: &LaunchCommand) -> Vec<&str> {
+        cmd.args.iter().map(String::as_str).collect()
+    }
+
+    #[test]
+    fn macos_opens_apps_that_are_not_on_path() {
+        let probe = mac_probe(&["open"], &["Visual Studio Code", "Firefox", "Terminal"], &["a.rs"]);
+        let plan = plan_restore_with(
+            &payload(&["a.rs"], &["https://a.com/", "https://b.com/"], Some(ROOT)),
+            RestoreMode::Resume,
+            &probe,
+        );
+        assert!(plan.failed.is_empty(), "{:?}", plan.failed);
+        let progs: Vec<_> = plan.commands.iter().map(|c| c.program.clone()).collect();
+        assert!(progs.iter().all(|p| p == Path::new("/usr/bin/open")), "{progs:?}");
+        let fa = file("a.rs");
+        assert_eq!(args(&plan.commands[0]), ["-a", "Visual Studio Code", fa.as_str()]);
+        assert_eq!(args(&plan.commands[1]), ["-a", "Firefox", "https://a.com/", "https://b.com/"]);
+        assert_eq!(plan.commands[1].restores.urls, 2);
+        assert_eq!(args(&plan.commands[2]), ["-a", "Terminal", ROOT]);
+    }
+
+    #[test]
+    fn macos_prefers_the_code_command_and_the_default_browser() {
+        let probe = mac_probe(&["open", "code"], &["iTerm", "Terminal"], &["a.rs"]);
+        let plan = plan_restore_with(&payload(&["a.rs"], &["https://a.com/"], Some(ROOT)), RestoreMode::Resume, &probe);
+        assert!(plan.failed.is_empty(), "{:?}", plan.failed);
+        assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/code"));
+        assert_eq!(args(&plan.commands[1]), ["https://a.com/"]);
+        assert_eq!(args(&plan.commands[2]), ["-a", "iTerm", ROOT]);
+    }
+
+    #[test]
+    fn linux_never_uses_open() {
+        let probe = probe_with_files(&["open", "xdg-open", "gnome-terminal"], &[]);
+        let plan = plan_restore_with(&payload(&[], &["https://a.com/"], Some(ROOT)), RestoreMode::Resume, &probe);
+        assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/xdg-open"));
+        assert_eq!(plan.commands[1].program, PathBuf::from("/usr/bin/gnome-terminal"));
     }
 
     const ROOT: &str = "/nonexistent-intent";

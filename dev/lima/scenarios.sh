@@ -26,7 +26,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-uuid() { cat /proc/sys/kernel/random/uuid; }
+# GNU date and /proc on Linux; BSD date and uuidgen on macOS.
+if [[ -r /proc/sys/kernel/random/uuid ]]; then
+  uuid() { cat /proc/sys/kernel/random/uuid; }
+else
+  uuid() { uuidgen | tr '[:upper:]' '[:lower:]'; }
+fi
 now() { date +%s; }
 
 ok() { printf '  ok     %s\n' "$1"; pass=$((pass + 1)); }
@@ -106,7 +111,11 @@ workday() {
 }
 
 events_json() { api "$API/v1/events?date=$1"; }
-day_of() { date -d "@$1" +%F; }
+if date -d @0 +%F >/dev/null 2>&1; then
+  day_of() { date -d "@$1" +%F; }
+else
+  day_of() { date -r "$1" +%F; }
+fi
 run_day() { api -X POST "$API/pipeline/run?date=$1" >/dev/null; }
 
 approve_workspace() {

@@ -4,7 +4,7 @@ import { RestoreReview, type ReviewTarget } from '../components/RestoreReview';
 import { ConfirmDialog, Empty, Keys, Snippet, StatusDot, Toasts, type ConfirmSpec } from '../components/ui';
 import { api, ApiError, TOKEN_REFUSED } from '../lib/api';
 import { copyText, hideOverlay, listen, openMain } from '../lib/bridge';
-import { modHeld } from '../lib/env';
+import { modHeld, START_DAEMON } from '../lib/env';
 import { ago, daysAgoIso, duration, relativeDay, todayIso } from '../lib/format';
 import { fuzzyFilter, fuzzyRank } from '../lib/fuzzy';
 import { byRecency, flatten, hasResume, laneFor, projectOf } from '../lib/intent';
@@ -628,7 +628,7 @@ export function Overlay() {
           <div className="ov-body">
             <div className="ov-list" id="ov-list" role="listbox" ref={listRef}>
               {(offline || capture.reachable === false) && (
-                <Empty icon="alert" title="Intent isn’t running" text="Start it from the app menu, or run “systemctl --user start intentd”." />
+                <Empty icon="alert" title="Intent isn’t running" text={`Start it from the app menu, or run “${START_DAEMON}”.`} />
               )}
               {!offline && capture.reachable !== false && capture.denied && (
                 <Empty icon="alert" title="Intent refused the app’s access token" text={TOKEN_REFUSED} />

@@ -18,6 +18,8 @@ use crate::{Collector, CollectorContext, EventSink};
 
 #[cfg(target_os = "linux")]
 mod gnome;
+#[cfg(target_os = "macos")]
+pub mod macos;
 #[cfg(target_os = "linux")]
 mod x11;
 
@@ -150,7 +152,7 @@ impl FocusSettler {
 
 /// Drain samples from a backend until it closes the channel or we are cancelled.
 /// Returns `Err(SinkClosed)` if the daemon side went away.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
 pub(crate) async fn drive(
     mut rx: mpsc::Receiver<FocusSample>,
     sink: &EventSink,
@@ -176,7 +178,7 @@ pub(crate) async fn drive(
     }
 }
 
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(dead_code))]
 async fn sleep_until_opt(deadline: Option<Instant>) {
     match deadline {
         Some(d) => tokio::time::sleep_until(d).await,
@@ -205,6 +207,8 @@ pub(crate) enum Candidate {
     Gnome {
         wait: bool,
     },
+    /// The macOS window server.
+    MacOs,
 }
 
 /// Ordered list of backends to try. Never uses X11 inside a Wayland session
@@ -217,6 +221,7 @@ pub(crate) fn candidates(pref: FocusBackendPref, env: &SessionEnv) -> Vec<Candid
         FocusBackendPref::X11 => vec![Candidate::X11],
         FocusBackendPref::Gnome => vec![Candidate::Gnome { wait: true }],
         FocusBackendPref::Auto => match kind {
+            SessionKind::MacOs => vec![Candidate::MacOs],
             SessionKind::Wayland => vec![Candidate::Gnome { wait: gnome }],
             SessionKind::X11 if gnome => vec![Candidate::X11, Candidate::Gnome { wait: true }],
             SessionKind::X11 => vec![Candidate::X11, Candidate::Gnome { wait: false }],
@@ -298,16 +303,11 @@ impl Collector for FocusCollector {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 async fn run_candidate(cand: Candidate, c: &FocusCollector, ctx: &CollectorContext, env: &SessionEnv) -> BackendEnd {
     let (tx, rx) = mpsc::channel::<FocusSample>(64);
     let mut settler = FocusSettler::new(c.config.settle, c.config.max_delay);
-    let backend = async {
-        match cand {
-            Candidate::X11 => x11::run(env, tx, &ctx.status, &ctx.cancel).await,
-            Candidate::Gnome { wait } => gnome::run(wait, tx, &ctx.status, &ctx.cancel).await,
-        }
-    };
+    let backend = run_backend(cand, c, ctx, env, tx);
     let driver = drive(rx, &ctx.sink, c.feed.as_deref(), &mut settler);
     tokio::pin!(backend, driver);
     tokio::select! {
@@ -325,14 +325,45 @@ async fn run_candidate(cand: Candidate, c: &FocusCollector, ctx: &CollectorConte
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "linux")]
+async fn run_backend(
+    cand: Candidate,
+    _c: &FocusCollector,
+    ctx: &CollectorContext,
+    env: &SessionEnv,
+    tx: mpsc::Sender<FocusSample>,
+) -> BackendEnd {
+    match cand {
+        Candidate::X11 => x11::run(env, tx, &ctx.status, &ctx.cancel).await,
+        Candidate::Gnome { wait } => gnome::run(wait, tx, &ctx.status, &ctx.cancel).await,
+        Candidate::MacOs => BackendEnd::NotAvailable("the macOS window server exists only on macOS".into()),
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn run_backend(
+    cand: Candidate,
+    c: &FocusCollector,
+    ctx: &CollectorContext,
+    _env: &SessionEnv,
+    tx: mpsc::Sender<FocusSample>,
+) -> BackendEnd {
+    match cand {
+        Candidate::MacOs => macos::run(tx, c.feed.as_deref(), ctx).await,
+        Candidate::X11 | Candidate::Gnome { .. } => {
+            BackendEnd::NotAvailable("X11 and GNOME exist only on Linux".into())
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 async fn run_candidate(
     _cand: Candidate,
     _c: &FocusCollector,
     _ctx: &CollectorContext,
     _env: &SessionEnv,
 ) -> BackendEnd {
-    BackendEnd::NotAvailable("focus tracking is only implemented on Linux".into())
+    BackendEnd::NotAvailable("focus tracking is only implemented on Linux and macOS".into())
 }
 
 #[cfg(test)]
@@ -429,6 +460,7 @@ mod tests {
             wayland_display: Some("wayland-0".into()),
             display: Some(":0".into()),
             current_desktop: Some("ubuntu:GNOME".into()),
+            macos: false,
         };
         assert_eq!(candidates(FocusBackendPref::Auto, &wl_gnome), vec![Candidate::Gnome { wait: true }]);
         let wl_kde = SessionEnv { current_desktop: Some("KDE".into()), ..wl_gnome.clone() };
@@ -438,10 +470,13 @@ mod tests {
             wayland_display: None,
             display: Some(":0".into()),
             current_desktop: Some("ubuntu:GNOME".into()),
+            macos: false,
         };
         assert_eq!(candidates(FocusBackendPref::Auto, &x_gnome), vec![Candidate::X11, Candidate::Gnome { wait: true }]);
         assert!(candidates(FocusBackendPref::Auto, &SessionEnv::default()).is_empty());
         assert!(candidates(FocusBackendPref::Disabled, &x_gnome).is_empty());
+        let mac = SessionEnv { macos: true, ..Default::default() };
+        assert_eq!(candidates(FocusBackendPref::Auto, &mac), vec![Candidate::MacOs]);
     }
 
     #[tokio::test(start_paused = true)]

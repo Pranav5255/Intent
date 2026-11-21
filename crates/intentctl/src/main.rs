@@ -13,9 +13,10 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::{Value, json};
 
+mod service;
+
 const SHELL_BLOCK_START: &str = "# >>> intent shell hook >>>";
 const SHELL_BLOCK_END: &str = "# <<< intent shell hook <<<";
-const SERVICE: &str = "intentd.service";
 const GNOME_EXTENSION_UUID: &str = "intent-focus@intent.local";
 
 #[derive(Parser)]
@@ -148,7 +149,7 @@ fn run(cli: Cli) -> Result<()> {
         Cmd::SendShell { .. } => unreachable!("handled in main"),
         Cmd::Status => status(&api),
         Cmd::Enable { no_shell } => enable(no_shell),
-        Cmd::Disable => systemctl(&["disable", "--now", SERVICE]),
+        Cmd::Disable => service::disable(),
         Cmd::Pause { duration } => {
             let seconds = duration.as_deref().map(parse_duration).transpose()?;
             let res =
@@ -310,11 +311,7 @@ fn print_json(value: &Value) {
 // ---------------------------------------------------------------------------
 
 fn status(api: &Api) -> Result<()> {
-    let service = Command::new("systemctl")
-        .args(["--user", "is-active", SERVICE])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| "unknown".into());
+    let service = service::state();
     let daemon = api.send("GET", "/v1/status", None);
     print_json(&json!({
         "service": service,
@@ -324,9 +321,7 @@ fn status(api: &Api) -> Result<()> {
 }
 
 fn enable(no_shell: bool) -> Result<()> {
-    let _ = systemctl(&["import-environment", "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE"]);
-    systemctl(&["daemon-reload"])?;
-    systemctl(&["enable", "--now", SERVICE])?;
+    service::enable()?;
     if !no_shell {
         install_shell_hook(ShellKind::detect())?;
     }
@@ -340,7 +335,7 @@ fn enable(no_shell: bool) -> Result<()> {
 }
 
 fn uninstall(keep_data: bool) -> Result<()> {
-    let _ = systemctl(&["disable", "--now", SERVICE]);
+    let _ = service::disable();
     for shell in [ShellKind::Bash, ShellKind::Zsh] {
         remove_shell_hook(shell)?;
     }
@@ -476,7 +471,7 @@ fn strip_block(text: &str) -> String {
 
 fn find_shell_hook(shell: ShellKind) -> Option<PathBuf> {
     let file = format!("intent.{}", shell.name());
-    let mut candidates = vec![PathBuf::from("/usr/share/intent/shell").join(&file)];
+    let mut candidates = vec![share_dir().join("shell").join(&file)];
     if let Ok(exe) = std::env::current_exe() {
         // Development checkout: target/<profile>/intentctl → <repo>/shell/.
         if let Some(repo) = exe.ancestors().nth(3) {
@@ -486,8 +481,19 @@ fn find_shell_hook(shell: ShellKind) -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
+/// The companion files: `<prefix>/share/intent` next to this binary (Homebrew), else
+/// the Debian package's `/usr/share/intent`.
+fn share_dir() -> PathBuf {
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| Some(exe.parent()?.parent()?.join("share").join("intent")))
+        .filter(|dir| dir.is_dir());
+    beside.unwrap_or_else(|| PathBuf::from("/usr/share/intent"))
+}
+
 fn install_vscode_extension() {
-    let vsix = Path::new("/usr/share/intent/integrations/intent-vscode.vsix");
+    let vsix = share_dir().join("integrations").join("intent-vscode.vsix");
+    let vsix = vsix.as_path();
     if !vsix.is_file() {
         return;
     }
@@ -501,14 +507,6 @@ fn install_vscode_extension() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-fn systemctl(args: &[&str]) -> Result<()> {
-    let status = Command::new("systemctl").arg("--user").args(args).status().context("running systemctl")?;
-    if !status.success() {
-        bail!("systemctl --user {} failed", args.join(" "));
-    }
-    Ok(())
-}
 
 fn which(bin: &str) -> bool {
     std::env::var_os("PATH")

@@ -21,6 +21,9 @@ export const IS_MAC = /Mac|iPhone|iPad/.test(platform);
 /** Modifier glyph for keycaps: ⌘ on macOS, Ctrl elsewhere (GNOME convention). */
 export const MOD = IS_MAC ? '⌘' : 'Ctrl';
 
+/** The command that starts the daemon: a launchd agent on macOS, a systemd unit on Linux. */
+export const START_DAEMON = IS_MAC ? 'intentctl enable' : 'systemctl --user start intentd';
+
 /** True when the platform's primary modifier is held. */
 export function modHeld(event: { metaKey: boolean; ctrlKey: boolean }): boolean {
   return IS_MAC ? event.metaKey : event.ctrlKey;
