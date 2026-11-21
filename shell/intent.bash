@@ -16,7 +16,7 @@
 #   not $BASH_COMMAND, so pipelines and lists are captured whole.
 # * Skipped: commands typed with a leading space (HISTCONTROL=ignorespace
 #   convention), and everything while INTENT_PAUSED is set to a value other than 0.
-# * Redaction/truncation of the command text is done by intentctl.
+# * intentd redacts the command text. intentctl only caps its length.
 
 # Interactive shells only, and only once per shell. The guard is deliberately
 # NOT exported: nested shells must install their own hooks (1.x bug).

@@ -10,7 +10,7 @@
 # * Duration comes from $EPOCHREALTIME (zsh/datetime).
 # * Skipped: commands typed with a leading space (HIST_IGNORE_SPACE convention),
 #   and everything while INTENT_PAUSED is set to a value other than 0.
-# * Redaction/truncation of the command text is done by intentctl.
+# * intentd redacts the command text. intentctl only caps its length.
 
 [[ -o interactive ]] || return 0
 # Not exported: nested shells install their own hooks.
