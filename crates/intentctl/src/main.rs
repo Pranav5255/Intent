@@ -215,15 +215,24 @@ impl Api {
             }
         }
         .with_context(|| format!("{method} {path} failed (is intentd running? try `intentctl status`)"))?;
-        if response.status() == 204 {
+        let status = response.status();
+        if status == 204 {
             return Ok(Value::Null);
+        }
+        if status.is_client_error() || status.is_server_error() {
+            // The daemon explains the refusal in `detail`; show that, not just the code.
+            let body = response.body_mut().read_json::<Value>().unwrap_or(Value::Null);
+            match body["detail"].as_str() {
+                Some(detail) => bail!("{detail}"),
+                None => bail!("{method} {path} failed with HTTP {}", status.as_u16()),
+            }
         }
         Ok(response.body_mut().read_json::<Value>()?)
     }
 }
 
 fn agent(timeout: Duration) -> ureq::Agent {
-    ureq::Agent::config_builder().timeout_global(Some(timeout)).build().into()
+    ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).build().into()
 }
 
 fn with_auth<B>(req: ureq::RequestBuilder<B>, token: Option<&str>) -> ureq::RequestBuilder<B> {
@@ -348,20 +357,67 @@ fn workspace(api: &Api, action: WorkspaceCmd) -> Result<()> {
         }
         WorkspaceCmd::Add { path } => {
             let path = fs::canonicalize(&path).with_context(|| format!("{} does not exist", path.display()))?;
+            check_addable(&path, &home())?;
             let path = path.to_string_lossy().into_owned();
             if !list.contains(&path) {
                 list.push(path);
             }
         }
         WorkspaceCmd::Remove { path } => {
-            let target = fs::canonicalize(&path).unwrap_or(path).to_string_lossy().into_owned();
-            list.retain(|w| *w != target);
+            let cwd = std::env::current_dir().context("reading the current directory")?;
+            remove_entry(&mut list, &path, &cwd)?;
         }
     }
     // The daemon re-applies the watcher configuration on write; no restart needed.
     api.send("PUT", "/v1/workspaces", Some(json!({ "workspaces": list })))?;
     list.iter().for_each(|w| println!("{w}"));
     Ok(())
+}
+
+/// Absolute form of `path` without requiring it to exist: relative to `cwd`, `.`
+/// and `..` removed, and symlinks resolved for the part that exists (as the daemon
+/// stores workspaces).
+fn resolve_path(path: &Path, cwd: &Path) -> PathBuf {
+    let mut lexical = PathBuf::from("/");
+    for component in cwd.join(path).components() {
+        match component {
+            std::path::Component::Normal(part) => lexical.push(part),
+            std::path::Component::ParentDir => {
+                lexical.pop();
+            }
+            _ => {}
+        }
+    }
+    for base in lexical.ancestors() {
+        if let Ok(real) = fs::canonicalize(base) {
+            let rest = lexical.strip_prefix(base).unwrap_or(Path::new(""));
+            return if rest.as_os_str().is_empty() { real } else { real.join(rest) };
+        }
+    }
+    lexical
+}
+
+/// Refuse what the daemon refuses, with the same reason, before asking it.
+fn check_addable(path: &Path, home: &Path) -> Result<()> {
+    if path.parent().is_none() {
+        bail!("/ cannot be a workspace because it holds every file on the computer");
+    }
+    let home = fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
+    if path == home {
+        bail!("{} is your home directory and cannot be a workspace; add a project folder inside it", path.display());
+    }
+    Ok(())
+}
+
+/// Remove the entry that `path` names, whether or not the folder still exists.
+fn remove_entry(list: &mut Vec<String>, path: &Path, cwd: &Path) -> Result<String> {
+    let target = resolve_path(path, cwd).to_string_lossy().into_owned();
+    let before = list.len();
+    list.retain(|w| *w != target);
+    if list.len() == before {
+        bail!("{target} is not an approved workspace (see `intentctl workspace list`)");
+    }
+    Ok(target)
 }
 
 fn install_shell_hook(shell: ShellKind) -> Result<()> {
@@ -511,6 +567,45 @@ mod tests {
         let rc = format!("alias ll='ls -l'\n{SHELL_BLOCK_START}\n. /x\n{SHELL_BLOCK_END}\nexport A=1\n");
         assert_eq!(strip_block(&rc), "alias ll='ls -l'\nexport A=1\n");
         assert_eq!(strip_block("plain\n"), "plain\n");
+    }
+
+    #[test]
+    fn removes_a_workspace_that_no_longer_exists() {
+        let cwd = Path::new("/nonexistent-intent/home");
+        let mut list = vec!["/nonexistent-intent/home/tmpws".to_string(), "/nonexistent-intent/home/src".to_string()];
+        let removed = remove_entry(&mut list, Path::new("tmpws"), cwd).unwrap();
+        assert_eq!(removed, "/nonexistent-intent/home/tmpws");
+        assert_eq!(list, ["/nonexistent-intent/home/src"]);
+        remove_entry(&mut list, Path::new("../home/./src/"), cwd).unwrap();
+        assert!(list.is_empty());
+        let err = remove_entry(&mut list, Path::new("nope"), cwd).unwrap_err().to_string();
+        assert!(err.contains("/nonexistent-intent/home/nope"), "{err}");
+    }
+
+    #[test]
+    fn refuses_root_and_home() {
+        let home = Path::new("/nonexistent-intent/home");
+        assert!(check_addable(Path::new("/"), home).is_err());
+        assert!(check_addable(home, home).unwrap_err().to_string().contains("home directory"));
+        assert!(check_addable(&home.join("src"), home).is_ok());
+    }
+
+    #[test]
+    fn removes_a_workspace_through_a_symlink() {
+        let dir = std::env::temp_dir().join(format!("intentctl-test-{}", std::process::id()));
+        let real = dir.join("real");
+        fs::create_dir_all(&real).unwrap();
+        let real = fs::canonicalize(&real).unwrap();
+        #[cfg(unix)]
+        {
+            let link = dir.join("link");
+            let _ = fs::remove_file(&link);
+            std::os::unix::fs::symlink(&real, &link).unwrap();
+            let mut list = vec![real.to_string_lossy().into_owned()];
+            remove_entry(&mut list, &link, Path::new("/")).unwrap();
+            assert!(list.is_empty());
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
