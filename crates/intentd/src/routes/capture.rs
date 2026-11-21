@@ -298,6 +298,8 @@ pub async fn retention_purge(
     let now = now_ts();
     let c = cutoffs(body.detailed_days, body.metadata_days, now);
     let store = state.store.clone();
+    // A run in progress must not save intents of days the purge removes.
+    let _lock = state.pipeline_lock.lock().await;
     let (preview, report) = blocking(move || -> intent_store::Result<_> {
         let preview = store.retention_preview(&c)?;
         let report = store.purge_retention(&c)?;

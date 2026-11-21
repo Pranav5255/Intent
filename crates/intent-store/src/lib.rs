@@ -10,7 +10,7 @@
 //!
 //! Module map: [`events`] (capture side), [`intents`] (pipeline results, trees, stats),
 //! [`search`] (FTS5, sqlite-vec, hybrid), [`facts`], [`meta`] (metadata + cursors),
-//! [`legacy`] (1.x importer).
+//! [`legacy`] (1.x importer), `forget` (forget a day or a project, scrub the files).
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -24,6 +24,7 @@ pub mod day;
 pub mod error;
 pub mod events;
 pub mod facts;
+mod forget;
 pub mod intents;
 pub mod legacy;
 pub mod meta;
@@ -103,6 +104,8 @@ fn configure(conn: &Connection, busy: Duration) -> Result<()> {
     conn.pragma_update(None, "foreign_keys", true)?;
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.pragma_update(None, "temp_store", "MEMORY")?;
+    // Zero deleted rows and freed pages: forgotten data must not stay in the file.
+    conn.pragma_update(None, "secure_delete", true)?;
     Ok(())
 }
 

@@ -23,6 +23,12 @@ pub struct CachedRun {
 pub struct DeleteReport {
     pub deleted_intent_ids: Vec<String>,
     pub deleted_count: usize,
+    /// Raw events deleted with the intents (forget only).
+    #[serde(default)]
+    pub deleted_event_count: usize,
+    /// Dates whose intents were removed or must be rebuilt.
+    #[serde(default)]
+    pub affected_dates: Vec<String>,
 }
 
 /// Lightweight root row (no tree), e.g. for resume selection.
@@ -66,7 +72,7 @@ pub struct IntentStatsReport {
 }
 
 /// Accepts `foo` or `project:foo`; returns the bare, trimmed project name.
-fn normalize_project(p: &str) -> &str {
+pub(crate) fn normalize_project(p: &str) -> &str {
     let p = p.trim();
     p.strip_prefix("project:").unwrap_or(p).trim()
 }
@@ -189,14 +195,18 @@ pub(crate) fn delete_pks(tx: &Transaction<'_>, pks: &[i64]) -> Result<()> {
     Ok(())
 }
 
-fn collect_id_pk(tx: &Connection, sql: &str, params: impl rusqlite::Params) -> Result<Vec<(String, i64, String)>> {
+pub(crate) fn collect_id_pk(
+    tx: &Connection,
+    sql: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<(String, i64, String)>> {
     let mut stmt = tx.prepare_cached(sql)?;
     let rows = stmt.query_map(params, |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 /// Delete the given seed intents plus all their descendants; returns deleted (id, date).
-fn delete_subtrees(tx: &Transaction<'_>, seed_sql: &str, param: &str) -> Result<Vec<(String, String)>> {
+pub(crate) fn delete_subtrees(tx: &Transaction<'_>, seed_sql: &str, param: &str) -> Result<Vec<(String, String)>> {
     let sql = format!(
         "WITH RECURSIVE sub(id) AS ({seed_sql} UNION SELECT i.id FROM intents i JOIN sub ON i.parent_id = sub.id)
          SELECT i.id, i.pk, i.date FROM intents i JOIN sub ON sub.id = i.id ORDER BY i.id"
@@ -407,7 +417,9 @@ impl Store {
         })
     }
 
-    /// Remove all intents and pipeline runs for one date.
+    /// Remove all intents and pipeline runs for one date, keeping its raw events so
+    /// the pipeline can rebuild it (recompute). To forget a day use
+    /// [`Store::forget_date`].
     pub fn delete_date(&self, date: &str) -> Result<DeleteReport> {
         validate_date(date)?;
         self.write(|tx| {
@@ -416,26 +428,7 @@ impl Store {
             delete_pks(tx, &pks)?;
             tx.execute("DELETE FROM pipeline_runs WHERE date = ?1", [date])?;
             let ids: Vec<String> = rows.into_iter().map(|r| r.0).collect();
-            Ok(DeleteReport { deleted_count: ids.len(), deleted_intent_ids: ids })
-        })
-    }
-
-    /// Forget every intent tagged `project:<name>` (exact match on the indexed
-    /// `project` column) together with its descendants, and invalidate the pipeline
-    /// cache of affected dates. Accepts `name` or `project:name`.
-    pub fn delete_project(&self, project: &str) -> Result<DeleteReport> {
-        let name = normalize_project(project).to_string();
-        if name.is_empty() {
-            return Err(invalid("project must not be empty"));
-        }
-        self.write(|tx| {
-            let rows = delete_subtrees(tx, "SELECT id FROM intents WHERE project = ?1", &name)?;
-            let dates: BTreeSet<&str> = rows.iter().map(|(_, d)| d.as_str()).collect();
-            for d in dates {
-                tx.execute("DELETE FROM pipeline_runs WHERE date = ?1", [d])?;
-            }
-            let ids: Vec<String> = rows.into_iter().map(|(id, _)| id).collect();
-            Ok(DeleteReport { deleted_count: ids.len(), deleted_intent_ids: ids })
+            Ok(DeleteReport { deleted_count: ids.len(), deleted_intent_ids: ids, ..Default::default() })
         })
     }
 }
