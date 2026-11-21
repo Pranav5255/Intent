@@ -28,6 +28,8 @@ import type {
   WorkspacesConfig,
 } from './types';
 
+export const TOKEN_REFUSED = 'Intent refused the app’s access token. Restart Intent.';
+
 export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export interface ApiResponse {
@@ -65,7 +67,10 @@ function detailOf(payload: unknown): string | undefined {
 async function transport(method: Method, path: string, body?: unknown): Promise<ApiResponse> {
   if (MOCK) {
     const { mockRequest } = await import('./mock');
-    return mockRequest(method, path, body);
+    // The mock throws like a dead daemon; report it the same way as the Rust side.
+    return mockRequest(method, path, body).catch((reason: unknown) => {
+      throw new ApiError(0, reason instanceof Error ? reason.message : 'Intent isn’t running on this computer.');
+    });
   }
   try {
     return await command<ApiResponse>('api', { method, path, body: body ?? null });
@@ -78,11 +83,13 @@ async function transport(method: Method, path: string, body?: unknown): Promise<
 export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const response = await transport(method, path, body);
   if (response.status < 200 || response.status >= 300) {
-    const fallback =
+    // The Rust side retried a 401 with a freshly read token already. The
+    // daemon's own text ("missing or invalid token") does not say what to do.
+    const message =
       response.status === 401
-        ? 'Intent refused the request. Restart the app to refresh its access token.'
-        : `Request failed (${response.status}).`;
-    throw new ApiError(response.status, detailOf(response.body) ?? fallback, response.body);
+        ? TOKEN_REFUSED
+        : (detailOf(response.body) ?? `Request failed (${response.status}).`);
+    throw new ApiError(response.status, message, response.body);
   }
   return response.body as T;
 }
