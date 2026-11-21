@@ -304,16 +304,19 @@ fn pipeline_save_reload_round_trip() {
     assert!(store.cached_run("2024-01-01", "h1").unwrap().is_none());
     assert!(store.search("migrations", 10, None, None).unwrap().is_empty());
 
-    // delete_project removes matching trees; delete_date clears the rest.
-    store.save_pipeline_run("2024-01-01", &result(tree.clone(), "h3")).unwrap();
-    let del = store.delete_project("intent").unwrap();
-    assert_eq!(del.deleted_intent_ids, vec!["a", "b", "c", "d"]);
-    assert!(store.cached_run("2024-01-01", "h3").unwrap().is_none());
-    assert_eq!(store.intents_for_date("2024-01-01").unwrap().len(), 1);
+    // delete_date clears a date but keeps nothing searchable.
     let del = store.delete_date("2024-01-01").unwrap();
     assert_eq!(del.deleted_count, 1);
     assert!(store.intents_for_date("2024-01-01").unwrap().is_empty());
     assert!(store.search("fusion", 10, None, None).unwrap().is_empty());
+
+    // forget_project reports the project's trees and clears the affected date.
+    store.save_pipeline_run("2024-01-01", &result(tree.clone(), "h3")).unwrap();
+    let del = store.forget_project("intent", &[]).unwrap();
+    assert_eq!(del.deleted_intent_ids, vec!["a", "b", "c", "d"]);
+    assert_eq!(del.affected_dates, vec!["2024-01-01"]);
+    assert!(store.cached_run("2024-01-01", "h3").unwrap().is_none());
+    assert!(store.intents_for_date("2024-01-01").unwrap().is_empty());
 }
 
 #[test]
