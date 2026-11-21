@@ -7,7 +7,8 @@
 //!   `intents.pk`. Its dimension and the embedder identity are recorded in
 //!   `embeddings_meta`; switching embedder drops and recreates the table.
 //! * [`Store::hybrid_search`] fuses the FTS and KNN rankings with reciprocal-rank
-//!   fusion (RRF, k = 60).
+//!   fusion (RRF, k = 60). A hit found only by KNN needs a cosine similarity of at
+//!   least [`MIN_SEMANTIC_SIMILARITY`]; a zero query vector adds no semantic hits.
 
 use std::collections::HashMap;
 
@@ -27,6 +28,15 @@ const MAX_QUERY_TOKENS: usize = 16;
 const RRF_K: f64 = 60.0;
 /// bm25 column weights: label, summary, tags, insights.
 const BM25: &str = "bm25(intent_fts, 10.0, 5.0, 2.0, 1.0)";
+/// Minimum cosine similarity for a hit that only the vector list found.
+///
+/// KNN always returns the nearest vectors, even for a word that matches nothing, so
+/// without a floor every query returns something. With the default hashing embedder
+/// unrelated texts score near 0 and texts that share a token score well above 0.2.
+/// Model embedders have a higher baseline (nomic-embed-text scores unrelated short
+/// texts at 0.3 to 0.5), so for them this floor only drops clear noise. Keyword hits
+/// are kept at any similarity.
+pub const MIN_SEMANTIC_SIMILARITY: f64 = 0.2;
 
 /// Which embedder produced the stored vectors.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +86,12 @@ fn vec_to_blob(v: &[f32]) -> Vec<u8> {
 
 pub(crate) fn blob_to_vec(b: &[u8]) -> Vec<f32> {
     b.as_chunks::<4>().0.iter().map(|c| f32::from_le_bytes(*c)).collect()
+}
+
+/// Whether a vector has a cosine distance to anything. A zero vector (text with no
+/// tokens, or an embedder that gave up) has none: sqlite-vec returns NULL for it.
+fn has_direction(v: &[f32]) -> bool {
+    v.iter().any(|x| *x != 0.0)
 }
 
 fn check_vector(v: &[f32], dims: usize) -> Result<()> {
@@ -201,18 +217,24 @@ fn vec_candidates(
 ) -> Result<Vec<(Candidate, f64)>> {
     let Some(spec) = embedder_spec(c)? else { return Ok(Vec::new()) };
     check_vector(v, spec.dims)?;
+    if !has_direction(v) {
+        return Ok(Vec::new());
+    }
     // KNN runs before the depth/date filter, so oversample.
     let k = (limit * 4).clamp(16, 4096) as i64;
+    // A stored zero vector has a NULL distance: it matches nothing. vec0 refuses an
+    // `IS NOT NULL` constraint on `distance`, so NULLs sort last and are skipped below.
     let mut stmt = c.prepare_cached(
         "WITH knn AS (SELECT rowid, distance FROM intent_vec WHERE embedding MATCH ?1 AND k = ?2)
          SELECT i.id, i.label, i.summary, i.date, knn.distance
          FROM knn JOIN intents i ON i.pk = knn.rowid
          WHERE i.depth = 0 AND (?3 IS NULL OR i.date >= ?3) AND (?4 IS NULL OR i.date <= ?4)
-         ORDER BY knn.distance, i.id LIMIT ?5",
+         ORDER BY knn.distance IS NULL, knn.distance, i.id LIMIT ?5",
     )?;
     let rows = stmt.query_map(params![vec_to_blob(v), k, from, to, limit as i64], |r| {
+        let Some(distance) = r.get::<_, Option<f64>>(4)? else { return Ok(None) };
         let summary: String = r.get(2)?;
-        Ok((
+        Ok(Some((
             Candidate {
                 id: r.get(0)?,
                 label: r.get(1)?,
@@ -220,10 +242,10 @@ fn vec_candidates(
                 summary,
                 date: r.get(3)?,
             },
-            1.0 - r.get::<_, f64>(4)?,
-        ))
+            1.0 - distance,
+        )))
     })?;
-    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    Ok(rows.filter_map(|row| row.transpose()).collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 fn check_range(from: Option<&str>, to: Option<&str>) -> Result<()> {
@@ -278,10 +300,13 @@ impl Store {
         let pool = (limit * 3).max(30);
         self.read(|c| {
             let keyword = fts_candidates(c, query, pool, date_from, date_to)?;
-            let semantic = match query_vec {
-                Some(v) => vec_candidates(c, v, pool, date_from, date_to)?,
-                None => Vec::new(),
+            let mut semantic = match query_vec {
+                // A NaN or zero query vector has no neighbours: rank by keywords only.
+                Some(v) if v.iter().all(|x| x.is_finite()) => vec_candidates(c, v, pool, date_from, date_to)?,
+                _ => Vec::new(),
             };
+            semantic
+                .retain(|(cand, sim)| *sim >= MIN_SEMANTIC_SIMILARITY || keyword.iter().any(|(k, _)| k.id == cand.id));
             let mut fused: HashMap<String, (Candidate, f64)> = HashMap::new();
             for list in [keyword, semantic] {
                 for (rank, (cand, _)) in list.into_iter().enumerate() {

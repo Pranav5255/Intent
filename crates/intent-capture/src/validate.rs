@@ -29,6 +29,11 @@ pub const EVENT_PAYLOAD_FIELDS: &[((&str, &str), &[&str])] = &[
     (("shell", "command"), &["cmd", "cwd", "exit_code"]),
 ];
 
+/// How far ahead of the caller's clock an event `ts` may be. A day covers clock skew
+/// between a companion and the daemon. A later `ts` is a bug (often milliseconds sent
+/// as seconds): it never reaches a day view and sticks to the current intent.
+pub const MAX_FUTURE_SKEW_SECONDS: i64 = 86_400;
+
 pub const MAX_DOCUMENT_CHANGES: usize = 25;
 pub const MAX_DOCUMENT_TEXT_BYTES: usize = 8 * 1024;
 pub const CHANGE_KINDS: &[&str] = &["insert", "delete", "replace"];
@@ -121,14 +126,17 @@ pub fn required_fields(source: &str, kind: &str) -> Option<&'static [&'static st
 /// Validate and normalise a posted event into the stored shape.
 ///
 /// `source`/`type` are trimmed and lower-cased; `id` is canonicalised to the
-/// hyphenated lower-case UUID form.
-pub fn validate_event(event: EventIn) -> Result<RawEvent, ValidationError> {
+/// hyphenated lower-case UUID form. `now` (UTC Unix seconds) bounds `ts` from above.
+pub fn validate_event(event: EventIn, now: i64) -> Result<RawEvent, ValidationError> {
     let id = Uuid::try_parse(event.id.trim()).map_err(|_| ValidationError::new("id must be a valid UUID"))?;
     if !(1..=99).contains(&event.schema_version) {
         return fail("schema_version must be between 1 and 99");
     }
     if event.ts < 0 {
         return fail("ts must be a non-negative integer (UTC Unix seconds)");
+    }
+    if event.ts > now.saturating_add(MAX_FUTURE_SKEW_SECONDS) {
+        return fail("ts must not be more than 1 day in the future (UTC Unix seconds, not milliseconds)");
     }
     let source_len = event.source.chars().count();
     if !(1..=32).contains(&source_len) {
@@ -430,12 +438,13 @@ mod tests {
     use serde_json::json;
 
     const ID: &str = "2f1c1c1e-6c3a-4c1e-9d6e-6f1f2a3b4c5d";
+    const NOW: i64 = 1_700_000_000;
 
     fn event(source: &str, kind: &str, payload: Value) -> EventIn {
         EventIn {
             id: ID.into(),
             schema_version: 1,
-            ts: 1_700_000_000,
+            ts: NOW,
             source: source.into(),
             kind: kind.into(),
             payload: payload.as_object().cloned().unwrap(),
@@ -443,11 +452,11 @@ mod tests {
     }
 
     fn err(source: &str, kind: &str, payload: Value) -> String {
-        validate_event(event(source, kind, payload)).unwrap_err().message
+        validate_event(event(source, kind, payload), NOW).unwrap_err().message
     }
 
     fn ok(source: &str, kind: &str, payload: Value) -> RawEvent {
-        validate_event(event(source, kind, payload)).unwrap()
+        validate_event(event(source, kind, payload), NOW).unwrap()
     }
 
     // ---- envelope ---------------------------------------------------------
@@ -474,11 +483,11 @@ mod tests {
     fn id_must_be_uuid_and_is_canonicalised() {
         let mut e = event("linux", "idle_start", json!({}));
         e.id = "2F1C1C1E6C3A4C1E9D6E6F1F2A3B4C5D".into();
-        assert_eq!(validate_event(e.clone()).unwrap().id, ID);
+        assert_eq!(validate_event(e.clone(), NOW).unwrap().id, ID);
         e.id = "{2f1c1c1e-6c3a-4c1e-9d6e-6f1f2a3b4c5d}".into();
-        assert_eq!(validate_event(e.clone()).unwrap().id, ID);
+        assert_eq!(validate_event(e.clone(), NOW).unwrap().id, ID);
         e.id = "not-a-uuid".into();
-        assert_eq!(validate_event(e).unwrap_err().message, "id must be a valid UUID");
+        assert_eq!(validate_event(e, NOW).unwrap_err().message, "id must be a valid UUID");
     }
 
     #[test]
@@ -486,7 +495,7 @@ mod tests {
         for (version, valid) in [(0, false), (1, true), (99, true), (100, false), (-1, false)] {
             let mut e = event("linux", "idle_start", json!({}));
             e.schema_version = version;
-            assert_eq!(validate_event(e).is_ok(), valid, "{version}");
+            assert_eq!(validate_event(e, NOW).is_ok(), valid, "{version}");
         }
     }
 
@@ -494,9 +503,33 @@ mod tests {
     fn ts_must_be_non_negative() {
         let mut e = event("linux", "idle_start", json!({}));
         e.ts = 0;
-        assert!(validate_event(e.clone()).is_ok());
+        assert!(validate_event(e.clone(), NOW).is_ok());
         e.ts = -1;
-        assert!(validate_event(e).unwrap_err().message.starts_with("ts must be"));
+        assert!(validate_event(e, NOW).unwrap_err().message.starts_with("ts must be"));
+    }
+
+    #[test]
+    fn ts_must_not_be_far_in_the_future() {
+        let mut e = event("linux", "idle_start", json!({}));
+        for (ts, valid) in [
+            (NOW, true),
+            (NOW + 30, true),
+            (NOW + MAX_FUTURE_SKEW_SECONDS, true),
+            (NOW + MAX_FUTURE_SKEW_SECONDS + 1, false),
+            (NOW + 400 * 86_400, false),
+            (NOW * 1000, false),
+            (i64::MAX, false),
+        ] {
+            e.ts = ts;
+            let result = validate_event(e.clone(), NOW);
+            assert_eq!(result.is_ok(), valid, "{ts}");
+            if let Err(err) = result {
+                assert!(err.message.contains("in the future"), "{}", err.message);
+            }
+        }
+        // The bound moves with the clock the caller passes in.
+        e.ts = NOW * 1000;
+        assert!(validate_event(e, NOW * 1000).is_ok());
     }
 
     #[test]

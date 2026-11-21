@@ -77,15 +77,15 @@ mod tests {
     use serde_json::{Value, json};
 
     fn event(source: &str, kind: &str, payload: Value) -> RawEvent {
-        validate_event(EventIn {
+        let event = EventIn {
             id: "2f1c1c1e-6c3a-4c1e-9d6e-6f1f2a3b4c5d".into(),
             schema_version: 1,
             ts: 10,
             source: source.into(),
             kind: kind.into(),
             payload: payload.as_object().cloned().unwrap(),
-        })
-        .unwrap()
+        };
+        validate_event(event, 10).unwrap()
     }
 
     fn policy(

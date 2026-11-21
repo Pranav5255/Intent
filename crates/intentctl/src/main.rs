@@ -480,30 +480,48 @@ fn data_dir() -> PathBuf {
     xdg_dir("XDG_DATA_HOME", ".local/share")
 }
 
+/// The daemon's longest pause (`MAX_PAUSE_SECONDS` in intentd): 7 days.
+const MAX_PAUSE_SECONDS: u64 = 7 * 86_400;
+
 /// Parses durations like `15m`, `1h`, `2h30m`, `90s` or a bare number of minutes.
+/// The result is between 1 second and 7 days.
 fn parse_duration(text: &str) -> Result<u64> {
     let text = text.trim();
-    if let Ok(minutes) = text.parse::<u64>() {
-        return Ok(minutes * 60);
-    }
-    let mut total = 0;
-    let mut number = String::new();
-    for c in text.chars() {
-        if c.is_ascii_digit() {
-            number.push(c);
-            continue;
+    let too_long = || anyhow::anyhow!("duration {text:?} is too long: a pause can last at most 7 days");
+    let total = if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+        // A bare number counts minutes.
+        text.parse::<u64>().ok().and_then(|m| m.checked_mul(60)).ok_or_else(too_long)?
+    } else {
+        let mut total: u64 = 0;
+        let mut number = String::new();
+        for c in text.chars() {
+            if c.is_ascii_digit() {
+                number.push(c);
+                continue;
+            }
+            let unit = match c {
+                'h' => 3600,
+                'm' => 60,
+                's' => 1,
+                _ => bail!("invalid duration unit {c:?} in {text:?}"),
+            };
+            if number.is_empty() {
+                bail!("invalid duration {text:?}: {c:?} needs a number before it");
+            }
+            let part = number.parse::<u64>().ok().and_then(|n| n.checked_mul(unit)).ok_or_else(too_long)?;
+            total = total.checked_add(part).ok_or_else(too_long)?;
+            number.clear();
         }
-        let n: u64 = number.parse().with_context(|| format!("invalid duration {text:?}"))?;
-        total += n * match c {
-            'h' => 3600,
-            'm' => 60,
-            's' => 1,
-            _ => bail!("invalid duration unit {c:?} in {text:?}"),
-        };
-        number.clear();
+        if !number.is_empty() {
+            bail!("duration {text:?} is missing a unit");
+        }
+        total
+    };
+    if total == 0 {
+        bail!("duration {text:?} must be at least 1 second, for example 15m or 1h");
     }
-    if !number.is_empty() {
-        bail!("duration {text:?} is missing a unit");
+    if total > MAX_PAUSE_SECONDS {
+        return Err(too_long());
     }
     Ok(total)
 }
@@ -520,6 +538,22 @@ mod tests {
         assert_eq!(parse_duration("45").unwrap(), 2700);
         assert!(parse_duration("10x").is_err());
         assert!(parse_duration("1h30").is_err());
+    }
+
+    #[test]
+    fn absurd_durations_are_refused() {
+        // 307445734561825861 * 60 wraps to 12 seconds in u64.
+        for text in ["307445734561825861m", "307445734561825861", "99999999999999999999h", "5124095576030432h"] {
+            let err = parse_duration(text).unwrap_err().to_string();
+            assert!(err.contains("too long"), "{text}: {err}");
+        }
+        for text in ["", " ", "0", "0m", "0h0m0s"] {
+            let err = parse_duration(text).unwrap_err().to_string();
+            assert!(err.contains("at least 1 second"), "{text:?}: {err}");
+        }
+        assert!(parse_duration("7d").is_err());
+        assert_eq!(parse_duration("10080m").unwrap(), 7 * 86_400);
+        assert!(parse_duration("10081m").unwrap_err().to_string().contains("too long"));
     }
 
     #[test]
