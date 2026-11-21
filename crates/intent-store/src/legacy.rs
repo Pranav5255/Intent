@@ -81,7 +81,7 @@ fn import_events(tx: &Transaction<'_>, src: &Connection, store: &Store, report: 
     let now = now_ts();
     let mut batch: Vec<RawEvent> = Vec::with_capacity(CHUNK);
     let flush = |batch: &mut Vec<RawEvent>, report: &mut ImportReport| -> Result<()> {
-        let r = insert_tx(tx, zone, batch.iter(), now)?;
+        let r = insert_tx(tx, &zone, batch.iter(), now)?;
         report.events_imported += r.inserted_ids().count();
         batch.clear();
         Ok(())

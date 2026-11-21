@@ -14,7 +14,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-use chrono::{Local, NaiveDate, TimeZone};
+use jiff::civil::Date;
+use jiff::tz::TimeZone;
 use serde_json::{Value, json};
 
 struct Args {
@@ -90,10 +91,10 @@ async fn main() {
     let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() as u64 | 1;
     let start_ts = match &a.date {
         Some(d) => {
-            let date = NaiveDate::parse_from_str(d, "%Y-%m-%d").expect("--date YYYY-MM-DD");
-            Local.from_local_datetime(&date.and_hms_opt(8, 0, 0).unwrap()).earliest().unwrap().timestamp()
+            let date: Date = d.parse().expect("--date YYYY-MM-DD");
+            date.at(8, 0, 0, 0).to_zoned(TimeZone::system()).expect("08:00 exists").timestamp().as_second()
         }
-        None => chrono::Utc::now().timestamp(),
+        None => jiff::Timestamp::now().as_second(),
     };
     let step = if a.date.is_some() { 14 } else { 0 };
     let client = reqwest::Client::new();
