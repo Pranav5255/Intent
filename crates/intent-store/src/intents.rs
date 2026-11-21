@@ -431,23 +431,4 @@ impl Store {
             Ok(DeleteReport { deleted_count: ids.len(), deleted_intent_ids: ids, ..Default::default() })
         })
     }
-
-    /// Forget every intent tagged `project:<name>` (exact match on the indexed
-    /// `project` column) together with its descendants, and invalidate the pipeline
-    /// cache of affected dates. Accepts `name` or `project:name`.
-    pub fn delete_project(&self, project: &str) -> Result<DeleteReport> {
-        let name = normalize_project(project).to_string();
-        if name.is_empty() {
-            return Err(invalid("project must not be empty"));
-        }
-        self.write(|tx| {
-            let rows = delete_subtrees(tx, "SELECT id FROM intents WHERE project = ?1", &name)?;
-            let dates: BTreeSet<&str> = rows.iter().map(|(_, d)| d.as_str()).collect();
-            for d in dates {
-                tx.execute("DELETE FROM pipeline_runs WHERE date = ?1", [d])?;
-            }
-            let ids: Vec<String> = rows.into_iter().map(|(id, _)| id).collect();
-            Ok(DeleteReport { deleted_count: ids.len(), deleted_intent_ids: ids, ..Default::default() })
-        })
-    }
 }

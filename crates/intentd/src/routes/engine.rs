@@ -18,6 +18,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::error::{ApiError, ApiResult, JsonBody, QueryParams};
+use crate::forget;
 use crate::llm::{current_intent, hybrid_search};
 use crate::pipeline::{self, RunMode};
 use crate::state::AppState;
@@ -320,9 +321,7 @@ pub async fn pipeline_recompute(
 
 pub async fn forget_date(State(state): State<AppState>, Path(date): Path<String>) -> ApiResult<Response> {
     check_date(&date)?;
-    let store = state.store.clone();
-    let report = blocking(move || store.delete_date(&date)).await?.map_err(|e| ApiError::store(e, BAD))?;
-    state.prediction.invalidate();
+    let report = forget::forget_date(&state, &date).await.map_err(pipeline_error)?;
     Ok(Json(report).into_response())
 }
 
@@ -330,8 +329,6 @@ pub async fn forget_project(State(state): State<AppState>, Path(project): Path<S
     if project.trim().is_empty() {
         return Err(ApiError::bad_request("project must be non-empty"));
     }
-    let store = state.store.clone();
-    let report = blocking(move || store.delete_project(&project)).await?.map_err(|e| ApiError::store(e, BAD))?;
-    state.prediction.invalidate();
+    let report = forget::forget_project(&state, &project).await.map_err(pipeline_error)?;
     Ok(Json(report).into_response())
 }
