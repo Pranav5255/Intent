@@ -54,6 +54,8 @@ true
 true
 INTENT_PAUSED=1
 echo paused-cmd
+INTENT_PAUSED=0
+echo zero-not-paused
 unset INTENT_PAUSED
 sleep 0.2
 [[ \${_user_pc:-0} -gt 3 && \${_user_trap:-} == 1 ]] && : >"$tmp/bash-chain"
@@ -67,6 +69,7 @@ has "$log" $'--cmd=false\t--cwd=' "bash: simple command captured"
 has "$log" $'--cmd=false\t--cwd='"$PWD"$'\t--exit=1\t' "bash: exit status and cwd"
 lacks "$log" "secret-space" "bash: leading-space command skipped"
 lacks "$log" "paused-cmd" "bash: INTENT_PAUSED respected"
+has "$log" "zero-not-paused" "bash: INTENT_PAUSED=0 does not pause"
 count "$log" $'--cmd=true\t' 2 "bash: ignoredups repeat still reported"
 count "$log" $'--cmd=false\t' 1 "bash: double source installs once"
 # A space-prefixed line identical to the previous saved command is indistinguishable
@@ -91,6 +94,8 @@ false
 sleep 0.3
 INTENT_PAUSED=1
 echo paused-cmd
+INTENT_PAUSED=0
+echo zero-not-paused
 unset INTENT_PAUSED
 [[ \${_user_precmd:-} == 1 ]] && : >"$tmp/zsh-chain"
 exit
@@ -102,6 +107,7 @@ EOF
   has "$log" $'--cmd=false\t--cwd='"$PWD"$'\t--exit=1\t' "zsh: exit status and cwd"
   lacks "$log" "secret-space" "zsh: leading-space command skipped"
   lacks "$log" "paused-cmd" "zsh: INTENT_PAUSED respected"
+  has "$log" "zero-not-paused" "zsh: INTENT_PAUSED=0 does not pause"
   if grep -F -- $'--cmd=sleep 0.3\t' "$log" | grep -qE -- $'--duration-ms=(2[5-9][0-9]|[3-9][0-9]{2}|[0-9]{4,})\t'; then
     ok "zsh: duration measured"
   else

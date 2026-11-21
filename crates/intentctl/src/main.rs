@@ -3,6 +3,7 @@
 //! `send-shell` is on the hot path of every interactive shell command, so it does no
 //! async setup, uses short timeouts and never reports failures to the terminal.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -255,13 +256,28 @@ fn read_token() -> Option<String> {
     token_paths().iter().find_map(|p| fs::read_to_string(p).ok()).map(|t| t.trim().to_string())
 }
 
+/// The server fully redacts a command longer than this many characters.
+const SERVER_MAX_COMMAND_CHARS: usize = 500;
+
+/// The hooks treat `INTENT_PAUSED` unset, empty or `0` as not paused. Match them.
+fn shell_paused(value: Option<&OsStr>) -> bool {
+    value.is_some_and(|v| !v.is_empty() && v != "0")
+}
+
+/// The server owns the long-command rule. If we cut a long command to the limit,
+/// the server would store the start of it. One character over the limit is enough
+/// for the server to see that it is too long, and it keeps the request small.
+fn shell_cmd_to_send(cmd: &str) -> String {
+    truncate(cmd, SERVER_MAX_COMMAND_CHARS + 1)
+}
+
 fn send_shell(base: &str, cmd: &str, cwd: &str, exit_code: i64, duration_ms: Option<u64>) -> Result<()> {
-    if std::env::var_os("INTENT_PAUSED").is_some() || cmd.trim().is_empty() {
+    if shell_paused(std::env::var_os("INTENT_PAUSED").as_deref()) || cmd.trim().is_empty() {
         return Ok(());
     }
     let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let mut payload = json!({
-        "cmd": truncate(cmd, 500),
+        "cmd": shell_cmd_to_send(cmd),
         "cwd": truncate(cwd, 4096),
         "exit_code": exit_code,
     });
@@ -606,6 +622,22 @@ mod tests {
             assert!(list.is_empty());
         }
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn paused_only_for_a_value_other_than_zero() {
+        assert!(!shell_paused(None));
+        assert!(!shell_paused(Some(OsStr::new(""))));
+        assert!(!shell_paused(Some(OsStr::new("0"))));
+        assert!(shell_paused(Some(OsStr::new("1"))));
+        assert!(shell_paused(Some(OsStr::new("yes"))));
+    }
+
+    #[test]
+    fn long_command_stays_long_enough_to_be_redacted() {
+        let long = "x".repeat(2000);
+        assert_eq!(shell_cmd_to_send(&long).chars().count(), 501);
+        assert_eq!(shell_cmd_to_send("ls -la"), "ls -la");
     }
 
     #[test]
