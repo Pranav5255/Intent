@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StatusDot } from '../components/ui';
 import { api } from '../lib/api';
-import { MOCK } from '../lib/env';
+import { IS_MAC, MOCK, START_DAEMON } from '../lib/env';
 import { ago } from '../lib/format';
 import { errorText, refreshCapture, toast, useAsync, useCapture, useRetryOnReconnect } from '../lib/store';
 import { BrandMark } from './MainWindow';
@@ -28,10 +28,14 @@ function markDone() {
 }
 
 const COMPANIONS: Array<{ source: string; name: string; missing: string }> = [
-  { source: 'linux', name: 'Desktop activity', missing: 'Needs the GNOME extension on Wayland' },
+  {
+    source: 'linux',
+    name: 'Desktop activity',
+    missing: IS_MAC ? 'Starts with “intentctl enable”' : 'Needs the GNOME extension on Wayland',
+  },
   { source: 'vscode', name: 'VS Code companion', missing: 'Install “Intent” from the VS Code marketplace' },
   { source: 'firefox', name: 'Firefox companion', missing: 'Install the Intent add-on for Firefox' },
-  { source: 'shell', name: 'Shell history', missing: 'Run “intentctl shell-hook” once in your shell' },
+  { source: 'shell', name: 'Shell history', missing: 'Run “intentctl shell enable” once in your shell' },
 ];
 
 /** First run: one sentence, live checks, one button. No carousel. */
@@ -82,7 +86,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <StatusDot tone={reachable === null ? 'idle' : reachable ? 'capturing' : 'offline'} />
             <span className="onb-check-name">Intent service</span>
             <span className="onb-check-state t2">
-              {reachable === null ? 'Checking…' : reachable ? 'Running' : 'Not running — start it with “systemctl --user start intentd”'}
+              {reachable === null ? 'Checking…' : reachable ? 'Running' : `Not running — start it with “${START_DAEMON}”`}
             </span>
           </div>
           {COMPANIONS.map((c) => {

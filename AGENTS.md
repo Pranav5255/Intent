@@ -22,14 +22,15 @@ crates/intent-store       SQLite (WAL) + FTS5 + sqlite-vec; single writer, migra
 crates/intent-capture     validation, redaction, blocklist, consent configs, retention, restore, XDG paths; pure, sync
 crates/intent-llm         provider clients, structured-output harness, embeddings, refinement, labeler, copilot
 crates/intent-engine      deterministic pipeline, digest, resume selection, current intent
-crates/intent-collectors  Linux activity sources: X11 and GNOME Wayland focus, idle, filesystem watcher
+crates/intent-collectors  activity sources: focus and idle (X11, GNOME Wayland, macOS), filesystem watcher
 crates/intentd            the daemon: axum on 127.0.0.1:9477, ingest writer, scheduler, retention, collectors
 crates/intentctl          CLI and shell-hook sender
 app/                      Tauri 2 desktop app: React + TypeScript in src/, Rust in src-tauri/ (own Cargo tree)
 shell/                    bash and zsh hooks, and their test driver
 gnome-extension/          reports the focused window on GNOME Wayland
 integrations/             Firefox and VS Code companions
-packaging/                .deb build, systemd user unit, maintainer scripts
+packaging/                .deb build, systemd user unit, maintainer scripts, Homebrew cask generator
+Formula/                  Homebrew formula; the repository is its own tap
 dev/ci/                   gate scripts: check.sh, tree-hygiene.sh, budgets.sh
 dev/lima/                 Ubuntu test VM, end-to-end and measurement scripts
 docs/                     architecture, gates, screenshots
@@ -44,8 +45,8 @@ docs/                     architecture, gates, screenshots
   `intent-llm` only through the traits in `intent-llm/src/traits.rs`. The other library
   crates depend only on `intent-types`. Do not add an edge between library crates.
 - **`intent-store` and `intent-capture` stay sync.** No tokio in them.
-- **Linux-only code is behind `#[cfg(target_os = "linux")]`.** The workspace must build and
-  test on macOS.
+- **Platform code is behind `#[cfg(target_os = "linux")]` or `#[cfg(target_os = "macos")]`.**
+  The workspace must build, test and run on both. See `docs/MACOS.md`.
 - **`app/src-tauri` is a separate Cargo tree.** It is excluded from the workspace and has its
   own `Cargo.lock`. Run its checks from `app/src-tauri`.
 
@@ -116,6 +117,7 @@ app crate. The pre-commit hook checks staged files. The pre-push hook runs `chec
 | the app's Rust crate | `cd app/src-tauri && cargo clippy --all-targets --locked && cargo test --locked` |
 | collectors, packaging, the systemd unit, or anything only Linux runs | `dev/lima/e2e.sh` in the Lima VM |
 | the app against the daemon, the tray, the palette or close-to-tray | `dev/lima/e2e-app.sh` in the Lima VM |
+| macOS collectors, launchd, Resume on macOS, or the Homebrew formula | the steps of the `package-macos` CI job, see `docs/MACOS.md` |
 | ingest, the writer, the pipeline or the scheduler | `dev/ci/budgets.sh` in the Lima VM |
 | a dependency | `cargo deny --locked check` for the tree you changed |
 

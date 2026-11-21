@@ -9,6 +9,8 @@
 pub enum SessionKind {
     X11,
     Wayland,
+    /// A macOS login session (the window server).
+    MacOs,
     /// TTY / headless / unknown.
     Unknown,
 }
@@ -19,6 +21,8 @@ pub struct SessionEnv {
     pub wayland_display: Option<String>,
     pub display: Option<String>,
     pub current_desktop: Option<String>,
+    /// Running on macOS, where the window server replaces X11 and Wayland.
+    pub macos: bool,
 }
 
 fn non_empty(v: Option<String>) -> Option<String> {
@@ -33,6 +37,7 @@ impl SessionEnv {
             wayland_display: get("WAYLAND_DISPLAY"),
             display: get("DISPLAY"),
             current_desktop: get("XDG_CURRENT_DESKTOP"),
+            macos: cfg!(target_os = "macos"),
         }
     }
 
@@ -40,6 +45,9 @@ impl SessionEnv {
     /// usually points at XWayland, which only sees X11 clients and would
     /// report wrong focus and idle data.
     pub fn kind(&self) -> SessionKind {
+        if self.macos {
+            return SessionKind::MacOs;
+        }
         let ty = self.session_type.as_deref().map(str::to_ascii_lowercase);
         match ty.as_deref() {
             Some("wayland") => return SessionKind::Wayland,
@@ -71,6 +79,7 @@ mod tests {
             wayland_display: wl.map(Into::into),
             display: x.map(Into::into),
             current_desktop: de.map(Into::into),
+            macos: false,
         }
     }
 

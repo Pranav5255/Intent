@@ -1,6 +1,6 @@
 # Intent
 
-Local-first Ubuntu desktop companion for recalling and resuming recent work. Intent
+Local-first desktop companion for Ubuntu and macOS, for recalling and resuming recent work. Intent
 watches what you do (focused windows, shell commands, files in approved workspaces,
 browser tabs, editor activity), groups it into *intents* — threads of work — and lets you
 pick one up again: reopen its files, tabs and terminal.
@@ -19,12 +19,13 @@ Everything runs and stays on your machine. An LLM is optional and local by defau
 | `crates/intent-capture` | Validation, redaction, consent configs, restore |
 | `crates/intent-engine` | Sessionize → cluster → refine → label pipeline, digest, resume |
 | `crates/intent-llm` | Local-first LLM harness, embeddings, copilot |
-| `crates/intent-collectors` | X11 / GNOME Wayland focus, idle, filesystem watcher |
+| `crates/intent-collectors` | Focus and idle (X11, GNOME Wayland, macOS), filesystem watcher |
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `shell/` | bash and zsh hooks |
 | `gnome-extension/` | Reports the focused window on GNOME Wayland |
 | `integrations/` | Firefox and VS Code companions |
-| `packaging/` | `.deb` build, systemd user unit |
+| `packaging/` | `.deb` build, systemd user unit, Homebrew cask generator |
+| `Formula/` | Homebrew formula (the repository is its own tap) |
 | `dev/lima/` | Ubuntu test VM, end-to-end and measurement scripts |
 
 Architecture, API and auth details: [`docs/REWRITE.md`](docs/REWRITE.md).
@@ -40,8 +41,8 @@ dev/ci/check.sh                       # local gates: fmt, clippy, tests, hooks, 
 cd app && npm ci && npm run dev:mock
 ```
 
-The workspace builds and tests on macOS; Linux-only collectors are behind
-`cfg(target_os = "linux")`.
+The workspace builds, tests and runs on macOS too. Platform code is behind
+`cfg(target_os = "linux")` or `cfg(target_os = "macos")`. See [`docs/MACOS.md`](docs/MACOS.md).
 
 ## Build and test on Ubuntu
 
@@ -71,3 +72,15 @@ intent                            # open the app (Super+Space opens the palette)
 
 `intentctl pause 30m`, `intentctl status`, `intentctl run` and `intentctl uninstall`
 cover the rest.
+
+### macOS (Homebrew)
+
+```bash
+brew tap pranav5255/intent https://github.com/Pranav5255/Intent
+brew install --HEAD intent        # daemon and CLI, built from source
+intentctl enable                  # start at login (launchd) and add the shell hook
+```
+
+The app installs with `brew install --cask intent-app` once a release has the disk
+images. Until then, build it with `cd app && npm ci && npx tauri build --bundles app`.
+Details and limits: [`docs/MACOS.md`](docs/MACOS.md).
