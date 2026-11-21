@@ -1,7 +1,7 @@
 //! Small helpers shared by routes and jobs.
 
-use chrono::{Days, NaiveDate};
 use intent_store::{Store, now_ts};
+use jiff::civil::Date;
 
 /// Today's calendar day in the store's day zone.
 pub fn today(store: &Store) -> String {
@@ -10,10 +10,10 @@ pub fn today(store: &Store) -> String {
 
 /// The calendar day before `date` (`YYYY-MM-DD`); falls back to `date` on bad input.
 pub fn previous_day(date: &str) -> String {
-    NaiveDate::parse_from_str(date, "%Y-%m-%d")
+    date.parse::<Date>()
         .ok()
-        .and_then(|d| d.checked_sub_days(Days::new(1)))
-        .map(|d| d.format("%Y-%m-%d").to_string())
+        .and_then(|d| d.yesterday().ok())
+        .map(|d| d.to_string())
         .unwrap_or_else(|| date.to_string())
 }
 
@@ -24,13 +24,12 @@ pub fn yesterday(store: &Store) -> String {
 
 /// A real `YYYY-MM-DD` calendar date (1.x `_validated_date`).
 pub fn is_valid_date(value: &str) -> bool {
-    value.len() == 10 && NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok()
+    value.parse::<Date>().is_ok_and(|d| d.to_string() == value)
 }
 
 /// Local hour of day (0-23) in the host's zone.
 pub fn local_hour() -> u32 {
-    use chrono::Timelike;
-    chrono::Local::now().hour()
+    u32::try_from(jiff::Zoned::now().hour()).unwrap_or(0)
 }
 
 /// Size in bytes of the database file plus its WAL/SHM side files.
