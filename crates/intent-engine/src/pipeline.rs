@@ -146,12 +146,26 @@ pub fn source_hash(input: &PipelineInput, deps: &PipelineDeps) -> String {
     source_hash_for(&normalize_events(&input.events).0, deps)
 }
 
-pub fn intent_id(date: &str, source_hash: &str, scope: &str) -> String {
-    Uuid::new_v5(&Uuid::NAMESPACE_URL, format!("intent/{date}/{source_hash}/{scope}").as_bytes()).to_string()
+/// Stable id of an intent: the date, its scope (`session` or `cluster`) and the id
+/// of its earliest event.
+///
+/// The scheduler re-runs the day on every idle period, and the app, the morning
+/// notification, the copilot and stored embeddings keep ids across runs. So the id
+/// must not depend on the day's source hash: events that arrive later, in another
+/// session or as idle markers, leave it unchanged. Event ids are unique, a session's
+/// clusters partition it, and the scope tells a session from its first cluster, so
+/// ids are unique within a day. The id changes only when the intent gains an
+/// earlier first event, for example when two clusters merge or a late event sorts
+/// before it. A client that holds an old id then gets a 404.
+pub fn intent_id(date: &str, scope: &str, first_event_id: &str) -> String {
+    Uuid::new_v5(&Uuid::NAMESPACE_URL, format!("intent/{date}/{scope}/{first_event_id}").as_bytes()).to_string()
+}
+
+fn session_id(date: &str, session: &[NormalizedEvent]) -> String {
+    intent_id(date, "session", session.first().map_or("", |e| e.id.as_str()))
 }
 
 struct SessionPlan {
-    index: usize,
     range: Range<usize>,
     clusters: Vec<Vec<usize>>,
     semantics: Vec<Option<ClusterSemantics>>,
@@ -263,7 +277,7 @@ async fn plan_session(
     // 1.x applied no cap after semantic refinement; correlation never adds clusters.
     let (clusters, semantics) =
         cap_clusters(session, clusters, semantics, deps.config.max_clusters_per_session, merge_semantics);
-    SessionPlan { index, range, clusters, semantics, refined_by, warnings }
+    SessionPlan { range, clusters, semantics, refined_by, warnings }
 }
 
 /// Round-robin across sources so every event/child is represented, deduplicated,
@@ -362,7 +376,7 @@ struct ChildDraft {
 
 fn build_child(
     date: &str,
-    hash: &str,
+    parent_id: &str,
     plan: &SessionPlan,
     j: usize,
     cluster: &[&NormalizedEvent],
@@ -376,8 +390,8 @@ fn build_child(
     let features =
         build_safe_cluster_features(cluster, semantic.as_ref().and_then(|s| s.topic.as_deref()), tag.as_deref());
     let intent = Intent {
-        id: intent_id(date, hash, &format!("session:{}:cluster:{j}", plan.index)),
-        parent_id: Some(intent_id(date, hash, &format!("session:{}", plan.index))),
+        id: intent_id(date, "cluster", &cluster[0].id),
+        parent_id: Some(parent_id.to_owned()),
         date: date.to_owned(),
         label: "Work Task".into(),
         summary: "Inferred work session".into(),
@@ -407,17 +421,10 @@ fn build_child(
     }
 }
 
-fn build_parent(
-    date: &str,
-    hash: &str,
-    plan: &SessionPlan,
-    session: &[NormalizedEvent],
-    children: Vec<Intent>,
-    max_evidence: usize,
-) -> Intent {
+fn build_parent(date: &str, session: &[NormalizedEvent], children: Vec<Intent>, max_evidence: usize) -> Intent {
     let all: Vec<&NormalizedEvent> = session.iter().collect();
     Intent {
-        id: intent_id(date, hash, &format!("session:{}", plan.index)),
+        id: session_id(date, session),
         parent_id: None,
         date: date.to_owned(),
         label: "Work Session".into(),
@@ -465,13 +472,14 @@ pub async fn run(input: PipelineInput, deps: &PipelineDeps) -> PipelineResult {
     for plan in &plans {
         warnings.extend(plan.warnings.iter().cloned());
         let session = &events[plan.range.clone()];
+        let parent_id = session_id(&date, session);
         drafts.push(
             plan.clusters
                 .iter()
                 .enumerate()
                 .map(|(j, indices)| {
                     let cluster: Vec<&NormalizedEvent> = indices.iter().map(|&i| &session[i]).collect();
-                    build_child(&date, &hash, plan, j, &cluster, config.max_intent_evidence)
+                    build_child(&date, &parent_id, plan, j, &cluster, config.max_intent_evidence)
                 })
                 .collect(),
         );
@@ -500,14 +508,16 @@ pub async fn run(input: PipelineInput, deps: &PipelineDeps) -> PipelineResult {
         match children.len() {
             0 => roots.push(None),
             1 => {
+                // A one-task session takes the session id, so the root keeps its id
+                // when later work in the session adds a second task.
                 let mut only = children.remove(0);
-                only.parent_id = None;
+                only.id = only.parent_id.take().unwrap_or(only.id);
                 only.depth = 0;
                 roots.push(Some(only));
             }
             _ => {
                 let session = &events[plan.range.clone()];
-                let parent = build_parent(&date, &hash, plan, session, children, config.max_intent_evidence);
+                let parent = build_parent(&date, session, children, config.max_intent_evidence);
                 for problem in validate_intent_tree(&parent) {
                     warnings.push(warning(WarningLevel::Error, format!("Intent tree invariant violated: {problem}")));
                 }
@@ -617,14 +627,90 @@ mod tests {
         assert_eq!(parent.children[0].label, "Edit a.py");
         assert_eq!(parent.children[1].label, "Run Pytest");
         assert!(parent.children.iter().all(|c| c.parent_id.as_deref() == Some(parent.id.as_str())));
-        assert_eq!(parent.id, intent_id("2026-11-14", &result.source_hash, "session:0"));
+        assert_eq!(parent.id, intent_id("2026-11-14", "session", "e0"));
+        assert_eq!(parent.children[1].id, intent_id("2026-11-14", "cluster", "c0"));
         let single = &result.intents[1];
         assert_eq!(single.depth, 0);
         assert!(single.parent_id.is_none());
-        assert_eq!(single.id, intent_id("2026-11-14", &result.source_hash, "session:1:cluster:0"));
+        assert_eq!(single.id, intent_id("2026-11-14", "session", "b0"));
         assert_eq!(single.label, "Research docs.rs");
         assert!(result.warnings.is_empty(), "{:?}", result.warnings);
         assert_eq!(source_hash(&day(), &deps), result.source_hash);
+    }
+
+    fn all_ids(intents: &[Intent]) -> Vec<String> {
+        intents.iter().flat_map(|i| std::iter::once(i.id.clone()).chain(all_ids(&i.children))).collect()
+    }
+
+    #[tokio::test]
+    async fn ids_survive_an_idle_period() {
+        // The scheduler re-runs the day a few minutes into every idle period. The
+        // idle markers change the source hash but must not change any intent id.
+        let deps = parity_deps();
+        let before = run(day(), &deps).await;
+        let mut input = day();
+        let last = input.events.iter().map(|e| e.ts).max().unwrap_or_default();
+        input.events.push(raw("idle-start", last + 60, "linux", "idle_start", json!({})));
+        input.events.push(raw("idle-end", last + 900, "linux", "idle_end", json!({})));
+        let after = run(input, &deps).await;
+        assert_ne!(before.source_hash, after.source_hash);
+        assert_eq!(all_ids(&before.intents), all_ids(&after.intents));
+    }
+
+    #[tokio::test]
+    async fn later_work_keeps_the_ids_of_earlier_intents() {
+        let deps = parity_deps();
+        let before = run(day(), &deps).await;
+        let mut input = day();
+        let last = input.events.iter().map(|e| e.ts).max().unwrap_or_default();
+        // Grows the second session and starts a third one.
+        input.events.push(raw(
+            "b1",
+            last + 30,
+            "firefox",
+            "tab_change",
+            json!({"url": "https://docs.rs/y", "tab_id": 1}),
+        ));
+        input.events.push(raw("late", last + 7200, "shell", "command", json!({"cmd": "cargo test", "cwd": "/q"})));
+        let after = run(input, &deps).await;
+        assert_eq!(after.intents.len(), 3);
+        assert_eq!(all_ids(&before.intents[..1]), all_ids(&after.intents[..1]));
+        assert_eq!(before.intents[1].id, after.intents[1].id);
+    }
+
+    #[tokio::test]
+    async fn a_root_keeps_its_id_when_its_session_splits() {
+        // A one-task session becomes a parent with two tasks when different work
+        // follows after a short gap; the root a drawer or a notification points at stays the same.
+        let deps = parity_deps();
+        let before = run(day(), &deps).await;
+        let mut input = day();
+        let last = input.events.iter().map(|e| e.ts).max().unwrap_or_default();
+        for i in 0..2 {
+            input.events.push(raw(
+                &format!("x{i}"),
+                last + 400 + 30 * i,
+                "shell",
+                "command",
+                json!({"cmd": "git status", "cwd": "/other"}),
+            ));
+        }
+        let after = run(input, &deps).await;
+        assert_eq!(after.intents[1].children.len(), 2, "{:?}", after.intents[1]);
+        assert_eq!(before.intents[1].id, after.intents[1].id);
+    }
+
+    #[tokio::test]
+    async fn ids_are_unique_within_a_day() {
+        let mut deps = parity_deps();
+        deps.semantic_refiner = Some(Arc::new(Refiner(Ok(SemanticOutcome { clusters: vec![], semantics: vec![] }))));
+        for input in [day(), many_sessions()] {
+            for result in [run(input.clone(), &parity_deps()).await, run(input, &deps).await] {
+                let ids = all_ids(&result.intents);
+                let distinct: std::collections::HashSet<&String> = ids.iter().collect();
+                assert_eq!(distinct.len(), ids.len(), "{ids:?}");
+            }
+        }
     }
 
     #[tokio::test]
@@ -821,6 +907,7 @@ mod tests {
     fn uuid5_scheme() {
         // Python: str(uuid5(NAMESPACE_URL, "intent/2026-07-30/abc/session:0"))
         assert_eq!(intent_id("2026-07-30", "abc", "session:0"), "1cd3084a-c7b6-5f35-9c8b-132ba235ee29");
+        assert_ne!(intent_id("d", "session", "e"), intent_id("d", "cluster", "e"));
         assert_eq!(intent_id("d", "h", "s"), intent_id("d", "h", "s"));
     }
 }

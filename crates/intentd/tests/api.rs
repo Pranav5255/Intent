@@ -654,6 +654,47 @@ async fn embeddings_backfill_enables_hybrid_search() {
     d.stop().await;
 }
 
+fn ids(intents: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    for i in intents.as_array().into_iter().flatten() {
+        out.extend(i["id"].as_str().map(str::to_owned));
+        out.extend(ids(&i["children"]));
+    }
+    out
+}
+
+#[tokio::test]
+async fn idle_rerun_keeps_intent_ids_and_embeddings() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let (date, n) = seed_day(&d, "/home/dev/src/intent").await;
+    let (_, first) = d.call(Method::POST, &format!("/pipeline/run?date={date}"), None).await;
+    assert!(intentd::jobs::backfill_once(&d.state).await > 0);
+
+    // The scheduler re-runs the day a few minutes into an idle period.
+    let (_, t0) = local_ts(1, 9, 0);
+    for (offset, kind) in [(1200, "idle_start"), (1500, "idle_end")] {
+        let event = json!({"id": uuid(), "ts": t0 + offset, "source": "linux", "type": kind, "payload": {}});
+        let (s, body) = d.post_event(&event).await;
+        assert_eq!(s, StatusCode::CREATED, "{body}");
+    }
+    let (_, second) = d.call(Method::POST, &format!("/pipeline/run?date={date}"), None).await;
+    assert_eq!(second["cached"], false);
+    assert_ne!(first["source_hash"], second["source_hash"]);
+    assert_eq!(ids(&first["intents"]), ids(&second["intents"]));
+
+    // An open drawer or a preview from the morning notification still resolves.
+    let root = first["intents"][0]["id"].as_str().unwrap();
+    let (s, one) = d.call(Method::GET, &format!("/intents/{root}"), None).await;
+    assert_eq!(s, StatusCode::OK, "{one}");
+    let total: i64 =
+        second["intents"].as_array().unwrap().iter().map(|i| i["stats"]["event_count"].as_i64().unwrap()).sum();
+    assert_eq!(total as usize, n);
+    // Unchanged intents keep their vectors instead of waiting for a re-embed.
+    assert!(d.state.store.intents_missing_embeddings(10).unwrap().is_empty());
+    d.stop().await;
+}
+
 #[tokio::test]
 async fn misc_capture_routes() {
     let dir = tempfile::tempdir().unwrap();
