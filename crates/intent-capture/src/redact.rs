@@ -13,17 +13,36 @@ pub use crate::url::sanitize_url;
 pub const REDACTED_TEXT: &str = "[redacted]";
 /// Replacement for a shell command / shell argument (1.x sender format).
 pub const REDACTED_COMMAND: &str = "<redacted>";
+/// Title stored for a private-browsing window.
+pub const PRIVATE_WINDOW_TITLE: &str = "Private window";
 /// Commands longer than this (in characters) are fully redacted.
 pub const MAX_COMMAND_LENGTH: usize = 500;
 
 static PRIVATE_KEY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----").expect("valid regex"));
+/// A secret-looking name followed by `:` or `=`. The name may carry other words
+/// joined by `_` or `-` (`DB_PASSWORD`, `STRIPE_SECRET_KEY`), because `\b` does not
+/// split on `_`. A quote may close the name (`"api_key": ...`).
 static SENSITIVE_ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\b(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|authorization)\b\s*[:=]")
-        .expect("valid regex")
+    Regex::new(
+        r#"(?i)(?:^|[^A-Za-z0-9_-])(?:[A-Za-z0-9_-]*[_-])?(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|authorization)(?:[_-][A-Za-z0-9_-]*)?["']?\s*[:=]"#,
+    )
+    .expect("valid regex")
 });
+/// Well-known token formats: GitHub, Slack, JWT, OpenAI, Stripe, AWS access key
+/// IDs, Google API keys and GitLab.
 static TOKEN_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b(?:gh[pous]_[A-Za-z0-9_]+|xox[baprs]-[A-Za-z0-9-]+|eyJ[A-Za-z0-9_-]+\.)").expect("valid regex")
+    Regex::new(concat!(
+        r"\b(?:gh[pous]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|xox[baprs]-[A-Za-z0-9-]+|xapp-[A-Za-z0-9-]+",
+        r"|eyJ[A-Za-z0-9_-]+\.|sk-[A-Za-z0-9_-]{20,}|[sr]k_(?:live|test)_[A-Za-z0-9]{8,}",
+        r"|AKIA[0-9A-Z]{16}\b|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20,})",
+    ))
+    .expect("valid regex")
+});
+/// Window-title markers of private browsing: Firefox, Chrome/Chromium, Edge, Brave.
+static PRIVATE_WINDOW: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)private browsing|\bincognito\b|\binprivate\b|\bbrave\b.*\bprivate\b|\(private\)")
+        .expect("valid regex")
 });
 
 /// Commands that look like they carry credentials or run with elevated rights.
@@ -60,6 +79,13 @@ pub fn should_redact_text(text: &str) -> bool {
 /// - `firefox/*`: `url` keeps only scheme/host/port/path (non-HTTP(S) URLs reject the
 ///   event); `target.href` is sanitised or dropped; a secret-bearing `context` is dropped.
 /// - `shell/command`: `cmd` is redacted with [`redact_shell_command`] (new in 2.0).
+/// - `filesystem/file_content`: an excerpt with a secret becomes `[redacted]`. The
+///   whole excerpt goes, not one line: a private key spans many lines, and the
+///   lines around a secret often belong to it.
+/// - `linux/app_focus`: a private-browsing window keeps its app but its title
+///   becomes [`PRIVATE_WINDOW_TITLE`]. A title with a secret becomes `[redacted]`,
+///   and password arguments in a title (terminals show the running command) are
+///   masked. Collector events take this path too (`intentd` ingest).
 pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
     let payload = &mut event.payload;
     match event.source.as_str() {
@@ -106,9 +132,34 @@ pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
                 payload.insert("cmd".into(), Value::String(clean));
             }
         }
+        "filesystem" if event.kind == "file_content" => {
+            let secret = matches!(payload.get("excerpt"), Some(Value::String(text)) if should_redact_text(text));
+            if secret {
+                payload.insert("excerpt".into(), Value::String(REDACTED_TEXT.into()));
+            }
+        }
+        "linux" if event.kind == "app_focus" => {
+            if let Some(title) = payload.get("title").and_then(Value::as_str) {
+                let clean = redact_window_title(title);
+                if clean != title {
+                    payload.insert("title".into(), Value::String(clean));
+                }
+            }
+        }
         _ => {}
     }
     Ok(event)
+}
+
+/// Make a window title safe to store (see [`redact_event`]).
+pub fn redact_window_title(title: &str) -> String {
+    if PRIVATE_WINDOW.is_match(title) {
+        PRIVATE_WINDOW_TITLE.to_string()
+    } else if should_redact_text(title) {
+        REDACTED_TEXT.to_string()
+    } else {
+        mask_inline_secrets(title)
+    }
 }
 
 /// Redact a shell command line.
@@ -120,9 +171,13 @@ pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
 /// family survives for intent inference:
 ///
 /// - URL credentials: `https://user:pw@host` → `https://<redacted>@host`
+/// - secret query values: `?key=x&q=1` → `?key=<redacted>&q=1`
+/// - webhook URLs: `https://hooks.slack.com/services/<redacted>`
 /// - shell assignments: `DB_URL=x cmd`, `export X=y` → `DB_URL=<redacted> cmd`
-/// - attached password flags of the MySQL/MariaDB clients: `-pSECRET` → `-p<redacted>`
-/// - `sshpass -p PW` / `-pPW`, and `curl`/`wget` `-u user:pw` / `--user=user:pw`
+/// - password arguments of known tools, wherever the tool appears in a segment
+///   (`docker exec db mysql -pX`): MySQL/MariaDB `-pX`, `sshpass -p`, `curl`/`wget`
+///   `-u`/`--user`, `redis-cli -a`, `docker login -p`, `zip -P`, `7z -pX`,
+///   `openssl -pass`/`-passin`/`-passout`/`-k`
 ///
 /// The function is idempotent.
 pub fn redact_shell_command(command: &str) -> String {
@@ -136,9 +191,17 @@ pub fn redact_shell_command(command: &str) -> String {
     {
         return REDACTED_COMMAND.to_string();
     }
-    let masked = URL_USERINFO.replace_all(command, format!("${{1}}{REDACTED_COMMAND}@").as_str());
-    let masked = ENV_ASSIGNMENT.replace_all(&masked, format!("${{1}}${{2}}={REDACTED_COMMAND}").as_str());
-    mask_tool_flags(&masked)
+    let masked = ENV_ASSIGNMENT.replace_all(command, format!("${{1}}${{2}}={REDACTED_COMMAND}").as_str());
+    mask_inline_secrets(&masked)
+}
+
+/// Mask secrets inside a line and keep the rest: URL credentials, secret URL query
+/// values, webhook URLs and password arguments of known tools.
+fn mask_inline_secrets(line: &str) -> String {
+    let line = URL_USERINFO.replace_all(line, format!("${{1}}{REDACTED_COMMAND}@").as_str());
+    let line = URL_QUERY_SECRET.replace_all(&line, format!("${{1}}{REDACTED_COMMAND}").as_str());
+    let line = SECRET_URL_PATH.replace_all(&line, format!("${{1}}{REDACTED_COMMAND}").as_str());
+    mask_tool_flags(&line)
 }
 
 const MYSQL_TOOLS: &[&str] = &[
@@ -156,14 +219,66 @@ const MYSQL_TOOLS: &[&str] = &[
     "mariadb-import",
     "mariadb-check",
 ];
-const WRAPPERS: &[&str] = &["env", "command", "exec", "time", "nice", "nohup", "builtin", "xargs"];
 
-/// Mask tool-specific password arguments, segment by segment (`|`, `;`, `&`).
+/// A tool whose password arguments we know how to mask.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Tool {
+    /// `-pSECRET`
+    Mysql,
+    /// `-p SECRET`, `-pSECRET`
+    Sshpass,
+    /// `-u user:pw`, `--user=user:pw`, `--http-password pw`
+    Curl,
+    /// `-a SECRET`, `--pass SECRET`
+    Redis,
+    /// A container tool. Only its `login` subcommand takes a password.
+    Registry,
+    /// `docker login -p SECRET`
+    Login,
+    /// `zip -P SECRET`
+    Zip,
+    /// `7z -pSECRET`
+    SevenZip,
+    /// `openssl -pass pass:SECRET`, `-passin`, `-passout`, `enc -k SECRET`
+    Openssl,
+}
+
+fn tool_named(name: &str) -> Option<Tool> {
+    Some(match name {
+        _ if MYSQL_TOOLS.contains(&name) => Tool::Mysql,
+        "sshpass" => Tool::Sshpass,
+        "curl" | "wget" => Tool::Curl,
+        "redis-cli" | "valkey-cli" | "keydb-cli" => Tool::Redis,
+        "docker" | "podman" | "nerdctl" | "buildah" | "skopeo" | "helm" | "oras" => Tool::Registry,
+        "zip" | "unzip" | "zipcloak" => Tool::Zip,
+        "7z" | "7za" | "7zr" | "7zz" | "rar" | "unrar" => Tool::SevenZip,
+        "openssl" => Tool::Openssl,
+        _ => return None,
+    })
+}
+
+/// URL query parameters whose value is a credential or a signature.
+static URL_QUERY_SECRET: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?i)([?&;](?:[a-z0-9.]*[_-])*(?:key|apikey|token|secret|password|passwd|pwd|sig|signature|auth|credential|session|sid|code)(?:[_-][a-z0-9]*)*=)[^&#\s'"]+"#,
+    )
+    .expect("valid regex")
+});
+/// URLs whose path is the credential: Slack, Discord and Teams webhooks, Telegram bots.
+static SECRET_URL_PATH: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?i)(hooks\.slack\.com/(?:services|workflows|triggers)/|discord(?:app)?\.com/api/webhooks/|\.webhook\.office\.com/webhookb2/|api\.telegram\.org/bot)[^\s'"]+"#,
+    )
+    .expect("valid regex")
+});
+
+/// Mask tool-specific password arguments, segment by segment. Pipes, lists,
+/// subshells, `$(...)` and backticks start a new segment.
 fn mask_tool_flags(command: &str) -> String {
     let mut out = String::with_capacity(command.len());
     let mut segment = String::new();
     for ch in command.chars() {
-        if matches!(ch, '|' | ';' | '&' | '\n') {
+        if matches!(ch, '|' | ';' | '&' | '\n' | '(' | ')' | '`') {
             out.push_str(&mask_segment(&segment));
             out.push(ch);
             segment.clear();
@@ -173,6 +288,53 @@ fn mask_tool_flags(command: &str) -> String {
     }
     out.push_str(&mask_segment(&segment));
     out
+}
+
+/// The masked form of a value. Closing quotes stay, so `watch 'mysql -pX'` keeps
+/// its quoting and a second pass changes nothing.
+fn masked(prefix: &str, value: &str) -> Option<String> {
+    let bare = value.trim_end_matches(['\'', '"']);
+    if bare.is_empty() {
+        return None;
+    }
+    Some(format!("{prefix}{REDACTED_COMMAND}{}", &value[bare.len()..]))
+}
+
+/// What to do with one argument of a tool.
+enum Mask {
+    Keep,
+    /// Replace this argument.
+    This(String),
+    /// The next argument is the secret.
+    Next,
+}
+
+fn mask_argument(tool: Tool, token: &str) -> Mask {
+    let attached = |flag: &str| token.strip_prefix(flag).and_then(|rest| masked(flag, rest));
+    let result = match tool {
+        Tool::Mysql | Tool::SevenZip => attached("-p"),
+        Tool::Sshpass | Tool::Login if token == "-p" => return Mask::Next,
+        Tool::Login if token == "--password" => return Mask::Next,
+        Tool::Sshpass | Tool::Login => attached("-p"),
+        Tool::Curl => {
+            if matches!(token, "-u" | "--user" | "--http-password" | "--proxy-user") {
+                return Mask::Next;
+            }
+            match token.split_once('=') {
+                Some((flag, _)) if matches!(flag, "--user" | "--http-password" | "--proxy-user") => {
+                    Some(format!("{flag}={REDACTED_COMMAND}"))
+                }
+                _ if !token.starts_with("--") => attached("-u"),
+                _ => None,
+            }
+        }
+        Tool::Redis if matches!(token, "-a" | "--pass") => return Mask::Next,
+        Tool::Zip if token == "-P" => return Mask::Next,
+        Tool::Zip => attached("-P"),
+        Tool::Openssl if matches!(token, "-pass" | "-passin" | "-passout" | "-k") => return Mask::Next,
+        Tool::Redis | Tool::Registry | Tool::Openssl => None,
+    };
+    result.map_or(Mask::Keep, Mask::This)
 }
 
 fn mask_segment(segment: &str) -> String {
@@ -191,47 +353,31 @@ fn mask_segment(segment: &str) -> String {
     if !current.is_empty() {
         tokens.push(current);
     }
-    let words: Vec<usize> = (0..tokens.len()).filter(|&i| !tokens[i].trim().is_empty()).collect();
-    let program_index = words.iter().position(|&i| {
-        let word = tokens[i].trim_start_matches('(');
-        !(word.contains('=') && !word.starts_with('-')) && !WRAPPERS.contains(&word)
-    });
-    let Some(program_index) = program_index else {
-        return segment.to_string();
-    };
-    let program_word = tokens[words[program_index]].trim_start_matches('(');
-    let program = program_word.rsplit('/').next().unwrap_or(program_word).to_ascii_lowercase();
-    let args = &words[program_index + 1..];
+    // A tool word can come after wrappers (`docker exec db mysql`, `watch`,
+    // `kubectl exec ... --`), so every word may switch the rules that apply.
+    let mut tool: Option<Tool> = None;
     let mut mask_next = false;
-    for &i in args {
-        let token = tokens[i].clone();
+    for token in tokens.iter_mut().filter(|token| !token.trim().is_empty()) {
         if mask_next {
-            tokens[i] = REDACTED_COMMAND.to_string();
             mask_next = false;
+            *token = masked("", token).unwrap_or_else(|| REDACTED_COMMAND.to_string());
             continue;
         }
-        if MYSQL_TOOLS.contains(&program.as_str()) || program == "sshpass" {
-            if let Some(rest) = token.strip_prefix("-p")
-                && !rest.is_empty()
-            {
-                tokens[i] = format!("-p{REDACTED_COMMAND}");
-            } else if program == "sshpass" && token == "-p" {
-                mask_next = true;
-            }
+        let word = token.trim_start_matches(['\'', '"']);
+        let name = word.rsplit('/').next().unwrap_or(word).to_ascii_lowercase();
+        if let Some(found) = tool_named(&name) {
+            tool = Some(found);
+            continue;
         }
-        if program == "curl" || program == "wget" {
-            if token == "-u" || token == "--user" || token == "--http-password" || token == "--proxy-user" {
-                mask_next = true;
-            } else if let Some((flag, _)) = token.split_once('=')
-                && matches!(flag, "--user" | "--http-password" | "--proxy-user")
-            {
-                tokens[i] = format!("{flag}={REDACTED_COMMAND}");
-            } else if let Some(rest) = token.strip_prefix("-u")
-                && !rest.is_empty()
-                && !token.starts_with("--")
-            {
-                tokens[i] = format!("-u{REDACTED_COMMAND}");
-            }
+        if tool == Some(Tool::Registry) && name == "login" {
+            tool = Some(Tool::Login);
+            continue;
+        }
+        let Some(current) = tool else { continue };
+        match mask_argument(current, token) {
+            Mask::Keep => {}
+            Mask::This(clean) => *token = clean,
+            Mask::Next => mask_next = true,
         }
     }
     tokens.concat()
@@ -273,7 +419,41 @@ mod tests {
         ] {
             assert!(should_redact_text(text), "{text}");
         }
-        for text in ["let x = 1;", "the password field", "tokenize(x)", "db_password = 1", "ghp", "eyJ"] {
+        for text in ["let x = 1;", "the password field", "tokenize(x)", "max_tokens = 100", "ghp", "eyJ"] {
+            assert!(!should_redact_text(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn detects_secret_names_with_prefixes_and_suffixes() {
+        for text in [
+            "DB_PASSWORD=hunter2",
+            "db_password = 1",
+            "my GITHUB_TOKEN=x does not work",
+            "STRIPE_SECRET_KEY = 'x'",
+            "AWS_SECRET_ACCESS_KEY=\"x\"",
+            "client-secret: x",
+            "\"api_key\": \"x\"",
+        ] {
+            assert!(should_redact_text(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn detects_more_token_prefixes() {
+        for text in [
+            "OPENAI = sk-proj-abcdefghijklmnopqrstuvwx",
+            "stripe sk_live_abc123def456ghi",
+            "stripe sk_test_abc123def456ghi",
+            "stripe rk_live_abc123def456ghi",
+            concat!("aws AKIA", "IOSFODNN7EXAMPLE"),
+            concat!("maps AIza", "SyA-1234567890abcdefghijklmnopqrstu"),
+            "gitlab glpat-abcdefghij0123456789",
+            "slack xapp-1-A0123-456-abcdef",
+        ] {
+            assert!(should_redact_text(text), "{text}");
+        }
+        for text in ["task-list", "pip install sk-learn", "AKIA", "AIza", "glpat"] {
             assert!(!should_redact_text(text), "{text}");
         }
     }
@@ -356,9 +536,78 @@ mod tests {
     }
 
     #[test]
+    fn firefox_secret_name_in_context_is_dropped() {
+        let event = raw(
+            "firefox",
+            "tab_change",
+            json!({"url": "https://a.com/", "context": {"kind": "post", "text_excerpt": "my GITHUB_TOKEN=x does not work"}}),
+        );
+        assert!(redact_event(event).unwrap().payload.get("context").is_none());
+    }
+
+    #[test]
     fn other_sources_untouched() {
-        let event = raw("linux", "app_focus", json!({"app": "x", "title": "password=1"}));
+        let event = raw("gnome", "something", json!({"app": "x", "title": "password=1"}));
         assert_eq!(redact_event(event.clone()).unwrap(), event);
+    }
+
+    // ---- filesystem -------------------------------------------------------
+
+    fn file_content(excerpt: &str) -> RawEvent {
+        raw(
+            "filesystem",
+            "file_content",
+            json!({"path": "/w/a", "workspace": "/w", "kind": "text", "mime": "text/plain", "size_bytes": 1, "sha256": "ab", "excerpt": excerpt}),
+        )
+    }
+
+    #[test]
+    fn file_content_secret_excerpt_is_dropped() {
+        for excerpt in [
+            concat!("-----BEGIN OPENSSH PRIVATE", " KEY-----\nb3BlbnNzaC1rZXk\n"),
+            "DEBUG=1\nSECRET_KEY=abc\n",
+            "deploy with ghp_abcdef123",
+        ] {
+            let out = redact_event(file_content(excerpt)).unwrap();
+            assert_eq!(out.payload["excerpt"], "[redacted]", "{excerpt}");
+            assert_eq!(out.payload["path"], "/w/a");
+        }
+        let out = redact_event(file_content("# Notes\nplain text")).unwrap();
+        assert_eq!(out.payload["excerpt"], "# Notes\nplain text");
+    }
+
+    // ---- window titles ----------------------------------------------------
+
+    fn focus(app: &str, title: &str) -> RawEvent {
+        raw("linux", "app_focus", json!({"app": app, "title": title, "window_id": "1"}))
+    }
+
+    #[test]
+    fn private_browsing_titles_are_replaced() {
+        for (app, title) in [
+            ("firefox", "Chase Online Banking \u{2014} Mozilla Firefox Private Browsing"),
+            ("google-chrome", "Chase - Google Chrome (Incognito)"),
+            ("chromium", "Chase - Chromium (Incognito)"),
+            ("microsoft-edge", "Chase - [InPrivate] - Microsoft Edge"),
+            ("brave-browser", "Chase - Brave (Private)"),
+        ] {
+            let out = redact_event(focus(app, title)).unwrap();
+            assert_eq!(out.payload["title"], PRIVATE_WINDOW_TITLE, "{title}");
+            assert_eq!(out.payload["app"], app);
+            assert_eq!(out.payload["window_id"], "1");
+        }
+        let out = redact_event(focus("firefox", "Rust docs \u{2014} Mozilla Firefox")).unwrap();
+        assert_eq!(out.payload["title"], "Rust docs \u{2014} Mozilla Firefox");
+    }
+
+    #[test]
+    fn secrets_in_window_titles_are_removed() {
+        let out = redact_event(focus("gnome-terminal", "export GITHUB_TOKEN=x")).unwrap();
+        assert_eq!(out.payload["title"], "[redacted]");
+        let out = redact_event(focus("gnome-terminal", "mysql -uroot -phunter2 app")).unwrap();
+        assert_eq!(out.payload["title"], "mysql -uroot -p<redacted> app");
+        let out = redact_event(focus("gnome-terminal", "user@host: ~/src")).unwrap();
+        assert_eq!(out.payload["title"], "user@host: ~/src");
     }
 
     // ---- shell ------------------------------------------------------------
@@ -461,6 +710,86 @@ mod tests {
     }
 
     #[test]
+    fn shell_password_flags_masked_after_wrappers() {
+        for (cmd, want) in [
+            ("docker exec db mysql -uroot -phunter2", "docker exec db mysql -uroot -p<redacted>"),
+            (
+                "kubectl exec -it db-0 -- mysql -uroot -phunter2 app",
+                "kubectl exec -it db-0 -- mysql -uroot -p<redacted> app",
+            ),
+            ("watch mysql -phunter2 -e 'show processlist'", "watch mysql -p<redacted> -e 'show processlist'"),
+            ("watch 'mysql -phunter2'", "watch 'mysql -p<redacted>'"),
+            ("echo $(mysql -phunter2 -e 'select 1')", "echo $(mysql -p<redacted> -e 'select 1')"),
+            ("echo `mysql -phunter2`", "echo `mysql -p<redacted>`"),
+        ] {
+            assert_eq!(redact_shell_command(cmd), want, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn shell_tool_password_arguments_masked() {
+        for (cmd, want) in [
+            ("redis-cli -a hunter2 ping", "redis-cli -a <redacted> ping"),
+            ("redis-cli -h db -a hunter2 --no-auth-warning", "redis-cli -h db -a <redacted> --no-auth-warning"),
+            ("docker login -u me -p hunter2 registry.example", "docker login -u me -p <redacted> registry.example"),
+            ("podman login -u me -phunter2 quay.io", "podman login -u me -p<redacted> quay.io"),
+            ("zip -P hunter2 out.zip a", "zip -P <redacted> out.zip a"),
+            ("unzip -P hunter2 a.zip", "unzip -P <redacted> a.zip"),
+            ("7z a -phunter2 out.7z dir", "7z a -p<redacted> out.7z dir"),
+            ("openssl enc -aes-256-cbc -pass pass:hunter2 -in a", "openssl enc -aes-256-cbc -pass <redacted> -in a"),
+            ("openssl pkcs12 -passin pass:a -passout pass:b", "openssl pkcs12 -passin <redacted> -passout <redacted>"),
+        ] {
+            assert_eq!(redact_shell_command(cmd), want, "{cmd}");
+        }
+        for cmd in ["tool --password=hunter2", "tool --password hunter2"] {
+            assert_eq!(redact_shell_command(cmd), "<redacted>", "{cmd}");
+        }
+        for cmd in ["docker run -p 8080:80 nginx", "7z x -p a.7z", "zip -r out.zip dir", "redis-cli ping"] {
+            assert_eq!(redact_shell_command(cmd), cmd, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn shell_url_query_secrets_masked() {
+        for (cmd, want) in [
+            ("curl 'https://api.example.com/v1/x?key=abc123'", "curl 'https://api.example.com/v1/x?key=<redacted>'"),
+            ("curl https://x.example/a?session_id=abc#top", "curl https://x.example/a?session_id=<redacted>#top"),
+            ("curl https://x.example/a?code=abc", "curl https://x.example/a?code=<redacted>"),
+            ("wget 'https://b.example/f?sig=abc%3D'", "wget 'https://b.example/f?sig=<redacted>'"),
+            ("curl https://x.example/a?X-Amz-Signature=abc", "curl https://x.example/a?X-Amz-Signature=<redacted>"),
+            ("curl https://x.example/a?auth=abc#top", "curl https://x.example/a?auth=<redacted>#top"),
+        ] {
+            assert_eq!(redact_shell_command(cmd), want, "{cmd}");
+        }
+        assert_eq!(
+            redact_shell_command(concat!(
+                "curl -s 'https://maps.googleapis.com/maps/api/geocode/json?key=AIza",
+                "SyA-1234567890abcdefghijklmnopqrstu'"
+            )),
+            "<redacted>"
+        );
+        for cmd in [
+            "curl 'https://x.example/a?q=rust'",
+            "curl https://x.example/a?keyboard=us",
+            "curl https://x.example/a?monkey=1",
+        ] {
+            assert_eq!(redact_shell_command(cmd), cmd, "{cmd}");
+        }
+    }
+
+    #[test]
+    fn shell_webhook_urls_masked() {
+        assert_eq!(
+            redact_shell_command("curl -X POST https://hooks.slack.com/services/T0000/B0000/XXXXXXXX -d '{}'"),
+            "curl -X POST https://hooks.slack.com/services/<redacted> -d '{}'"
+        );
+        assert_eq!(
+            redact_shell_command("curl https://discord.com/api/webhooks/123/abc-def"),
+            "curl https://discord.com/api/webhooks/<redacted>"
+        );
+    }
+
+    #[test]
     fn shell_redaction_is_idempotent() {
         for cmd in [
             "<redacted>",
@@ -469,6 +798,12 @@ mod tests {
             "git clone https://a:b@h/x",
             "sshpass -p pw scp a b",
             "curl -u a:b https://x/",
+            "docker exec db mysql -phunter2",
+            "watch 'mysql -phunter2'",
+            "redis-cli -a pw ping",
+            "openssl enc -pass pass:pw",
+            "curl 'https://x.example/a?key=abc&q=1'",
+            "curl https://hooks.slack.com/services/T0/B0/X",
         ] {
             let once = redact_shell_command(cmd);
             assert_eq!(redact_shell_command(&once), once, "{cmd}");
