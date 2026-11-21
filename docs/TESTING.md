@@ -12,6 +12,7 @@ with `gate` green; force-pushes and deletion are blocked, with no bypass.
 | `lint` | Ubuntu | `rustfmt` (workspace and app), `shellcheck` on every script and hook, tree hygiene (`dev/ci/tree-hygiene.sh`: no env files, keys, credentials, build output or files over 1 MB) |
 | `rust` | Ubuntu amd64 + arm64 | `clippy -D warnings` with the Linux collectors compiled in; the full test suite, in debug and release |
 | `rust-macos` | macOS | clippy and tests, so the workspace keeps building off Linux |
+| `package-macos` | macOS | Builds the daemon and `Intent.app`, runs the user-behaviour scenarios and the shell hooks, checks that the macOS collectors attach, installs the Homebrew formula and cask from the checkout ([`docs/MACOS.md`](MACOS.md)) |
 | `msrv` | Ubuntu | `cargo check` on the declared `rust-version` |
 | `app` | Ubuntu | `npm ci`, TypeScript typecheck, frontend build (real and mock), clippy and tests for the Tauri crate |
 | `shell-hooks` | Ubuntu | `shell/test_hooks.sh` drives real interactive bash and zsh sessions |
@@ -63,7 +64,7 @@ All Actions are pinned to commit SHAs and workflows run with read-only tokens.
 [`dev/lima/scenarios.sh`](../dev/lima/scenarios.sh) acts like a user, a hostile web page
 or a broken environment, and checks what Intent must do. It starts its own `intentd` on
 `127.0.0.1:9478` with a throwaway home, so the installed service and its data are not
-touched. Run it in the Lima VM:
+touched. Run it in the Lima VM or on a Mac (CI runs it on macOS too):
 
 ```bash
 dev/lima/scenarios.sh                        # every scenario

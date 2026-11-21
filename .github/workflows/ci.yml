@@ -92,6 +92,83 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked
       - run: cargo test --workspace --locked
 
+  # macOS: the daemon, the app bundle and the Homebrew install, run for real.
+  package-macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            .
+            app/src-tauri
+      - name: Build intentd and intentctl
+        run: cargo build --release --locked -p intentd -p intentctl
+      - name: User-behaviour scenarios against the macOS build
+        run: INTENTD=$PWD/target/release/intentd INTENTCTL=$PWD/target/release/intentctl dev/lima/scenarios.sh
+      - name: Shell hooks (bash and zsh)
+        run: bash shell/test_hooks.sh
+      - name: Collectors attach to the window server and the HID state
+        run: |
+          home=$(mktemp -d)
+          mkdir -p "$home/cfg" "$home/data"
+          env HOME="$home" XDG_CONFIG_HOME="$home/cfg" XDG_DATA_HOME="$home/data" \
+            INTENT_BIND=127.0.0.1:9480 target/release/intentd >"$home/log" 2>&1 &
+          pid=$!
+          for _ in $(seq 50); do [ -s "$home/data/intent/token" ] && break; sleep 0.2; done
+          sleep 2
+          status=$(curl -fsS -H "Authorization: Bearer $(cat "$home/data/intent/token")" http://127.0.0.1:9480/v1/status)
+          kill "$pid"
+          echo "$status" | jq '.collectors'
+          echo "$status" | jq -e '[.collectors[] | select(.name=="idle")][0].backend == "macos-hid"'
+          echo "$status" | jq -e '[.collectors[] | select(.name=="filesystem")][0].backend == "fsevents"'
+          echo "$status" | jq -e '[.collectors[] | select(.name=="focus")][0].state | IN("running", "unavailable")'
+      - working-directory: app
+        run: npm ci --no-audit --no-fund
+      - name: clippy and tests (app crate)
+        working-directory: app/src-tauri
+        run: |
+          cargo clippy --all-targets --locked -- -D warnings
+          cargo test --locked
+      - name: Build Intent.app
+        working-directory: app
+        run: npx tauri build --bundles app
+      - name: Homebrew formula and cask from this checkout
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+          HOMEBREW_NO_ANALYTICS: 1
+        run: |
+          git switch -c brew-head
+          brew tap-new --no-git local/intentci
+          tap=$(brew --repo local/intentci)
+          sed "s|head \"https://github.com/Pranav5255/Intent.git\", branch: \"main\"|head \"file://$PWD\", branch: \"brew-head\", using: :git|" \
+            Formula/intent.rb >"$tap/Formula/intent.rb"
+          brew style Formula/intent.rb
+          brew install --HEAD local/intentci/intent
+          brew test local/intentci/intent
+          hdiutil create -quiet -volname Intent -srcfolder app/src-tauri/target/release/bundle/macos/Intent.app \
+            -format UDZO "$RUNNER_TEMP/Intent.dmg"
+          mkdir -p "$tap/Casks"
+          CASK_URL="file://$RUNNER_TEMP/Intent.dmg" FORMULA=local/intentci/intent \
+            packaging/homebrew/make-cask.sh 2.0.0 "$RUNNER_TEMP/Intent.dmg" >"$tap/Casks/intent-app.rb"
+          brew style "$tap/Casks/intent-app.rb"
+          brew install --cask local/intentci/intent-app
+          test -x /Applications/Intent.app/Contents/MacOS/intent-app
+          intentctl --help >/dev/null
+
   # The declared rust-version is a promise; check it.
   msrv:
     runs-on: ubuntu-24.04
@@ -271,7 +348,7 @@ jobs:
   # missing from this list runs but cannot block a merge.
   gate:
     if: always()
-    needs: [lint, rust, rust-macos, msrv, app, shell-hooks, audit, package]
+    needs: [lint, rust, rust-macos, package-macos, msrv, app, shell-hooks, audit, package]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
