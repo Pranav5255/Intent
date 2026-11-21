@@ -400,11 +400,12 @@ export function PrivacySection() {
       const preview = await api.retentionPreview(p);
       setConfirm({
         title: 'Run retention cleanup now?',
-        text: 'Events older than your retention period are deleted from this computer. Threads already built from them stay.',
+        text: 'Events and threads older than your retention period are deleted from this computer.',
         facts: [
           ['Detailed events', count(preview.eligible.detailed)],
           ['Other events', count(preview.eligible.metadata)],
-          ['Total to delete', count(preview.eligible.total)],
+          ['Total events to delete', count(preview.eligible.total)],
+          ['Threads to delete', count(preview.eligible.intents)],
         ],
         confirm: `Delete ${count(preview.eligible.total)} events`,
         destructive: true,
