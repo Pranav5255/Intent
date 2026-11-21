@@ -708,8 +708,14 @@ export async function mockRequest(method: Method, rawPath: string, body: unknown
     return ok({ intents: rootsFor(q.get('date') ?? TODAY), warnings: [], source_hash: 'mock', pipeline_version: '2.0.0', cached: false });
   }
   const forgetDate = path.match(/^\/v1\/memory\/date\/(.+)$/);
-  if (forgetDate && method === 'DELETE') return ok({ deleted: rootsFor(decodeURIComponent(forgetDate[1]!)).length });
-  if (path.startsWith('/v1/memory/project/') && method === 'DELETE') return ok({ deleted: 7 });
+  if (forgetDate && method === 'DELETE') {
+    const date = decodeURIComponent(forgetDate[1]!);
+    const ids = rootsFor(date).map((i) => i.id);
+    return ok({ deleted_intent_ids: ids, deleted_count: ids.length, deleted_event_count: 412, affected_dates: [date] });
+  }
+  if (path.startsWith('/v1/memory/project/') && method === 'DELETE') {
+    return ok({ deleted_intent_ids: [], deleted_count: 7, deleted_event_count: 1_204, affected_dates: [TODAY] });
+  }
 
   if (path === '/settings/llm') {
     if (method === 'PUT') {
@@ -773,7 +779,8 @@ export async function mockRequest(method: Method, rawPath: string, body: unknown
     const m = Number(q.get('metadata_days') ?? 0);
     const detailed = d ? Math.round(13_231 * Math.max(0, 1 - d / 60)) + 214 : 0;
     const metadata = m ? Math.round(193_368 * Math.max(0, 1 - m / 180)) + 1_020 : 0;
-    return ok({ now: nowSec(), detailed_days: d || null, metadata_days: m || null, eligible: { detailed, metadata, total: detailed + metadata } });
+    const intents = m ? Math.round(1_840 * Math.max(0, 1 - m / 180)) + 12 : 0;
+    return ok({ now: nowSec(), detailed_days: d || null, metadata_days: m || null, eligible: { detailed, metadata, total: detailed + metadata, intents } });
   }
   if (path === '/v1/retention/purge') return ok({ ok: true });
   if (path === '/v1/detailed-capture/purge') return ok({ ok: true, deleted: 13_231 });

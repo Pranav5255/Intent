@@ -269,7 +269,8 @@ export interface RetentionPreview {
   now: number;
   detailed_days: number | null;
   metadata_days: number | null;
-  eligible: { detailed: number; metadata: number; total: number };
+  /** `total` counts events; `intents` counts threads (roots and children) of days past the cutoff. */
+  eligible: { detailed: number; metadata: number; total: number; intents: number };
 }
 
 export interface RestoreRequest {
@@ -300,6 +301,9 @@ export interface IntentContextResponse {
 }
 
 export interface ForgetResponse {
-  deleted?: number;
-  [key: string]: unknown;
+  deleted_intent_ids: string[];
+  deleted_count: number;
+  deleted_event_count: number;
+  /** Dates whose threads were removed; a forgotten project's dates are rebuilt. */
+  affected_dates: string[];
 }

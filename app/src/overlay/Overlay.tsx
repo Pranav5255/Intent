@@ -376,7 +376,7 @@ export function Overlay() {
       case 'forget-day':
         setConfirm({
           title: `Forget ${relativeDay(intent.date).toLowerCase() === 'today' ? 'today' : relativeDay(intent.date)}?`,
-          text: 'Every thread, summary and search entry for this day is deleted from this computer. This can’t be undone.',
+          text: 'Everything recorded on this day is deleted from this computer, with its threads and search entries. This can’t be undone.',
           confirm: 'Forget day',
           destructive: true,
           onConfirm: async () => {
@@ -394,7 +394,7 @@ export function Overlay() {
         if (!project) return;
         setConfirm({
           title: `Forget everything about “${project}”?`,
-          text: 'All threads tagged with this project are deleted from this computer, on every day. This can’t be undone.',
+          text: 'The project’s activity and threads are deleted from this computer, on every day. Days that mixed it with other work are rebuilt without it. This can’t be undone.',
           confirm: 'Forget project',
           destructive: true,
           onConfirm: async () => {

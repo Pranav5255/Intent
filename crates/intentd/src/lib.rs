@@ -11,6 +11,7 @@
 pub mod auth;
 mod collectors;
 pub mod error;
+pub mod forget;
 pub mod ingest;
 pub mod jobs;
 pub mod llm;
