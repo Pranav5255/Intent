@@ -12,9 +12,9 @@
     "intent_count": 5,
     "summary": "You worked on run npm, research ycombinator.com, edited chart.ts, researched d3js.org.",
     "top_intent_ids": [
-      "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
-      "2da138b0-126c-503d-a40b-79a35c24fb71",
-      "b5f3f7cf-2982-5913-9d80-9422e7e36819"
+      "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
+      "46257826-3d1b-5bc4-a266-9653f38fe29b",
+      "54867f81-f9dd-5bac-8612-70b85bd29d45"
     ],
     "total_duration_seconds": 3497
   },
@@ -93,7 +93,7 @@
                 "value": "/home/dev/alpha"
               }
             ],
-            "id": "b5440eee-e14c-5523-b49e-453e0cf1ee56",
+            "id": "cf356841-8ca3-5e93-9f1d-3fe7d5fca718",
             "insights": {
               "browser": [
                 {
@@ -111,7 +111,7 @@
               "shell": []
             },
             "label": "Edit app.ts",
-            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "parent_id": "54867f81-f9dd-5bac-8612-70b85bd29d45",
             "prefix": [
               "editor",
               "tab_change",
@@ -209,7 +209,7 @@
                 "value": "/home/dev/alpha"
               }
             ],
-            "id": "c9400424-47b3-5d48-9abe-10a4105b74ad",
+            "id": "0c28fb7b-426b-5ab3-bd03-8bfed8efb128",
             "insights": {
               "browser": [],
               "editor": [
@@ -228,7 +228,7 @@
               ]
             },
             "label": "Run Go",
-            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "parent_id": "54867f81-f9dd-5bac-8612-70b85bd29d45",
             "prefix": [
               "focus",
               "app_focus",
@@ -320,7 +320,7 @@
                 "value": "/home/dev/site"
               }
             ],
-            "id": "c9483628-681c-5bf8-be0e-8da4d1a7e605",
+            "id": "6ccb24d6-3d5b-528a-bf9d-35aee5e214d1",
             "insights": {
               "browser": [
                 {
@@ -338,7 +338,7 @@
               "shell": []
             },
             "label": "Run Npm",
-            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "parent_id": "54867f81-f9dd-5bac-8612-70b85bd29d45",
             "prefix": [
               "command",
               "tab_change",
@@ -423,7 +423,7 @@
                 "value": "/home/dev/site"
               }
             ],
-            "id": "0ac59c89-9a29-5a89-98be-6eb61f8b3b80",
+            "id": "ef10c5a3-c292-50db-9a1e-62d9e6c8ab8a",
             "insights": {
               "browser": [],
               "editor": [
@@ -442,7 +442,7 @@
               ]
             },
             "label": "Run Make",
-            "parent_id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+            "parent_id": "54867f81-f9dd-5bac-8612-70b85bd29d45",
             "prefix": [
               "editor",
               "command",
@@ -630,7 +630,7 @@
             "value": "/home/dev/beta-api"
           }
         ],
-        "id": "b5f3f7cf-2982-5913-9d80-9422e7e36819",
+        "id": "54867f81-f9dd-5bac-8612-70b85bd29d45",
         "insights": {
           "browser": [],
           "editor": [],
@@ -706,7 +706,7 @@
             "value": "https://calendar.google.com/calendar/r"
           }
         ],
-        "id": "ae2b1172-7696-55b4-a9c5-07c687d8654d",
+        "id": "af63e241-b171-518d-83e9-ccc4293c2772",
         "insights": {
           "browser": [
             {
@@ -766,7 +766,7 @@
             "value": "https://calendar.google.com/calendar/r/week"
           }
         ],
-        "id": "f612a790-6fe5-5f00-98ad-2293bc5c96e5",
+        "id": "36e4b3c3-9e7c-5713-8129-9c24f9ad0ccb",
         "insights": {
           "browser": [
             {
@@ -882,7 +882,7 @@
                 "value": "/home/dev/beta-api"
               }
             ],
-            "id": "6ffe805e-e9da-59a6-9e80-e41f7876746d",
+            "id": "17421f47-4457-5777-be0c-6c576cedf441",
             "insights": {
               "browser": [
                 {
@@ -910,7 +910,7 @@
               ]
             },
             "label": "Run Go",
-            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "parent_id": "46257826-3d1b-5bc4-a266-9653f38fe29b",
             "prefix": [
               "editor",
               "document_change",
@@ -975,14 +975,14 @@
                 "value": "0"
               }
             ],
-            "id": "82b2fc37-de4d-5122-a6ce-4e05e77adde4",
+            "id": "55cd9645-7b64-514c-8cf5-176ff0f7ef9c",
             "insights": {
               "browser": [],
               "editor": [],
               "shell": []
             },
             "label": "Run Docker",
-            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "parent_id": "46257826-3d1b-5bc4-a266-9653f38fe29b",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -1035,14 +1035,14 @@
                 "value": "0"
               }
             ],
-            "id": "34a00338-003d-5b38-a0b9-c4829255ec20",
+            "id": "2b43738b-6d87-5c32-acc3-fa6682ff2309",
             "insights": {
               "browser": [],
               "editor": [],
               "shell": []
             },
             "label": "Run Kubectl",
-            "parent_id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+            "parent_id": "46257826-3d1b-5bc4-a266-9653f38fe29b",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -1162,7 +1162,7 @@
             "value": "/home/dev/beta-api"
           }
         ],
-        "id": "2da138b0-126c-503d-a40b-79a35c24fb71",
+        "id": "46257826-3d1b-5bc4-a266-9653f38fe29b",
         "insights": {
           "browser": [],
           "editor": [],
@@ -1284,7 +1284,7 @@
                 "value": "/home/dev/site"
               }
             ],
-            "id": "0ee368c9-0895-55fa-bc22-7530a0913098",
+            "id": "912136be-66fa-5547-bf99-cd4658e0373e",
             "insights": {
               "browser": [
                 {
@@ -1308,7 +1308,7 @@
               ]
             },
             "label": "Run Npm",
-            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "parent_id": "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
             "prefix": [
               "command",
               "document_change",
@@ -1378,7 +1378,7 @@
                 "value": "https://news.ycombinator.com/item?id=2"
               }
             ],
-            "id": "9e6dc9d4-b9ff-570f-b0a2-c7e7ac1954b5",
+            "id": "e4ff7742-dc7d-5b57-bce9-3b86f57cb507",
             "insights": {
               "browser": [
                 {
@@ -1390,7 +1390,7 @@
               "shell": []
             },
             "label": "Research ycombinator.com",
-            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "parent_id": "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -1456,7 +1456,7 @@
                 "value": "/home/dev/beta-api"
               }
             ],
-            "id": "b8b55f29-8475-51b2-8159-13b263048e57",
+            "id": "9a877aed-a805-57b8-b613-8de9a6a8e7fa",
             "insights": {
               "browser": [],
               "editor": [
@@ -1469,7 +1469,7 @@
               "shell": []
             },
             "label": "Run Git",
-            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "parent_id": "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
             "prefix": [
               "command",
               "command",
@@ -1534,7 +1534,7 @@
                 "value": "0"
               }
             ],
-            "id": "a8def60d-854b-5d5b-8b01-a4ad5183b2a5",
+            "id": "34f05461-6da1-5cc9-ab35-b7298526c023",
             "insights": {
               "browser": [],
               "editor": [],
@@ -1547,7 +1547,7 @@
               ]
             },
             "label": "Run Pip",
-            "parent_id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+            "parent_id": "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -1703,7 +1703,7 @@
             "value": "/home/dev/site"
           }
         ],
-        "id": "b15f1b9a-ee91-5f4b-8869-5c5b46aa0419",
+        "id": "4f2c2b08-8a46-5e80-b3dc-9d4736ae20eb",
         "insights": {
           "browser": [],
           "editor": [],

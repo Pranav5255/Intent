@@ -122,8 +122,8 @@ async fn pipeline_is_deterministic_and_order_independent() {
         let mut shuffled = load(name);
         shuffled.events.reverse();
         let b = pipeline::run(shuffled, &deps).await;
-        // Ordinals (original positions) are part of the hash, so ids differ, but the
-        // tree content does not.
+        // Ordinals (original positions) are part of the hash, so the hash differs,
+        // but the tree content does not.
         let strip = |r: &intent_types::PipelineResult| r.intents.iter().map(project).collect::<Vec<_>>();
         assert_eq!(strip(&a), strip(&b), "{name}");
         assert_eq!(a, pipeline::run(load(name), &deps).await, "{name}: not deterministic");
