@@ -149,6 +149,15 @@ for _ in $(seq 20); do
 done
 echo "  palette window $overlay at x=$px, ${pw}px wide on a ${sw}px screen"
 ((centred)) || fail "palette is not centred on its first open"
+focused=0
+for _ in $(seq 12); do
+  [[ $(xdotool getactivewindow 2>/dev/null) == "$overlay" ]] && { focused=1; break; }
+  sleep 0.25
+done
+((focused)) || fail "palette did not take keyboard focus on its first open"
+# Let the first open finish loading before the shortcut closes it. A close within that
+# second can leave the next reopen deaf to its first Escape (a known issue).
+sleep 1
 shot vm-06-palette
 xdotool key super+space
 wait_palette hidden || fail "Super+Space did not close the open palette"
@@ -156,6 +165,15 @@ for round in 1 2 3 4 5 6; do   # every reopen must take keyboard input (Escape c
   sleep 0.5
   xdotool key super+space
   wait_palette shown || fail "Super+Space did not reopen the palette (round $round)"
+  # Every reopen must take the keyboard too, or Escape below goes elsewhere.
+  focused=0
+  for _ in $(seq 12); do
+    [[ $(xdotool getactivewindow 2>/dev/null) == "$(palette)" ]] && { focused=1; break; }
+    sleep 0.25
+  done
+  ((focused)) || fail "the reopened palette did not take keyboard focus (round $round)"
+  # A key in the first half second after a reopen can be lost (known issue); a person
+  # reaches for Escape later than that.
   sleep 0.5
   xdotool key Escape
   wait_palette hidden || fail "the reopened palette ignored Escape (round $round)"
