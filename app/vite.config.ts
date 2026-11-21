@@ -1,11 +1,20 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // Tauri expects a fixed port and must not have Vite clear its terminal output.
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig({
-  plugins: [react()],
+// RETICLE=1 (dev/lima/scenarios-app.sh) adds the Reticle SDK to the dev server so the
+// scenario run can drive the real app. The plugin is installed only for that run and is
+// never part of a release build.
+async function reticlePlugin(): Promise<PluginOption> {
+  if (process.env.RETICLE !== '1') return null;
+  const { reticle } = await import('@reticlehq/vite-plugin' as string);
+  return reticle({ desktop: true, captureNetworkBodies: true });
+}
+
+export default defineConfig(async () => ({
+  plugins: [react(), await reticlePlugin()],
   clearScreen: false,
   server: {
     port: 1420,
@@ -19,4 +28,4 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
   },
-});
+}));
