@@ -18,12 +18,44 @@ pub const BLOCKED_URL: &str = "[blocked]";
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Blocklist {
     patterns: Vec<String>,
+    /// Entries in the file that are not host patterns even after normalisation.
+    skipped: Vec<String>,
+    /// Block every URL (the file exists but cannot be read as a blocklist).
+    block_all: bool,
 }
 
 impl Blocklist {
     /// Build from raw patterns (validated and normalised).
     pub fn new<S: AsRef<str>>(patterns: &[S]) -> Result<Self, ConfigError> {
-        Ok(Blocklist { patterns: normalise_patterns(patterns)? })
+        Ok(Blocklist { patterns: normalise_patterns(patterns)?, ..Blocklist::default() })
+    }
+
+    /// Build from what a user wrote: normalise each entry and skip (and remember)
+    /// the ones that are still not host patterns. One typo must not stop capture.
+    pub fn lenient<S: AsRef<str>>(entries: &[S]) -> Self {
+        let mut list = Blocklist::default();
+        for entry in entries {
+            match normalise_pattern(entry.as_ref()) {
+                Some(pattern) if !list.patterns.contains(&pattern) => list.patterns.push(pattern),
+                Some(_) => {}
+                None => list.skipped.push(entry.as_ref().to_string()),
+            }
+        }
+        list
+    }
+
+    /// A blocklist that blocks every URL. Used when the file cannot be read, so a
+    /// broken file never lets a blocked site through.
+    pub fn block_all() -> Self {
+        Blocklist { block_all: true, ..Blocklist::default() }
+    }
+
+    /// One message per entry that [`Blocklist::lenient`] skipped.
+    pub fn warnings(&self) -> Vec<String> {
+        self.skipped
+            .iter()
+            .map(|entry| format!("blocked-domains entry {entry:?} is not a host name, so it is ignored"))
+            .collect()
     }
 
     /// The normalised patterns (what `GET /v1/config` reports as `blocked_domains`).
@@ -32,7 +64,7 @@ impl Blocklist {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.patterns.is_empty()
+        self.patterns.is_empty() && !self.block_all
     }
 
     /// Parse the `blocked-domains.yaml` format.
@@ -42,7 +74,7 @@ impl Blocklist {
 
     fn parse_yaml_named(text: &str, path: Option<&Path>) -> Result<Self, ConfigError> {
         match parse_blocked_domains_yaml(text) {
-            Ok(values) => Blocklist::new(&values),
+            Ok(values) => Ok(Blocklist::lenient(&values)),
             Err(YamlError::Structure) => Err(ConfigError::Invalid(match path {
                 Some(path) => format!("invalid blocked-domains config: {}", path.display()),
                 None => "invalid blocked-domains config".into(),
@@ -74,6 +106,9 @@ impl Blocklist {
     /// Whether the URL's host equals or is a subdomain of a rule. A rule without a
     /// dot (e.g. `chase`) also matches `chase.com` and its subdomains.
     pub fn is_url_blocked(&self, url: &str) -> bool {
+        if self.block_all {
+            return true;
+        }
         let Some(host) = match_host(url) else {
             return false;
         };
@@ -91,26 +126,47 @@ enum YamlError {
     Config(ConfigError),
 }
 
-/// Validate and normalise host patterns: trim, lower-case, drop trailing dots and a
-/// leading `*.`; reject anything with URL syntax or other wildcards. Order-preserving de-duplication.
+/// Validate and normalise host patterns ([`normalise_pattern`]); fail on the first
+/// entry that is still not a host pattern. Order-preserving de-duplication.
 pub fn normalise_patterns<S: AsRef<str>>(patterns: &[S]) -> Result<Vec<String>, ConfigError> {
     let mut out: Vec<String> = Vec::new();
     for pattern in patterns {
-        let mut value = pattern.as_ref().trim().to_lowercase().trim_end_matches('.').to_string();
-        if let Some(rest) = value.strip_prefix("*.") {
-            value = rest.to_string();
-        }
-        if value.is_empty()
-            || value.contains(['/', ':', '@', '?', '#', '[', '*'])
-            || value.contains(char::is_whitespace)
-        {
+        let Some(value) = normalise_pattern(pattern.as_ref()) else {
             return Err(ConfigError::Invalid("blocked-domains entries must be host patterns".into()));
-        }
+        };
         if !out.contains(&value) {
             out.push(value);
         }
     }
     Ok(out)
+}
+
+/// Turn what a user is likely to write into a host pattern: trim, lower-case, and
+/// drop a scheme, user info, port, path, query, fragment, a leading `*.` or `.` and
+/// trailing dots. `None` if the rest is still not a host (spaces, other wildcards,
+/// IPv6 literals, nothing left).
+pub fn normalise_pattern(raw: &str) -> Option<String> {
+    let mut value = raw.trim().to_lowercase();
+    if let Some((_, rest)) = value.split_once("://") {
+        value = rest.to_string();
+    }
+    if let Some(end) = value.find(['/', '?', '#']) {
+        value.truncate(end);
+    }
+    if let Some((_, host)) = value.rsplit_once('@') {
+        value = host.to_string();
+    }
+    if let Some((host, port)) = value.rsplit_once(':')
+        && port.chars().all(|c| c.is_ascii_digit())
+    {
+        value = host.to_string();
+    }
+    let value = value.trim_end_matches('.');
+    let value = value.strip_prefix("*.").unwrap_or(value).trim_start_matches('.');
+    let invalid = value.is_empty()
+        || value.contains(['/', ':', '@', '?', '#', '[', ']', '*'])
+        || value.contains(char::is_whitespace);
+    (!invalid).then(|| value.to_string())
 }
 
 /// Parse the small YAML subset used by `blocked-domains.yaml`:
@@ -157,13 +213,8 @@ fn parse_blocked_domains_yaml(text: &str) -> Result<Vec<String>, YamlError> {
             continue;
         }
         if in_list && let Some(item) = line.strip_prefix('-') {
-            let value = unquote(item.trim());
-            if value.is_empty() {
-                return Err(YamlError::Config(ConfigError::Invalid(
-                    "blocked-domains entries must be non-empty strings".into(),
-                )));
-            }
-            values.push(value.to_string());
+            // An empty entry is kept so that the caller reports it and skips it.
+            values.push(unquote(item.trim()).to_string());
             continue;
         }
         return Err(invalid());
@@ -272,11 +323,42 @@ mod tests {
     fn patterns_are_normalised() {
         let b = list(&[" *.Example.COM. ", "example.com", "bank"]);
         assert_eq!(b.patterns(), ["example.com", "bank"]);
-        for bad in
-            ["", "  ", "*.", "http://x.com", "x.com/path", "user@x.com", "x.com:443", "x?y", "x#y", "[::1]", "a b"]
-        {
+        for (raw, want) in [
+            ("http://x.com", "x.com"),
+            ("x.com/path", "x.com"),
+            ("user@x.com", "x.com"),
+            ("x.com:443", "x.com"),
+            ("HTTPS://User:Pw@X.com:8443/a?b#c", "x.com"),
+            (".x.com", "x.com"),
+        ] {
+            assert_eq!(normalise_pattern(raw).as_deref(), Some(want), "{raw:?}");
+        }
+        for bad in ["", "  ", "*.", "*", "https://", "[::1]", "a b", "a*b.com", "x.com:port"] {
             assert!(Blocklist::new(&[bad]).is_err(), "{bad:?}");
         }
+        let lenient = Blocklist::lenient(&["a.com", "a b", "A.com"]);
+        assert_eq!(lenient.patterns(), ["a.com"]);
+        assert_eq!(lenient.warnings(), ["blocked-domains entry \"a b\" is not a host name, so it is ignored"]);
+    }
+
+    #[test]
+    fn yaml_entries_written_as_urls_still_block() {
+        let text = "blocked_domains:\n  - https://chase.com\n  - bank.example:443\n  - '*.Wells.com'\n  - .credit.org\n  - http://user@pay.example.net:8443/login?x=1#top\n";
+        let b = Blocklist::parse_yaml(text).unwrap();
+        assert_eq!(b.patterns(), ["chase.com", "bank.example", "wells.com", "credit.org", "pay.example.net"]);
+        assert!(b.is_url_blocked("https://secure.chase.com/"));
+        assert!(b.is_url_blocked("https://bank.example/acct"));
+    }
+
+    #[test]
+    fn yaml_skips_entries_that_are_not_hosts() {
+        let b = Blocklist::parse_yaml("blocked_domains:\n  - chase.com\n  - not a host\n  - '[::1]'\n  -\n").unwrap();
+        assert_eq!(b.patterns(), ["chase.com"]);
+        assert!(b.is_url_blocked("https://chase.com/"));
+        assert_eq!(b.warnings().len(), 3);
+        let all = Blocklist::block_all();
+        assert!(all.is_url_blocked("https://example.com/") && all.is_url_blocked(""));
+        assert!(!all.is_empty());
     }
 
     #[test]
@@ -303,8 +385,6 @@ mod tests {
         let err = |text: &str| Blocklist::parse_yaml(text).unwrap_err().to_string();
         assert_eq!(err(""), "blocked-domains config must contain blocked_domains");
         assert_eq!(err("# only comments\n"), "blocked-domains config must contain blocked_domains");
-        assert_eq!(err("blocked_domains:\n  -\n"), "blocked-domains entries must be non-empty strings");
-        assert_eq!(err("blocked_domains:\n  - https://x.com/\n"), "blocked-domains entries must be host patterns");
         assert!(Blocklist::parse_yaml("- a.com\nblocked_domains:\n").is_err());
         assert!(Blocklist::parse_yaml("other: 1\nblocked_domains:\n").is_err());
         assert!(Blocklist::parse_yaml("blocked_domains: a.com\n").is_err());

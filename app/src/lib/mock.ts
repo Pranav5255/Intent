@@ -486,6 +486,7 @@ function captureStatus(): CaptureStatus {
       event_counts: { 'vscode/document_change': 9_412, 'firefox/user_action': 3_208, 'filesystem/file_content': 611 },
     },
     db_size_bytes: 187_430_912,
+    config_warnings: [],
   };
 }
 

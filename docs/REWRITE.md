@@ -35,7 +35,7 @@ app and `intentctl` read it.
 | `/v1/config` | GET | open | blocked domains |
 | `/v1/detailed-capture/config` | PUT | **token** | |
 | `/v1/events`, `/events` · `/v1/events/incremental`, `/events/incremental` · `/v1/export/day[/meta]`, `/export/day[/meta]` | GET | **token** | captured data is never readable without the token |
-| `/v1/workspaces` · `/v1/filesystem-capture` | GET, PUT | **token** | PUT re-configures the filesystem watcher live |
+| `/v1/workspaces` · `/v1/filesystem-capture` | GET, PUT | **token** | PUT re-configures the filesystem watcher live. PUT `/v1/workspaces` answers 422 for `/`, the home directory or its parents, and any folder that holds or is inside Intent's config, data or runtime dirs; GET leaves such entries out |
 | `/v1/retention/policy` | GET, PUT | **token** | |
 | `/v1/retention/preview`, `/retention/preview` | GET | **token** | `eligible`: events per tier, `total` events, `intents` past the metadata cutoff |
 | `/v1/retention/purge`, `/retention/purge` | POST | **token** | 409 unless `confirm: true`; also deletes intents of days before the metadata cutoff |
@@ -43,7 +43,7 @@ app and `intentctl` read it.
 | `/v1/intelligence/preview-sample` | GET | **token** | |
 | `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
 | `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?, until?}`; persisted with its resume time · 422 unless the pause lasts 1 s to 7 days (`until` in the past is refused) |
-| `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention` |
+| `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention`, `config_warnings[]` (config entries intentd ignores, in words for the user) |
 | `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
 | `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
 | `/pipeline/run[?date]`, `/pipeline/run-replay`, `/pipeline/recompute?date` | POST | **token** | `run` defaults to today |
@@ -131,6 +131,23 @@ one SQLite transaction per batch (≤ 100 events, ≤ 25 ms). Unlike 1.x the bat
 as no new event arrives for 2 ms, so a client waiting for its 201 is no longer capped at one
 event per 25 ms. Writer metrics (accepted, inserted, duplicates, drops by reason, batches,
 failures, queue high-water mark, average wait/write ms) are in `/v1/status.ingestion`.
+
+A broken config file never stops ingest. `admission_policy()` cannot fail: an unreadable
+`detailed-capture.json` turns detailed capture off, an unreadable `workspaces.json` approves
+no workspace, and a `blocked-domains.yaml` that is not the blocklist format blocks every
+browser URL. In a valid blocklist, entries are normalised (scheme, user info, port, path,
+query, fragment and a leading `*.` or `.` are dropped; `https://chase.com` blocks
+`chase.com`), and an entry that is still not a host is skipped. Each of these shows in
+`/v1/status.config_warnings`.
+
+### Filesystem watcher
+
+The watcher never watches Intent's own data, config and runtime dirs, even below an
+approved root. When a workspace root is deleted or renamed away, or does not exist yet,
+the watcher keeps it and watches its nearest existing parent (non-recursively). When the
+root is back it watches the whole tree again, emits `workspace_seen`, and reports files
+written there since the root went missing (at most 256). Missing roots are in the
+collector's status detail as `missing_roots`.
 
 ## Packaging and verification
 

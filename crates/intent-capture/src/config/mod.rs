@@ -21,7 +21,7 @@ pub use detailed::{
 pub use filesystem::{FilesystemCaptureConfig, FilesystemCaptureUpdate};
 pub use retention::{MAX_RETENTION_DAYS, RetentionPolicy, RetentionPurge};
 pub use store::ConfigStore;
-pub use workspaces::{WorkspacesConfig, WorkspacesUpdate};
+pub use workspaces::{WorkspaceGuard, WorkspacesConfig, WorkspacesUpdate};
 
 /// Configuration error. `Invalid` maps to HTTP 422 on writes / 500 on reads (1.x).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]

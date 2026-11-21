@@ -9,8 +9,8 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use intent_capture::ConfigError;
 use intent_capture::config::{
-    DetailedCaptureUpdate, FilesystemCaptureConfig, FilesystemCaptureUpdate, RetentionPolicy, RetentionPurge,
-    WorkspacesConfig, WorkspacesUpdate,
+    DetailedCaptureConfig, DetailedCaptureUpdate, FilesystemCaptureConfig, FilesystemCaptureUpdate, RetentionPolicy,
+    RetentionPurge, WorkspacesConfig, WorkspacesUpdate,
 };
 use intent_capture::preview::build_preview_sample;
 use intent_capture::restore::{self, RestoreRequest, RestoreResult};
@@ -79,7 +79,6 @@ pub async fn ingest_event(State(state): State<AppState>, headers: HeaderMap, bod
         }
         Ok(Ingested::Dropped(_)) | Ok(Ingested::Queued) => StatusCode::NO_CONTENT.into_response(),
         Err(IngestError::Invalid(msg)) => ApiError::unprocessable(msg).into_response(),
-        Err(IngestError::Config(msg)) => ApiError::internal(msg).into_response(),
         Err(IngestError::Unavailable(err)) => {
             tracing::error!(?err, "event persistence unavailable");
             let detail = match err {
@@ -193,11 +192,13 @@ pub async fn detailed_put(
     Ok(Json(state.config.public_detailed_config().map_err(config_read)?))
 }
 
+/// Entries that may not be workspaces (see `WorkspaceGuard`) are left out.
 pub async fn workspaces_get(State(state): State<AppState>) -> ApiResult<Json<WorkspacesConfig>> {
-    Ok(Json((*state.config.workspaces().map_err(config_read)?).clone()))
+    Ok(Json(state.config.effective_workspaces().map_err(config_read)?))
 }
 
 /// Replacing the approved workspaces reconfigures the filesystem watcher live.
+/// `/`, the home directory and folders that hold Intent's own files answer 422.
 pub async fn workspaces_put(
     State(state): State<AppState>,
     JsonBody(update): JsonBody<WorkspacesUpdate>,
@@ -436,7 +437,10 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
     let collector_running = |name: &str| collectors.iter().any(|c| c.name == name && c.running);
     let healthy = |name: &str| sources.get(name).and_then(|v| v["healthy"].as_bool()).unwrap_or(false);
 
-    let mut detailed = state.config.public_detailed_config().map_err(config_read)?;
+    // A broken consent file must not hide the status (and its `config_warnings`).
+    let mut detailed = state.config.public_detailed_config().unwrap_or_else(|_| {
+        DetailedCaptureConfig::default().public_config(&state.config.approved_workspaces(), "indefinite")
+    });
     detailed["event_counts"] = json!(detailed_counts);
     let pause = state.pause.current();
     let db_size = util::database_size(state.store.path());
@@ -468,5 +472,6 @@ pub async fn status(State(state): State<AppState>) -> ApiResult<Json<Value>> {
         "pipeline": {"last_run": parse(last_run)},
         "retention": {"policy": state.config.retention_policy().ok().map(|p| *p), "last_run": parse(retention)},
         "uptime_seconds": now - state.started_at,
+        "config_warnings": state.config.config_warnings(),
     })))
 }

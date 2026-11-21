@@ -122,6 +122,36 @@ pub fn normalize_root(
     Ok(resolved)
 }
 
+/// A workspace root that does not exist (yet): `~` expanded, absolute, with `.` and
+/// `..` removed. `None` if the path exists, is relative, or would be refused anyway.
+pub fn missing_root(raw: &Path, home: Option<&Path>, is_sensitive: &dyn Fn(&Path) -> bool) -> Option<PathBuf> {
+    let expanded = match (raw.strip_prefix("~"), home) {
+        (Ok(rest), Some(h)) => h.join(rest),
+        _ => raw.to_path_buf(),
+    };
+    if !expanded.is_absolute() {
+        return None;
+    }
+    let mut path = PathBuf::from("/");
+    for component in expanded.components() {
+        match component {
+            Component::Normal(part) => path.push(part),
+            Component::ParentDir => {
+                path.pop();
+            }
+            _ => {}
+        }
+    }
+    let gone = matches!(std::fs::symlink_metadata(&path), Err(e) if e.kind() == std::io::ErrorKind::NotFound);
+    let refused = path.parent().is_none() || VIRTUAL_ROOTS.iter().any(|v| path.starts_with(v)) || is_sensitive(&path);
+    (gone && !refused).then_some(path)
+}
+
+/// Nearest existing directory above `path`.
+pub fn nearest_existing_parent(path: &Path) -> Option<PathBuf> {
+    path.ancestors().skip(1).find(|dir| dir.is_dir()).map(Path::to_path_buf)
+}
+
 /// Full eligibility check for a changed path (touches the filesystem).
 /// Symlinks, non-regular files, oversized files, ignored and sensitive paths are skipped.
 pub fn should_capture(path: &Path, root: &Path, max_bytes: u64, is_sensitive: &dyn Fn(&Path) -> bool) -> bool {
@@ -181,6 +211,19 @@ mod tests {
         let file = dir.path().join("f");
         std::fs::write(&file, "x").unwrap();
         assert_eq!(normalize_root(&file, None, &never), Err(RootRejection::NotADirectory));
+    }
+
+    #[test]
+    fn missing_roots_are_lexical_and_refused_like_roots() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path().canonicalize().unwrap();
+        assert_eq!(missing_root(&base.join("a/../b/./c"), None, &never), Some(base.join("b/c")));
+        assert_eq!(missing_root(Path::new("~/gone"), Some(&base), &never), Some(base.join("gone")));
+        assert_eq!(missing_root(&base, None, &never), None, "exists");
+        assert_eq!(missing_root(Path::new("rel/x"), None, &never), None);
+        assert_eq!(missing_root(Path::new("/proc/nope-intent"), None, &never), None);
+        assert_eq!(missing_root(&base.join("s"), None, &|_| true), None);
+        assert_eq!(nearest_existing_parent(&base.join("x/y/z")), Some(base.clone()));
     }
 
     #[test]
