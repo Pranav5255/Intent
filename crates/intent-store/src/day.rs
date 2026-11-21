@@ -5,13 +5,14 @@
 //! moved events between days. 2.0 computes the day once, at insert time, from an explicit
 //! [`DayZone`] and stores it in `events.day`.
 
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, Utc};
-use chrono_tz::Tz;
+use jiff::Timestamp;
+use jiff::civil::Date;
+use jiff::tz::{Offset, TimeZone};
 
 use crate::error::{Result, invalid};
 
 /// Time zone used to assign events to calendar days.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum DayZone {
     /// The host's local zone as reported by the OS when the event is inserted.
     #[default]
@@ -19,7 +20,7 @@ pub enum DayZone {
     /// A fixed UTC offset in seconds east of UTC (no DST).
     Fixed(i32),
     /// A named IANA zone (DST-aware), e.g. `Europe/Berlin`.
-    Named(Tz),
+    Named(TimeZone),
 }
 
 impl DayZone {
@@ -44,38 +45,36 @@ impl DayZone {
             }
             return Err(invalid(format!("bad UTC offset {s:?}")));
         }
-        s.parse::<Tz>().map(DayZone::Named).map_err(|_| invalid(format!("unknown time zone {s:?}")))
+        TimeZone::get(s).map(DayZone::Named).map_err(|_| invalid(format!("unknown time zone {s:?}")))
     }
 
     /// `YYYY-MM-DD` of the day containing unix timestamp `ts` (seconds) in this zone.
     pub fn day_for_ts(&self, ts: i64) -> String {
-        let Some(utc) = DateTime::<Utc>::from_timestamp(ts, 0) else {
-            // Out-of-range timestamps are rejected upstream; bucket them deterministically.
+        let Ok(instant) = Timestamp::from_second(ts) else {
+            // Outside jiff's range (years -9999..=9999); bucket deterministically.
             return "1970-01-01".to_string();
         };
-        let date = match self {
-            DayZone::Local => utc.with_timezone(&Local).date_naive(),
-            DayZone::Fixed(secs) => {
-                let off = FixedOffset::east_opt(*secs).unwrap_or_else(|| FixedOffset::east_opt(0).unwrap());
-                utc.with_timezone(&off).date_naive()
-            }
-            DayZone::Named(tz) => utc.with_timezone(tz).date_naive(),
+        let zone = match self {
+            DayZone::Local => TimeZone::system(),
+            DayZone::Fixed(secs) => TimeZone::fixed(Offset::from_seconds(*secs).unwrap_or(Offset::UTC)),
+            DayZone::Named(tz) => tz.clone(),
         };
-        date.format("%Y-%m-%d").to_string()
+        instant.to_zoned(zone).date().to_string()
     }
 }
 
 /// Validate a strict `YYYY-MM-DD` calendar date (rejects `2024-02-30`, `2024-2-1`, ...).
 pub fn validate_date(value: &str) -> Result<()> {
-    match NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        Ok(d) if d.format("%Y-%m-%d").to_string() == value => Ok(()),
+    // The round trip refuses the other ISO 8601 spellings jiff accepts (`20240201`, `+002024-02-01`).
+    match value.parse::<Date>() {
+        Ok(d) if d.to_string() == value => Ok(()),
         _ => Err(invalid(format!("date must be a real YYYY-MM-DD calendar date, got {value:?}"))),
     }
 }
 
 /// Current unix time in seconds.
 pub fn now_ts() -> i64 {
-    Utc::now().timestamp()
+    Timestamp::now().as_second()
 }
 
 #[cfg(test)]
@@ -94,5 +93,19 @@ mod tests {
         assert!(validate_date("2024-02-30").is_err());
         assert!(validate_date("2024-2-01").is_err());
         assert!(validate_date("2024-02-29").is_ok());
+        assert!(validate_date("20240229").is_err());
+        assert!(validate_date("+002024-02-29").is_err());
+    }
+
+    #[test]
+    fn named_zones_follow_dst() {
+        // 2024-03-31T00:30:00Z: 01:30 in London (GMT), 02:30 in Berlin (CEST, after the switch).
+        let ts = 1_711_845_000;
+        let berlin = DayZone::parse("Europe/Berlin").unwrap();
+        assert_eq!(berlin.day_for_ts(ts), "2024-03-31");
+        // 2024-03-30T23:30:00Z: still 2024-03-31 in Berlin (UTC+1 before the switch).
+        assert_eq!(berlin.day_for_ts(ts - 3600), "2024-03-31");
+        assert_eq!(DayZone::parse("America/Los_Angeles").unwrap().day_for_ts(ts), "2024-03-30");
+        assert_eq!(DayZone::Fixed(0).day_for_ts(i64::MAX), "1970-01-01");
     }
 }

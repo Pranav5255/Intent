@@ -791,12 +791,11 @@ mod tests {
         });
         let mut deps = parity_deps();
         deps.label_provider = provider.clone();
-        let started = std::time::Instant::now();
         let result = run(many_sessions(), &deps).await;
+        // The in-flight high-water mark proves concurrency and its bound; a wall-clock
+        // check failed on a loaded macOS runner (615 ms), so the test asserts no duration.
         let max = provider.max.load(Ordering::SeqCst);
         assert!(max > 1 && max <= 4, "max in flight {max}");
-        // 12 cluster + 6 parent labels at 40ms each would take >700ms sequentially.
-        assert!(started.elapsed() < Duration::from_millis(600), "{:?}", started.elapsed());
         assert!(result.intents.iter().all(|i| i.label == "LLM Label"));
     }
 
