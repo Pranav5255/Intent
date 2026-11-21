@@ -10,9 +10,9 @@
     "intent_count": 3,
     "summary": "You worked on run git, run pytest, edited refunds.py, researched stackoverflow.com.",
     "top_intent_ids": [
-      "503a6691-cda6-561f-916a-5399f0ce536f",
-      "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
-      "da0da1a6-69f8-5f9f-b713-a58579a04afc"
+      "48e317e5-3e03-5ced-afc9-550cbea94932",
+      "7913cabc-d939-5c86-ade0-7cd33bc44e03",
+      "4b4216a2-a51b-54e1-a436-69f1bc643c3c"
     ],
     "total_duration_seconds": 2100
   },
@@ -59,14 +59,14 @@
                 "value": "0"
               }
             ],
-            "id": "9e0aadc4-a3ae-5395-87f8-8208aba3d0f1",
+            "id": "738927c4-fd97-58ac-bab3-9231734cfd24",
             "insights": {
               "browser": [],
               "editor": [],
               "shell": []
             },
             "label": "Run Git",
-            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "parent_id": "48e317e5-3e03-5ced-afc9-550cbea94932",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -185,7 +185,7 @@
                 "value": "/home/dev/payments"
               }
             ],
-            "id": "b01eaff3-9bfc-52ec-94d7-71e271cecee4",
+            "id": "0bdd877d-e97b-5fc8-ac2f-8d03a71c7834",
             "insights": {
               "browser": [
                 {
@@ -213,7 +213,7 @@
               ]
             },
             "label": "Run Pytest",
-            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "parent_id": "48e317e5-3e03-5ced-afc9-550cbea94932",
             "prefix": [
               "command",
               "document_change",
@@ -287,14 +287,14 @@
                 "value": "0"
               }
             ],
-            "id": "17d5e070-ad7b-5256-a25f-174f94a0dc9d",
+            "id": "1d72b863-99e6-5c59-8958-6dd77892f97a",
             "insights": {
               "browser": [],
               "editor": [],
               "shell": []
             },
             "label": "Run Git",
-            "parent_id": "503a6691-cda6-561f-916a-5399f0ce536f",
+            "parent_id": "48e317e5-3e03-5ced-afc9-550cbea94932",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -426,7 +426,7 @@
             "value": "/home/dev/payments"
           }
         ],
-        "id": "503a6691-cda6-561f-916a-5399f0ce536f",
+        "id": "48e317e5-3e03-5ced-afc9-550cbea94932",
         "insights": {
           "browser": [],
           "editor": [],
@@ -564,7 +564,7 @@
                 "value": "/home/dev/ledger-rs"
               }
             ],
-            "id": "8108db6d-30fe-59ab-825a-801cefef495d",
+            "id": "be855e4d-f90c-559e-97b1-e61ea31175a3",
             "insights": {
               "browser": [
                 {
@@ -592,7 +592,7 @@
               ]
             },
             "label": "Run Cargo",
-            "parent_id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+            "parent_id": "7913cabc-d939-5c86-ade0-7cd33bc44e03",
             "prefix": [
               "command",
               "command",
@@ -666,7 +666,7 @@
                 "value": "0"
               }
             ],
-            "id": "af823e8d-bbb9-5955-8f2b-bf0b178dfb10",
+            "id": "a3d87ace-9dd7-550e-ba88-ecf373c0dde9",
             "insights": {
               "browser": [],
               "editor": [],
@@ -679,7 +679,7 @@
               ]
             },
             "label": "Run Git",
-            "parent_id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+            "parent_id": "7913cabc-d939-5c86-ade0-7cd33bc44e03",
             "prefix": null,
             "privacy_policy_version": "safe-intent-features-v2",
             "resume_payload": {
@@ -803,7 +803,7 @@
             "value": "/home/dev/ledger-rs"
           }
         ],
-        "id": "ebe955f6-b2d4-5ff0-8d8b-f931733dec21",
+        "id": "7913cabc-d939-5c86-ade0-7cd33bc44e03",
         "insights": {
           "browser": [],
           "editor": [],
@@ -898,7 +898,7 @@
             "value": "/home/dev/infra"
           }
         ],
-        "id": "da0da1a6-69f8-5f9f-b713-a58579a04afc",
+        "id": "4b4216a2-a51b-54e1-a436-69f1bc643c3c",
         "insights": {
           "browser": [],
           "editor": [

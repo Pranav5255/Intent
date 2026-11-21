@@ -22,7 +22,11 @@
 //! * `source_hash`: the payload is hashed once in canonical compact form (1.x
 //!   serialized every normalized event, payload twice), and the cache identity also
 //!   covers the correlation mode, pipeline version, session gap, cluster cap and
-//!   evidence cap. Ids keep the uuid5 scheme but differ from 1.x because the hash does.
+//!   evidence cap.
+//! * Ids keep the uuid5 scheme, but hash the date, the scope and the earliest event
+//!   id instead of the source hash and the session index (1.x). Later events and
+//!   idle markers no longer change the ids of earlier intents. A one-task session
+//!   takes the session id rather than its cluster id.
 //! * New correlation step ([`correlate`]) merges similar adjacent clusters (default
 //!   on; disabled in parity mode). The 4-cluster cap is re-applied after semantic
 //!   refinement (1.x applied none). Invalid refiner outcomes fall back with a warning.
