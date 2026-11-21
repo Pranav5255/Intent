@@ -7,7 +7,7 @@ import { copyText } from '../lib/bridge';
 import { basename, count, duration, range, relativeDay, tildify } from '../lib/format';
 import { laneFor, projectOf } from '../lib/intent';
 import { describeSelection, restoreSelection, selectAll, selectionSize, type RestoreSelection } from '../lib/restore';
-import { errorText, toast, useAsync } from '../lib/store';
+import { errorText, intentsChanged, toast, useAsync } from '../lib/store';
 import type { Intent } from '../lib/types';
 import { LeftOffLine } from '../overlay/PreviewPane';
 import type { MainActions } from './MainWindow';
@@ -119,7 +119,12 @@ export function IntentDrawer({ id, actions, onClose }: { id: string; actions: Ma
                     <button
                       className="btn btn-primary btn-sm"
                       disabled={!selectionSize(selection)}
-                      onClick={() => void restoreSelection(intent.label, intent.resume_payload, selection)}
+                      onClick={() =>
+                        void restoreSelection(intent.label, intent.resume_payload, selection).then(
+                          // Keep only what did not open, so a retry does not open it twice.
+                          ({ ok, left }) => !ok && selectionSize(left) > 0 && setSelection(left),
+                        )
+                      }
                     >
                       <Icon name="resume" size={14} /> Resume selected
                     </button>
@@ -174,6 +179,7 @@ export function IntentDrawer({ id, actions, onClose }: { id: string; actions: Ma
                     onConfirm: async () => {
                       try {
                         await api.forgetDate(intent.date);
+                        intentsChanged();
                         toast({ tone: 'success', text: `Forgot ${relativeDay(intent.date)}` });
                         onClose();
                       } catch (r) {

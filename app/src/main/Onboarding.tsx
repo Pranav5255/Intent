@@ -3,7 +3,7 @@ import { StatusDot } from '../components/ui';
 import { api } from '../lib/api';
 import { MOCK } from '../lib/env';
 import { ago } from '../lib/format';
-import { errorText, refreshCapture, toast, useCapture } from '../lib/store';
+import { errorText, refreshCapture, toast, useAsync, useCapture, useRetryOnReconnect } from '../lib/store';
 import { BrandMark } from './MainWindow';
 
 const KEY = 'intent.onboarded.v2';
@@ -37,15 +37,14 @@ const COMPANIONS: Array<{ source: string; name: string; missing: string }> = [
 /** First run: one sentence, live checks, one button. No carousel. */
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const capture = useCapture();
-  const [reachable, setReachable] = useState<boolean | null>(null);
+  const health = useAsync(() => api.health(), []);
+  // The capture poll notices when the service starts; check health again then.
+  useRetryOnReconnect(health);
+  const reachable = health.data ? true : health.error ? false : null;
   const [busy, setBusy] = useState(false);
   const primary = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    api
-      .health()
-      .then(() => setReachable(true))
-      .catch(() => setReachable(false));
     primary.current?.focus();
   }, []);
 
