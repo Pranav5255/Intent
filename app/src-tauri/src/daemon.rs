@@ -118,15 +118,25 @@ fn parse_method(method: &str) -> Result<Method, String> {
     }
 }
 
+/// Upper bound for the query string. A long search in a non-Latin script
+/// grows up to nine times once percent-encoded.
+const MAX_QUERY_LEN: usize = 16 * 1024;
+
 /// Only plain absolute paths on the daemon: no scheme, host, traversal or whitespace.
+/// Dots are checked in the path only: a search query may contain `..`.
 fn validate_path(path: &str) -> Result<(), String> {
-    let ok = path.starts_with('/')
-        && !path.starts_with("//")
-        && !path.contains("://")
-        && !path.contains("..")
+    let (route, query) = path.split_once('?').unwrap_or((path, ""));
+    let lower = route.to_ascii_lowercase();
+    let ok = route.starts_with('/')
+        && !route.starts_with("//")
+        && !route.contains(':')
+        && !route.contains("..")
+        && !lower.contains("%2e")
+        && !path.contains('#')
         && !path.contains('\\')
         && !path.chars().any(|c| c.is_whitespace() || c.is_control())
-        && path.len() < 2048;
+        && route.len() < 2048
+        && query.len() < MAX_QUERY_LEN;
     if ok { Ok(()) } else { Err("Invalid request path".into()) }
 }
 
@@ -166,5 +176,33 @@ mod tests {
         assert!(validate_path("/v1/../etc").is_err());
         assert!(validate_path("/a b").is_err());
         assert!(validate_path("intents").is_err());
+    }
+
+    #[test]
+    fn allows_dots_in_the_query() {
+        assert!(validate_path("/intents/search?q=axum..routing&limit=12").is_ok());
+        assert!(validate_path("/intents/search?q=..%2F..%2Fetc").is_ok());
+    }
+
+    #[test]
+    fn rejects_traversal_in_the_path() {
+        assert!(validate_path("/intents/..").is_err());
+        assert!(validate_path("/intents/../v1/status?q=a").is_err());
+        assert!(validate_path("/intents/%2e%2e/v1/status").is_err());
+        assert!(validate_path("/intents/.%2E?q=a").is_err());
+        assert!(validate_path("/intents/search?q=a#..").is_err());
+    }
+
+    #[test]
+    fn allows_a_long_unicode_query() {
+        // 300 CJK characters: 3 bytes each, 9 characters each once percent-encoded.
+        let q = "%E6%97%A5".repeat(300);
+        assert!(validate_path(&format!("/intents/search?q={q}&limit=30")).is_ok());
+    }
+
+    #[test]
+    fn rejects_an_oversized_path() {
+        assert!(validate_path(&format!("/{}", "a".repeat(2048))).is_err());
+        assert!(validate_path(&format!("/intents/search?q={}", "a".repeat(MAX_QUERY_LEN))).is_err());
     }
 }
