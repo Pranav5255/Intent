@@ -171,10 +171,10 @@ fn fastrand_u64() -> u64 {
 
 /// Unix timestamp of `hour:minute` local time, `days_ago` days before today.
 pub fn local_ts(days_ago: u64, hour: u32, minute: u32) -> (String, i64) {
-    use chrono::{Days, Local, TimeZone};
-    let date = Local::now().date_naive().checked_sub_days(Days::new(days_ago)).unwrap();
-    let dt = Local.from_local_datetime(&date.and_hms_opt(hour, minute, 0).unwrap()).earliest().unwrap();
-    (date.format("%Y-%m-%d").to_string(), dt.timestamp())
+    use jiff::{ToSpan, tz::TimeZone};
+    let date = jiff::Zoned::now().date().checked_sub((days_ago as i64).days()).unwrap();
+    let at = date.at(hour as i8, minute as i8, 0, 0).to_zoned(TimeZone::system()).unwrap();
+    (date.to_string(), at.timestamp().as_second())
 }
 
 /// Canonical path of a temp dir (macOS `/var` → `/private/var`), as the store resolves it.

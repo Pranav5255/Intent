@@ -132,7 +132,7 @@ impl Store {
         let zone_for_fn = Arc::clone(&day_zone);
         writer.create_scalar_function("intent_day", 1, FunctionFlags::SQLITE_UTF8, move |ctx| {
             let ts: i64 = ctx.get(0)?;
-            let zone = *zone_for_fn.read().unwrap_or_else(|e| e.into_inner());
+            let zone = zone_for_fn.read().unwrap_or_else(|e| e.into_inner()).clone();
             Ok(zone.day_for_ts(ts))
         })?;
         schema::migrate(&mut writer)?;
@@ -170,7 +170,7 @@ impl Store {
 
     /// Zone currently used to bucket new events into days.
     pub fn day_zone(&self) -> DayZone {
-        *self.inner.day_zone.read().unwrap_or_else(|e| e.into_inner())
+        self.inner.day_zone.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Change the bucketing zone for future inserts. Existing rows keep their day;
