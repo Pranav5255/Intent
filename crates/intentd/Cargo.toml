@@ -24,7 +24,7 @@ anyhow = "1"
 arc-swap = "1"
 async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio", "matched-path"] }
-chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+jiff = "0.2"
 getrandom = "0.3"
 sd-notify = "0.4"
 serde = { version = "1", features = ["derive"] }
