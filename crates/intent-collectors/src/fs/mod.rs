@@ -303,19 +303,21 @@ fn resolve_roots(cfg: &WatcherConfig, opts: &FsOptions, is_sensitive: &dyn Fn(&P
     let mut workspaces = Vec::new();
     let mut missing = Vec::new();
     for raw in &cfg.workspaces {
+        // A missing root is kept and watched for (no `if let` guard: MSRV is 1.91).
         let root = match normalize_root(raw, opts.home.as_deref(), is_sensitive) {
             Ok(p) => p,
-            Err(RootRejection::NotADirectory)
-                if let Some(p) = missing_root(raw, opts.home.as_deref(), is_sensitive) =>
-            {
+            Err(why) => {
+                let missing_path = matches!(why, RootRejection::NotADirectory)
+                    .then(|| missing_root(raw, opts.home.as_deref(), is_sensitive))
+                    .flatten();
+                let Some(p) = missing_path else {
+                    rejected.push(json!({"path": raw.to_string_lossy(), "reason": why.to_string()}));
+                    continue;
+                };
                 if !missing.contains(&p) {
                     missing.push(p.clone());
                 }
                 p
-            }
-            Err(why) => {
-                rejected.push(json!({"path": raw.to_string_lossy(), "reason": why.to_string()}));
-                continue;
             }
         };
         if !workspaces.contains(&root) {
