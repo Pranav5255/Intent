@@ -155,7 +155,7 @@ struct DayAgg {
 /// legacy importer. Day stats are updated once per touched day.
 pub(crate) fn insert_tx<'a>(
     tx: &Transaction<'_>,
-    zone: DayZone,
+    zone: &DayZone,
     events: impl IntoIterator<Item = &'a RawEvent>,
     now: i64,
 ) -> Result<InsertReport> {
@@ -336,7 +336,7 @@ impl Store {
         }
         let zone = self.day_zone();
         let now = now_ts();
-        self.write(|tx| insert_tx(tx, zone, batch, now))
+        self.write(|tx| insert_tx(tx, &zone, batch, now))
     }
 
     /// Convenience wrapper over [`Store::insert_events`] for one event.
