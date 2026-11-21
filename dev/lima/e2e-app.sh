@@ -137,12 +137,18 @@ wait_palette() { # wait_palette shown|hidden
 xdotool key super+space
 wait_palette shown || fail "Super+Space did not show the palette"
 overlay=$(palette)
-sleep 1
-geom=$(xwininfo -id "$overlay")
-px=$(awk '/Absolute upper-left X/{print $NF}' <<<"$geom"); pw=$(awk '/Width:/{print $NF}' <<<"$geom")
 sw=$(xdpyinfo | awk '/dimensions:/{split($2, d, "x"); print d[1]}')
+# The window manager places the window first and the app centres it after; on a busy
+# runner that can take more than a second, so poll instead of reading once.
+centred=0
+for _ in $(seq 20); do
+  geom=$(xwininfo -id "$overlay")
+  px=$(awk '/Absolute upper-left X/{print $NF}' <<<"$geom"); pw=$(awk '/Width:/{print $NF}' <<<"$geom")
+  if (( px + pw / 2 >= sw / 2 - 2 && px + pw / 2 <= sw / 2 + 2 )); then centred=1; break; fi
+  sleep 0.25
+done
 echo "  palette window $overlay at x=$px, ${pw}px wide on a ${sw}px screen"
-(( px + pw / 2 >= sw / 2 - 2 && px + pw / 2 <= sw / 2 + 2 )) || fail "palette is not centred on its first open"
+((centred)) || fail "palette is not centred on its first open"
 shot vm-06-palette
 xdotool key super+space
 wait_palette hidden || fail "Super+Space did not close the open palette"
