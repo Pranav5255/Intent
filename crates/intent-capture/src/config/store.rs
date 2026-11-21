@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use super::{
     ConfigError, DetailedCaptureConfig, DetailedCaptureUpdate, FilesystemCaptureConfig, JsonConfig, RetentionPolicy,
-    WorkspacesConfig,
+    WorkspaceGuard, WorkspacesConfig,
 };
 use crate::admit::AdmissionPolicy;
 use crate::blocklist::Blocklist;
@@ -105,6 +105,7 @@ pub struct ConfigStore {
     filesystem: Cached<FilesystemCaptureConfig>,
     retention: Cached<RetentionPolicy>,
     blocklist: Cached<Blocklist>,
+    guard: WorkspaceGuard,
 }
 
 impl ConfigStore {
@@ -115,6 +116,7 @@ impl ConfigStore {
             filesystem: Cached::new(paths.filesystem_capture_config(), FilesystemCaptureConfig::load),
             retention: Cached::new(paths.retention_policy_config(), RetentionPolicy::load),
             blocklist: Cached::new(paths.blocked_domains_config(), Blocklist::load),
+            guard: WorkspaceGuard::new(paths),
         }
     }
 
@@ -162,21 +164,41 @@ impl ConfigStore {
         self.workspaces.get()
     }
 
+    /// Replace the approved workspaces. Any entry the [`WorkspaceGuard`] refuses
+    /// fails the whole update with [`ConfigError::Invalid`].
     pub fn set_workspaces(&self, config: WorkspacesConfig) -> Result<Arc<WorkspacesConfig>, ConfigError> {
-        self.workspaces.modify(|_| Ok(config))
+        let next = WorkspacesConfig::from_json(&config.to_json())?;
+        self.check_workspaces(&next.workspaces)?;
+        self.workspaces.modify(|_| Ok(next))
     }
 
+    /// Add one workspace (refused like [`ConfigStore::set_workspaces`]). Entries the
+    /// guard refuses that are already in the file are dropped.
     pub fn add_workspace(&self, path: &str) -> Result<Arc<WorkspacesConfig>, ConfigError> {
-        self.workspaces.modify(|current| Ok(current?.with_added(path)))
+        self.check_workspaces(&[crate::paths::resolve_user_path(path)])?;
+        self.workspaces.modify(|current| Ok(self.guard.allowed(&current?.with_added(path))))
     }
 
     pub fn remove_workspace(&self, path: &str) -> Result<Arc<WorkspacesConfig>, ConfigError> {
-        self.workspaces.modify(|current| Ok(current?.with_removed(path)))
+        self.workspaces.modify(|current| Ok(self.guard.allowed(&current?.with_removed(path))))
+    }
+
+    /// The workspaces in effect: the file without the entries the guard refuses.
+    pub fn effective_workspaces(&self) -> Result<WorkspacesConfig, ConfigError> {
+        Ok(self.guard.allowed(&*self.workspaces()?))
     }
 
     /// Approved workspaces; an unreadable/invalid file means none (1.x behaviour).
+    /// Entries the [`WorkspaceGuard`] refuses (for example written by hand) are left out.
     pub fn approved_workspaces(&self) -> Vec<String> {
-        self.workspaces().map(|config| config.workspaces.clone()).unwrap_or_default()
+        self.effective_workspaces().map(|config| config.workspaces).unwrap_or_default()
+    }
+
+    fn check_workspaces(&self, workspaces: &[String]) -> Result<(), ConfigError> {
+        match workspaces.iter().find_map(|w| self.guard.refusal(w)) {
+            Some(reason) => Err(ConfigError::Invalid(reason)),
+            None => Ok(()),
+        }
     }
 
     // ---- filesystem -------------------------------------------------------
@@ -213,12 +235,36 @@ impl ConfigStore {
     // ---- ingest -----------------------------------------------------------
 
     /// Snapshot of everything [`crate::admit::admit`] needs.
-    pub fn admission_policy(&self) -> Result<AdmissionPolicy, ConfigError> {
-        Ok(AdmissionPolicy {
-            detailed: self.detailed_capture()?,
+    ///
+    /// A broken file never stops ingest of unrelated events. Each one falls back to
+    /// the safe side instead: detailed capture off, no workspace approved, and every
+    /// browser URL blocked. [`ConfigStore::config_warnings`] tells the user why.
+    pub fn admission_policy(&self) -> AdmissionPolicy {
+        AdmissionPolicy {
+            detailed: self.detailed_capture().unwrap_or_default(),
             approved_workspaces: Arc::new(self.approved_workspaces()),
-            blocklist: self.blocklist()?,
-        })
+            blocklist: self.blocklist().unwrap_or_else(|_| Arc::new(Blocklist::block_all())),
+        }
+    }
+
+    /// Problems in the config files that Intent works around, in words for the user
+    /// (`/v1/status.config_warnings`).
+    pub fn config_warnings(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        match self.blocklist() {
+            Ok(blocklist) => out.extend(blocklist.warnings()),
+            Err(err) => out.push(format!("{err}; every browser URL is blocked until the file is fixed")),
+        }
+        if let Err(err) = self.detailed_capture() {
+            out.push(format!("{err}; detailed capture is off until the file is fixed"));
+        }
+        match self.workspaces() {
+            Ok(config) => out.extend(
+                config.workspaces.iter().filter_map(|w| self.guard.refusal(w)).map(|r| format!("{r}; it is ignored")),
+            ),
+            Err(err) => out.push(format!("{err}; no workspace is approved until the file is fixed")),
+        }
+        out
     }
 
     /// Drop every cached value (next access re-reads from disk).
@@ -385,16 +431,71 @@ mod tests {
     }
 
     #[test]
+    fn broken_blocklist_still_admits_and_fails_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, paths) = store_in(dir.path(), &[]);
+        std::fs::create_dir_all(paths.config_dir()).unwrap();
+        std::fs::write(paths.blocked_domains_config(), "blocked_domains:\n  - https://chase.com\n  - a b\n").unwrap();
+        let policy = store.admission_policy();
+        assert!(policy.blocklist.is_url_blocked("https://www.chase.com/"));
+        assert!(!policy.blocklist.is_url_blocked("https://example.com/"));
+        assert_eq!(store.config_warnings().len(), 1);
+
+        // A file that is not the blocklist format at all blocks every URL until it is fixed.
+        std::fs::write(paths.blocked_domains_config(), "nonsense: true\n").unwrap();
+        let policy = store.admission_policy();
+        assert!(policy.blocklist.is_url_blocked("https://example.com/"));
+        assert!(store.config_warnings()[0].contains("every browser URL is blocked"));
+
+        // A broken detailed-capture file turns detailed capture off instead of failing.
+        std::fs::write(paths.detailed_capture_config(), "{not json").unwrap();
+        let policy = store.admission_policy();
+        assert!(!policy.detailed.browser.enabled);
+        assert_eq!(store.config_warnings().len(), 2);
+    }
+
+    #[test]
+    fn refuses_workspaces_that_would_capture_too_much() {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, paths) = store_in(dir.path(), &[]);
+        let home = crate::paths::resolve_lenient(paths.home()).to_string_lossy().into_owned();
+        let data = paths.data_dir().to_string_lossy().into_owned();
+        let config = paths.config_dir().to_string_lossy().into_owned();
+        let parent_of_config = dir.path().to_string_lossy().into_owned();
+        for bad in ["/", home.as_str(), data.as_str(), config.as_str(), parent_of_config.as_str()] {
+            assert!(store.add_workspace(bad).is_err(), "{bad} was accepted");
+            let err = store
+                .set_workspaces(WorkspacesConfig { workspaces: vec![bad.to_string()] })
+                .expect_err("refused workspace");
+            assert!(matches!(err, ConfigError::Invalid(_)), "{err:?}");
+        }
+        assert!(store.workspaces().unwrap().workspaces.is_empty());
+        let project = format!("{home}/src");
+        store.add_workspace(&project).unwrap();
+        assert_eq!(store.approved_workspaces(), vec![project.clone()]);
+
+        // An entry written by hand is ignored, not obeyed.
+        std::fs::write(paths.workspaces_config(), format!("{{\"workspaces\": [\"/\", \"{home}\", \"{project}\"]}}"))
+            .unwrap();
+        assert_eq!(store.approved_workspaces(), vec![project.clone()]);
+        assert_eq!(store.config_warnings().len(), 2);
+        // The next write drops them.
+        store.remove_workspace("/nonexistent-intent/other").unwrap();
+        assert_eq!(store.workspaces().unwrap().workspaces, vec![project]);
+        assert!(store.config_warnings().is_empty());
+    }
+
+    #[test]
     fn admission_policy_snapshot() {
         let dir = tempfile::tempdir().unwrap();
         let (store, paths) = store_in(dir.path(), &[]);
         std::fs::create_dir_all(paths.config_dir()).unwrap();
         std::fs::write(paths.blocked_domains_config(), "blocked_domains: [chase.com]\n").unwrap();
         store.add_workspace("/nonexistent-intent/w").unwrap();
-        let policy = store.admission_policy().unwrap();
+        let policy = store.admission_policy();
         assert_eq!(policy.blocklist.patterns(), ["chase.com"]);
         assert_eq!(*policy.approved_workspaces, vec!["/nonexistent-intent/w".to_string()]);
         store.invalidate_all();
-        assert!(store.admission_policy().is_ok());
+        assert_eq!(store.admission_policy().blocklist.patterns(), ["chase.com"]);
     }
 }

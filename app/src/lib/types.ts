@@ -249,6 +249,11 @@ export interface CaptureStatus {
   detailed_capture?: DetailedCaptureConfig & { event_counts: Record<string, number> };
   /** 2.0 addition: on-disk database size in bytes. */
   db_size_bytes?: number | null;
+  /**
+   * 2.0 addition: problems in the config files that intentd works around (an
+   * invalid blocked-domains entry, a refused workspace), in words for the user.
+   */
+  config_warnings?: string[];
 }
 
 export interface WorkspacesConfig {

@@ -1,12 +1,12 @@
 //! Approved workspaces.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{ConfigError, JsonConfig};
-use crate::paths::resolve_user_path;
+use crate::paths::{Paths, resolve_lenient, resolve_user_path};
 
 /// `workspaces.json`: resolved, de-duplicated absolute paths.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,6 +74,73 @@ impl JsonConfig for WorkspacesConfig {
     }
 }
 
+/// Folders that can never be a workspace: `/`, the home directory and its parents,
+/// and any folder that holds Intent's own files. Watching those would capture far
+/// more than a project, and Intent's own writes would feed back into the watcher.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceGuard {
+    home: PathBuf,
+    /// Intent's config, data and runtime dirs: refused, and so is any folder in them.
+    own_dirs: Vec<PathBuf>,
+    /// Folders of overridden config files: only a folder that contains one is refused.
+    own_files: Vec<PathBuf>,
+}
+
+impl WorkspaceGuard {
+    pub fn new(paths: &Paths) -> Self {
+        let mut own_dirs = vec![paths.config_dir(), paths.data_dir()];
+        own_dirs.extend(paths.runtime_dir());
+        let own_files = [
+            paths.detailed_capture_config(),
+            paths.workspaces_config(),
+            paths.filesystem_capture_config(),
+            paths.retention_policy_config(),
+            paths.blocked_domains_config(),
+            paths.token(),
+            paths.database(),
+        ]
+        .iter()
+        .filter_map(|file| file.parent().map(resolve_lenient))
+        .collect();
+        WorkspaceGuard {
+            home: resolve_lenient(paths.home()),
+            own_dirs: own_dirs.iter().map(|dir| resolve_lenient(dir)).collect(),
+            own_files,
+        }
+    }
+
+    /// Why the resolved `workspace` cannot be approved, or `None` if it can.
+    pub fn refusal(&self, workspace: &str) -> Option<String> {
+        let path = Path::new(workspace);
+        if path.parent().is_none() {
+            return Some("/ cannot be a workspace because it holds every file on the computer".into());
+        }
+        if path == self.home {
+            return Some(format!(
+                "{workspace} is your home directory and cannot be a workspace; add a project folder inside it"
+            ));
+        }
+        if self.home.starts_with(path) {
+            return Some(format!("{workspace} cannot be a workspace because it contains your home directory"));
+        }
+        let own = self.own_dirs.iter().find(|dir| dir.starts_with(path) || path.starts_with(dir));
+        if let Some(dir) = own.or_else(|| self.own_files.iter().find(|dir| dir.starts_with(path))) {
+            return Some(format!(
+                "{workspace} cannot be a workspace because it holds Intent's own files ({})",
+                dir.display()
+            ));
+        }
+        None
+    }
+
+    /// The entries of `config` that may be approved.
+    pub fn allowed(&self, config: &WorkspacesConfig) -> WorkspacesConfig {
+        WorkspacesConfig {
+            workspaces: config.workspaces.iter().filter(|w| self.refusal(w).is_none()).cloned().collect(),
+        }
+    }
+}
+
 /// `PUT /v1/workspaces` body.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkspacesUpdate {
@@ -106,6 +173,30 @@ mod tests {
         assert_eq!(err(json!({"workspaces": "/a"})), "workspaces must be a list");
         assert_eq!(err(json!({"workspaces": [" "]})), "workspace paths must be non-empty strings");
         assert_eq!(err(json!({"workspaces": [1]})), "workspace paths must be non-empty strings");
+    }
+
+    #[test]
+    fn guard_refuses_broad_and_own_folders() {
+        let vars = [("HOME", "/nonexistent-intent/u"), ("XDG_RUNTIME_DIR", "/nonexistent-intent/run")];
+        let paths =
+            Paths::from_lookup(|key| vars.iter().find(|(k, _)| *k == key).map(|(_, v)| std::ffi::OsString::from(v)));
+        let guard = WorkspaceGuard::new(&paths);
+        for bad in [
+            "/",
+            "/nonexistent-intent",
+            "/nonexistent-intent/u",
+            "/nonexistent-intent/u/.local",
+            "/nonexistent-intent/u/.local/share/intent",
+            "/nonexistent-intent/u/.local/share/intent/logs",
+            "/nonexistent-intent/u/.config",
+            "/nonexistent-intent/run",
+        ] {
+            assert!(guard.refusal(bad).is_some(), "{bad}");
+        }
+        assert!(guard.refusal("/nonexistent-intent/u").unwrap().contains("home directory"));
+        for good in ["/nonexistent-intent/u/src", "/nonexistent-intent/u/.local/share/other", "/srv/x"] {
+            assert_eq!(guard.refusal(good), None, "{good}");
+        }
     }
 
     #[test]

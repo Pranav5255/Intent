@@ -144,6 +144,11 @@ impl Daemon {
         let (token, token_path) = Token::load_or_create(&token_paths).context("creating the API token")?;
 
         let config = Arc::new(ConfigStore::new(&paths));
+        let warnings = config.config_warnings().len();
+        if warnings > 0 {
+            // The entries themselves are in `/v1/status`; the log only counts them.
+            tracing::warn!(warnings, "some config entries are ignored; see config_warnings in /v1/status");
+        }
         let settings = match LlmSettings::load_or_import(&paths.config_dir()) {
             Ok((settings, imported)) => {
                 if imported {
