@@ -58,6 +58,49 @@ Raise a budget only with a measured reason in the same change.
 
 All Actions are pinned to commit SHAs and workflows run with read-only tokens.
 
+## User-behaviour scenarios
+
+[`dev/lima/scenarios.sh`](../dev/lima/scenarios.sh) acts like a user, a hostile web page
+or a broken environment, and checks what Intent must do. It starts its own `intentd` on
+`127.0.0.1:9478` with a throwaway home, so the installed service and its data are not
+touched. Run it in the Lima VM:
+
+```bash
+dev/lima/scenarios.sh                        # every scenario
+dev/lima/scenarios.sh forget search          # scenarios whose name contains a word
+INTENTD=~/target/release/intentd dev/lima/scenarios.sh   # a local build
+SCENARIO_LLM=1 dev/lima/scenarios.sh search  # keep the configured model and embedder
+```
+
+| Scenario | The user (or the environment) |
+|---|---|
+| `baseline` | works a normal day; the day must have intents |
+| `cross-site`, `dns-rebinding` | visits a web page that posts fake events or reads the config through a rebound hostname |
+| `forget-day`, `forget-project`, `forget-race` | forgets a day or a project, also while the pipeline runs; nothing may come back |
+| `retention` | sets a retention policy; old intents, search text and vectors go too |
+| `timestamps`, `pause` | sends impossible timestamps or pause lengths |
+| `shell-secrets`, `text-secrets` | types secrets in a shell, an editor, a web form or a private window |
+| `blocklist`, `workspace`, `workspace-recreate` | makes a typo in the blocklist, approves `~` or `/`, deletes and re-clones a workspace |
+| `search` | searches for `*`, `-`, `a..b`, a long unicode string or an unknown word |
+| `stable-ids` | keeps an intent open while new activity arrives |
+| `restart` | restarts the daemon while events arrive |
+
+### The app, driven with Reticle
+
+[`dev/lima/scenarios-app.sh`](../dev/lima/scenarios-app.sh) runs the app from source in the
+VM with the Reticle SDK (dev build only; the packages are installed with `--no-save`).
+Start `npx @reticlehq/server serve` on the Mac and forward its port into the VM, as the
+script header shows. Then drive these journeys and assert the end state:
+
+| Journey | End state |
+|---|---|
+| Today is open while new threads are captured | the new threads appear without a reload |
+| Forget a day from the drawer | the threads leave Today at once and stay gone after the next pipeline run |
+| Search for `axum..routing` | a search request is sent and results or "Nothing matched" show |
+| Search while `intentd` is stopped | an error shows, not "Nothing matched" |
+| Double-click **Resume** | one restore request |
+| First launch with `intentd` stopped, then started | **Start capturing** becomes available |
+
 ## Locally
 
 ```bash
