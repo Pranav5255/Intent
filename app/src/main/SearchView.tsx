@@ -3,7 +3,7 @@ import { Icon } from '../components/Icon';
 import { Empty, Keys, Snippet } from '../components/ui';
 import { api, ApiError } from '../lib/api';
 import { daysAgoIso, relativeDay, todayIso } from '../lib/format';
-import { errorText } from '../lib/store';
+import { errorText, useIntentsVersion } from '../lib/store';
 import type { SearchHit } from '../lib/types';
 import { CopilotPanel, type CopilotState } from '../overlay/CopilotAnswer';
 import type { MainActions } from './MainWindow';
@@ -15,6 +15,10 @@ export function SearchView({ actions }: { actions: MainActions }) {
   const [win, setWin] = useState<Span>(14);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<Error | null>(null);
+  const [retry, setRetry] = useState(0);
+  // Forgotten threads must leave the results.
+  const changed = useIntentsVersion();
   const [index, setIndex] = useState(0);
   const [copilot, setCopilot] = useState<CopilotState>({ status: 'idle' });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +30,8 @@ export function SearchView({ actions }: { actions: MainActions }) {
   useEffect(() => {
     if (asking || text.length < 2) {
       setHits(null);
+      setFailure(null);
+      setBusy(false);
       return;
     }
     let live = true;
@@ -33,15 +39,24 @@ export function SearchView({ actions }: { actions: MainActions }) {
     const t = window.setTimeout(() => {
       api
         .search(text, { limit: 30, date_from: win ? daysAgoIso(win) : undefined })
-        .then((r) => live && (setHits(r), setIndex(0)))
-        .catch(() => live && setHits([]))
+        .then((r) => {
+          if (!live) return;
+          setHits(r);
+          setFailure(null);
+          setIndex(0);
+        })
+        .catch((reason: unknown) => {
+          if (!live) return;
+          setHits([]);
+          setFailure(reason instanceof ApiError || reason instanceof Error ? reason : new Error(errorText(reason)));
+        })
         .finally(() => live && setBusy(false));
     }, 140);
     return () => {
       live = false;
       window.clearTimeout(t);
     };
-  }, [text, win, asking]);
+  }, [text, win, asking, retry, changed]);
 
   const ask = async (question: string) => {
     setCopilot({ status: 'loading', question });
@@ -119,6 +134,16 @@ export function SearchView({ actions }: { actions: MainActions }) {
             <Keys keys={['↑', '↓']} /> move <Keys keys={['↵']} /> open <Keys keys={['?']} /> ask a question
           </p>
         </div>
+      ) : failure && !busy ? (
+        <Empty
+          icon="alert"
+          title={failure instanceof ApiError && failure.unreachable ? 'Intent isn’t running' : 'Couldn’t search'}
+          text={failure.message}
+        >
+          <button className="btn btn-sm" onClick={() => setRetry((n) => n + 1)}>
+            Try again
+          </button>
+        </Empty>
       ) : hits.length === 0 && !busy ? (
         <Empty icon="search" title={`Nothing matched “${text}”${win ? ` in the last ${win} days` : ''}`} text="Try fewer words, a wider range, or ask in plain language.">
           <button className="btn btn-sm" onClick={() => (setQ(`? ${text}`), void ask(text))}>
