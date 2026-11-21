@@ -49,7 +49,7 @@ pub fn start(state: &AppState) -> Spawned {
 /// redaction and blocklist path as HTTP events.
 pub async fn forward(state: AppState, mut rx: mpsc::Receiver<RawEvent>) {
     while let Some(event) = rx.recv().await {
-        let event = match revalidate(event) {
+        let event = match revalidate(event, intent_store::now_ts()) {
             Ok(event) => event,
             Err(IngestError::Invalid(msg)) => {
                 state.writer.metrics().record_drop("collector_invalid");
