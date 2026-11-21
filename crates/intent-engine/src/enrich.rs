@@ -2,33 +2,43 @@
 
 use std::collections::BTreeMap;
 
-use intent_types::{Family, Intent, IntentStats, NormalizedEvent, TodoObservation};
+use intent_types::{Family, Intent, IntentStats, NormalizedEvent, RawEvent, TodoObservation};
 use serde_json::{Map, Value, json};
 
-use crate::normalize::inserted_texts;
+use crate::normalize::{inserted_texts, normalize_event};
 use crate::util::{OrderedCounter, final_segment, parent_path, unique};
 
 /// Vote for a project name from normalized paths only (`project:<segment>`).
 pub fn derive_project_tag(cluster: &[&NormalizedEvent]) -> Option<String> {
     let mut segments = OrderedCounter::new();
     for event in cluster {
-        let e = &event.entities;
-        let mut candidates: Vec<String> = e.project_paths.clone();
-        if let Some(cwd) = &e.cwd {
-            candidates.push(cwd.clone());
-        }
-        if event.family == Family::Editor
-            && let Some(parent) = e.file_path.as_deref().and_then(parent_path)
-        {
-            candidates.push(parent);
-        }
-        for path in candidates {
-            if let Some(segment) = final_segment(&path) {
-                segments.add(&segment);
-            }
+        for segment in project_votes(event) {
+            segments.add(&segment);
         }
     }
     segments.top().map(|s| format!("project:{s}"))
+}
+
+/// The project names (without `project:`) one event votes for, in vote order. A name
+/// can appear twice: each vote counts.
+pub fn project_votes(event: &NormalizedEvent) -> Vec<String> {
+    let e = &event.entities;
+    let mut candidates: Vec<String> = e.project_paths.clone();
+    if let Some(cwd) = &e.cwd {
+        candidates.push(cwd.clone());
+    }
+    if event.family == Family::Editor
+        && let Some(parent) = e.file_path.as_deref().and_then(parent_path)
+    {
+        candidates.push(parent);
+    }
+    candidates.iter().filter_map(|path| final_segment(path)).collect()
+}
+
+/// Whether the engine attributes a stored event to `project` (a bare name). Forgetting
+/// a project deletes exactly these events, so they cannot rebuild its intents.
+pub fn event_votes_for_project(raw: &RawEvent, project: &str) -> bool {
+    project_votes(&normalize_event(raw, 0)).iter().any(|s| s == project)
 }
 
 pub fn compute_stats(cluster: &[&NormalizedEvent]) -> IntentStats {
@@ -191,7 +201,6 @@ fn find_marker(text: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::normalize::normalize_event;
     use crate::test_support::{browse, cmd, edit, raw, seq};
 
     fn refs(e: &[NormalizedEvent]) -> Vec<&NormalizedEvent> {
@@ -207,6 +216,17 @@ mod tests {
         // alpha: workspace + nothing from file parent "src"; beta: cwd counted twice (path + cwd).
         assert_eq!(derive_project_tag(&refs(&s)).as_deref(), Some("project:beta"));
         assert_eq!(derive_project_tag(&[]), None);
+    }
+
+    #[test]
+    fn an_event_votes_for_the_projects_of_its_paths() {
+        let shell = raw("a", 0, "shell", "command", json!({"cmd": "ls", "cwd": "/home/u/beta", "exit_code": 0}));
+        assert!(event_votes_for_project(&shell, "beta"));
+        assert!(!event_votes_for_project(&shell, "alpha"));
+        let save = raw("b", 0, "vscode", "file_save", json!({"path": "/home/u/alpha/main.rs"}));
+        assert!(event_votes_for_project(&save, "alpha"));
+        let tab = raw("c", 0, "firefox", "tab_change", json!({"url": "https://x.com/alpha", "title": "alpha"}));
+        assert!(!event_votes_for_project(&tab, "alpha"));
     }
 
     #[test]
