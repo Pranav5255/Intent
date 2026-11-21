@@ -351,10 +351,14 @@ pub struct PauseBody {
 }
 
 pub async fn pause(State(state): State<AppState>, JsonBody(mut body): JsonBody<PauseBody>) -> ApiResult<Json<Value>> {
-    if body.duration_seconds.is_none()
+    if body.paused
+        && body.duration_seconds.is_none()
         && let Some(until) = body.until
     {
-        body.duration_seconds = Some((until - now_ts()).max(1));
+        match until.checked_sub(now_ts()) {
+            Some(left) if left > 0 => body.duration_seconds = Some(left),
+            _ => return Err(ApiError::unprocessable("until must be in the future")),
+        }
     }
     if let Some(s) = body.duration_seconds
         && !(1..=MAX_PAUSE_SECONDS).contains(&s)

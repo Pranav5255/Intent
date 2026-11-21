@@ -810,3 +810,20 @@ async fn impossible_timestamps_are_rejected() {
     assert_eq!(s, StatusCode::CREATED);
     d.stop().await;
 }
+
+#[tokio::test]
+async fn pause_in_the_past_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let now = intent_store::now_ts();
+    for until in [1, now - 60, now, i64::MIN] {
+        let (s, body) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": true, "until": until}))).await;
+        assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY, "until {until}: {body}");
+    }
+    let (_, status) = d.call(Method::GET, "/v1/status", None).await;
+    assert_eq!(status["capture_paused"], false);
+    // A resume ignores `until`.
+    let (s, _) = d.call(Method::POST, "/v1/capture/pause", Some(json!({"paused": false, "until": 1}))).await;
+    assert_eq!(s, StatusCode::OK);
+    d.stop().await;
+}

@@ -42,7 +42,7 @@ app and `intentctl` read it.
 | `/v1/detailed-capture/purge` | POST | **token** | |
 | `/v1/intelligence/preview-sample` | GET | **token** | |
 | `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
-| `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?}`; persisted with its resume time |
+| `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?, until?}`; persisted with its resume time · 422 unless the pause lasts 1 s to 7 days (`until` in the past is refused) |
 | `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention` |
 | `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
 | `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
