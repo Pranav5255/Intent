@@ -8,9 +8,13 @@
 //! `GET /v1/config`, and CORS preflights. Every other route (all reads of captured
 //! data or intents, all writes, restore, pause, settings, pipeline, copilot, memory
 //! deletion) requires `Authorization: Bearer <token>`.
+//!
+//! Before auth, every request needs a loopback `Host`, and a state-changing request
+//! that carries an `Origin` needs a companion or app origin (see [`guard`]).
 
 mod capture;
 mod engine;
+pub mod guard;
 mod settings;
 
 use std::sync::Arc;
@@ -122,10 +126,13 @@ pub fn router(state: AppState, cors: CorsLayer) -> Router {
             post(settings::post_gemini_credentials).delete(settings::delete_gemini_credentials),
         );
 
+    // The last layer runs first: Host, then CORS, then Origin, then the token.
     capture
         .merge(engine)
         .layer(middleware::from_fn_with_state(Arc::clone(&state), auth_layer))
+        .layer(middleware::from_fn(guard::origin_layer))
         .layer(cors)
+        .layer(middleware::from_fn(guard::host_layer))
         .with_state(state)
 }
 

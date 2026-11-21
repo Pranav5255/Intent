@@ -683,3 +683,113 @@ async fn misc_capture_routes() {
     assert_eq!(status["llm"]["provider"], "none");
     d.stop().await;
 }
+
+/// POST a shell event with the given headers; returns the status.
+async fn post_with(d: &TestDaemon, headers: &[(&str, &str)], body: String) -> StatusCode {
+    let mut req = d.client.post(format!("{}/v1/event", d.base));
+    for (k, v) in headers {
+        req = req.header(*k, *v);
+    }
+    req.body(body).send().await.unwrap().status()
+}
+
+#[tokio::test]
+async fn cross_site_writes_are_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let now = intent_store::now_ts();
+    let body = || shell(now, "ls", "/", 0).to_string();
+    let json = ("content-type", "application/json");
+
+    // What fetch(..., {mode: "no-cors"}) sends from any web page.
+    let s = post_with(&d, &[("origin", "https://evil.example"), ("content-type", "text/plain;charset=UTF-8")], body())
+        .await;
+    assert_eq!(s, StatusCode::FORBIDDEN);
+    for origin in ["https://evil.example", "null", "http://localhost:5173", "http://127.0.0.1:9477"] {
+        let s = post_with(&d, &[("origin", origin), json], body()).await;
+        assert_eq!(s, StatusCode::FORBIDDEN, "{origin} must not write");
+    }
+    // Ingest needs a JSON content type, with or without an Origin.
+    for ct in ["text/plain", "text/plain;charset=UTF-8", "application/x-www-form-urlencoded", "multipart/form-data"] {
+        let s = post_with(&d, &[("content-type", ct)], body()).await;
+        assert_eq!(s, StatusCode::UNSUPPORTED_MEDIA_TYPE, "{ct}");
+    }
+    let s = post_with(&d, &[], body()).await;
+    assert_eq!(s, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+
+    // The companions, the app and the shell hook keep working.
+    let s = post_with(&d, &[("origin", "moz-extension://4b1c-any-uuid"), json], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let s = post_with(&d, &[("origin", "tauri://localhost"), json], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let s = post_with(&d, &[("origin", "http://tauri.localhost"), json], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let s = post_with(&d, &[("content-type", "application/json; charset=utf-8")], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let s = post_with(&d, &[("content-type", "Application/JSON")], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
+
+    // Every state-changing route checks the Origin, even with a valid token.
+    let writes: &[(Method, &str)] = &[
+        (Method::PUT, "/v1/workspaces"),
+        (Method::POST, "/v1/capture/pause"),
+        (Method::DELETE, "/v1/memory/date/2026-01-01"),
+        (Method::POST, "/pipeline/run"),
+    ];
+    for (method, path) in writes {
+        let resp = d
+            .client
+            .request(method.clone(), format!("{}{path}", d.base))
+            .bearer_auth(&d.token)
+            .header("origin", "https://evil.example")
+            .json(&json!({"paused": true, "workspaces": []}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN, "{method} {path}");
+    }
+    let (_, status) = d.call(Method::GET, "/v1/status", None).await;
+    assert_eq!(status["capture_paused"], false);
+    // Reads stay governed by CORS and the token, not by this rule.
+    let resp = d.client.get(format!("{}/healthz", d.base)).header("origin", "https://evil.example").send().await;
+    assert_eq!(resp.unwrap().status(), StatusCode::OK);
+    d.stop().await;
+}
+
+#[tokio::test]
+async fn foreign_host_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let get = |host: &'static str, path: &'static str| {
+        d.client.get(format!("{}{path}", d.base)).header("host", host).bearer_auth(&d.token).send()
+    };
+    for host in [
+        "evil.example:9477",
+        "evil.example",
+        "127.0.0.1.evil.example",
+        "localhost.evil.example:9477",
+        "[::2]:9477",
+        "127.0.0.1:x",
+    ] {
+        for path in ["/healthz", "/v1/detailed-capture/config", "/v1/config", "/v1/status"] {
+            let resp = get(host, path).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::MISDIRECTED_REQUEST, "Host {host:?} {path}");
+        }
+    }
+    for host in ["127.0.0.1:9477", "127.0.0.1", "localhost:1", "LOCALHOST", "[::1]:9477", "[::1]"] {
+        let resp = get(host, "/v1/detailed-capture/config").await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK, "Host {host:?}");
+    }
+    // A preflight for a foreign Host is refused too.
+    let resp = d
+        .client
+        .request(Method::OPTIONS, format!("{}/v1/event", d.base))
+        .header("host", "evil.example")
+        .header("origin", "tauri://localhost")
+        .header("access-control-request-method", "POST")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::MISDIRECTED_REQUEST);
+    d.stop().await;
+}

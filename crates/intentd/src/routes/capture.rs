@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use intent_capture::ConfigError;
 use intent_capture::config::{
@@ -24,6 +24,7 @@ use crate::ingest::{Delivery, IngestError, Ingested, SubmitError, ingest, parse_
 use crate::jobs::RETENTION_KEY;
 use crate::pause::MAX_PAUSE_SECONDS;
 use crate::pipeline::LAST_RUN_KEY;
+use crate::routes::guard;
 use crate::state::AppState;
 use crate::util;
 
@@ -57,7 +58,12 @@ pub async fn healthz(State(state): State<AppState>) -> Json<Value> {
 // Ingest
 // ---------------------------------------------------------------------------
 
-pub async fn ingest_event(State(state): State<AppState>, body: Bytes) -> Response {
+pub async fn ingest_event(State(state): State<AppState>, headers: HeaderMap, body: Bytes) -> Response {
+    // A web page can post `text/plain` without a CORS preflight; JSON forces one.
+    if !guard::is_json(&headers) {
+        return ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, "content-type must be application/json")
+            .into_response();
+    }
     let event = match parse_event(&body) {
         Ok(event) => event,
         Err(IngestError::Invalid(msg)) => return ApiError::unprocessable(msg).into_response(),
