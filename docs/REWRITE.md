@@ -37,8 +37,8 @@ app and `intentctl` read it.
 | `/v1/events`, `/events` · `/v1/events/incremental`, `/events/incremental` · `/v1/export/day[/meta]`, `/export/day[/meta]` | GET | **token** | captured data is never readable without the token |
 | `/v1/workspaces` · `/v1/filesystem-capture` | GET, PUT | **token** | PUT re-configures the filesystem watcher live |
 | `/v1/retention/policy` | GET, PUT | **token** | |
-| `/v1/retention/preview`, `/retention/preview` | GET | **token** | |
-| `/v1/retention/purge`, `/retention/purge` | POST | **token** | 409 unless `confirm: true` |
+| `/v1/retention/preview`, `/retention/preview` | GET | **token** | `eligible`: events per tier, `total` events, `intents` past the metadata cutoff |
+| `/v1/retention/purge`, `/retention/purge` | POST | **token** | 409 unless `confirm: true`; also deletes intents of days before the metadata cutoff |
 | `/v1/detailed-capture/purge` | POST | **token** | |
 | `/v1/intelligence/preview-sample` | GET | **token** | |
 | `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
@@ -47,7 +47,7 @@ app and `intentctl` read it.
 | `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
 | `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
 | `/pipeline/run[?date]`, `/pipeline/run-replay`, `/pipeline/recompute?date` | POST | **token** | `run` defaults to today |
-| `/v1/memory/date/{date}`, `/v1/memory/project/{project}` | DELETE | **token** | |
+| `/v1/memory/date/{date}`, `/v1/memory/project/{project}` | DELETE | **token** | deletes raw events too; see [Forgetting](#forgetting) |
 | any `OPTIONS` preflight | OPTIONS | open | |
 
 **CORS.** Only `INTENT_FIREFOX_EXTENSION_ORIGIN` (the companion's `moz-extension://…` origin),
@@ -79,7 +79,8 @@ All on one 60 s housekeeping timer plus an event-driven embedding task (no busy 
   and the user has been idle ≥ 2 min, or 30 min passed, run today's pipeline; skip when the
   day's `content_hash` is unchanged. Yesterday is finalized once after midnight. The outcome is
   stored as `pipeline_last_run` metadata and shown in `/v1/status`.
-- **Retention**: the saved policy is applied ~30 s after start and then daily.
+- **Retention**: the saved policy is applied ~30 s after start and then daily. It deletes old
+  events and the intents (with search rows and vectors) of whole days before the metadata cutoff.
 - **Pause expiry**: a timed pause resumes on time, also across restarts.
 - **Embedding backfill**: root intents without a vector are embedded after every pipeline run
   (and every 15 min), with the configured embedder (offline hashing embedder by default).
@@ -100,6 +101,26 @@ filter. `INTENT_BIND` overrides the loopback listen address (tests).
   `retention-policy.json`, `blocked-domains.yaml`). LLM settings move to `llm.toml` (0600);
   a 1.x `llm.env` is imported once.
 - No mem0. Semantic memory = FTS5 + sqlite-vec over intent summaries + a small `facts` table.
+- Deleted data leaves the disk: the writer runs with `secure_delete = ON`, the FTS index with
+  FTS5 `secure-delete`, and every forget or purge ends with `wal_checkpoint(TRUNCATE)`.
+
+### Forgetting
+
+The app promises that forgotten data is deleted from the computer and cannot come back.
+
+- **Forget a day** (`DELETE /v1/memory/date/{date}`) deletes the day's raw events, day stats,
+  intents, search rows, vectors and pipeline cache in one transaction, and resets the
+  scheduler's hash for the day.
+- **Forget a project** (`DELETE /v1/memory/project/{name}`) deletes the raw events that the
+  engine attributes to the project (`intent_engine::enrich::event_votes_for_project`, the same
+  path votes that make the `project:` tag) and the project's intents. It also deletes every
+  other intent of the affected dates and rebuilds those dates from the events that are left, so
+  a session that mixed projects loses the forgotten one from its tags, evidence and resume
+  payload. A browser tab that only names the project in its title is not attributed to it.
+- Both flush the ingest queue first and hold the pipeline lock, so a run that read the events
+  before the forget cannot save intents after it.
+- A forget is a point in time. Events that arrive afterwards are new activity and are recorded.
+  To stop capturing something, pause capture, block the domain or remove the workspace.
 
 ### Ingest path
 

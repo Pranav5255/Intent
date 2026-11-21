@@ -4,6 +4,7 @@ use intent_engine::pipeline::{PipelineInput, source_hash};
 use intent_store::now_ts;
 use intent_types::{PipelineResult, RawEvent};
 use serde::{Deserialize, Serialize};
+use tokio::sync::MutexGuard;
 
 use crate::state::Shared;
 
@@ -39,7 +40,18 @@ pub async fn run(
     events: Option<Vec<RawEvent>>,
     mode: RunMode,
 ) -> anyhow::Result<PipelineResult> {
-    let _guard = shared.pipeline_lock.lock().await;
+    let lock = shared.pipeline_lock.lock().await;
+    run_locked(shared, &lock, date, events, mode).await
+}
+
+/// As [`run`], for a caller that already holds `pipeline_lock` (the guard proves it).
+pub async fn run_locked(
+    shared: &Shared,
+    _lock: &MutexGuard<'_, ()>,
+    date: &str,
+    events: Option<Vec<RawEvent>>,
+    mode: RunMode,
+) -> anyhow::Result<PipelineResult> {
     let started = std::time::Instant::now();
     let events = match events {
         Some(events) => events,

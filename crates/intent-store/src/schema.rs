@@ -12,7 +12,7 @@ use crate::day::now_ts;
 use crate::error::Result;
 
 /// Ordered list of `(version, sql)` migrations.
-const MIGRATIONS: &[(i64, &str)] = &[(1, V1)];
+const MIGRATIONS: &[(i64, &str)] = &[(1, V1), (2, V2)];
 
 /// Initial 2.0 schema: merged 1.x `events.db` + `intents.db` plus search/memory tables.
 const V1: &str = r#"
@@ -140,6 +140,13 @@ CREATE TABLE ingest_cursors (
     after_id    TEXT NOT NULL,
     updated_at  INTEGER NOT NULL
 );
+"#;
+
+/// FTS5 keeps deleted terms in its index segments until a merge. `secure-delete`
+/// removes them at delete time; `rebuild` drops what earlier deletes left behind.
+const V2: &str = r#"
+INSERT INTO intent_fts(intent_fts, rank) VALUES ('secure-delete', 1);
+INSERT INTO intent_fts(intent_fts) VALUES ('rebuild');
 "#;
 
 /// Apply every migration newer than the recorded version. Returns the final version.
