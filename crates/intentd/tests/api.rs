@@ -827,3 +827,22 @@ async fn pause_in_the_past_is_refused() {
     assert_eq!(s, StatusCode::OK);
     d.stop().await;
 }
+
+#[tokio::test]
+async fn odd_search_input_with_an_embedder() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = TestDaemon::start(dir.path()).await;
+    let (date, _) = seed_day(&d, "/home/dev/src/intent").await;
+    d.call(Method::POST, &format!("/pipeline/run?date={date}"), None).await;
+    assert!(intentd::jobs::backfill_once(&d.state).await > 0);
+    for q in ["%2A", "x", "-", "%22%22", "a..b", "NEAR"] {
+        let (s, hits) = d.call(Method::GET, &format!("/intents/search?q={q}"), None).await;
+        assert_eq!(s, StatusCode::OK, "q={q}: {hits}");
+        assert!(hits.is_array(), "q={q}: {hits}");
+    }
+    let (_, hits) = d.call(Method::GET, "/intents/search?q=%2A", None).await;
+    assert_eq!(hits, json!([]));
+    let (_, hits) = d.call(Method::GET, "/intents/search?q=zzqqxx", None).await;
+    assert_eq!(hits, json!([]), "an unknown word must not return the nearest vectors");
+    d.stop().await;
+}
