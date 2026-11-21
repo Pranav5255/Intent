@@ -26,7 +26,7 @@ pub const MAX_LAST_CMD_CHARS: usize = 500;
 pub const EDITORS: &[&str] = &["code", "codium", "cursor"];
 /// Terminal emulators tried in order.
 pub const TERMINALS: &[&str] = &["gnome-terminal", "ptyxis", "kgx", "konsole", "xfce4-terminal", "x-terminal-emulator"];
-/// macOS editor apps tried in order when no editor command is on `$PATH`.
+/// macOS editor apps, tried before any editor command on `$PATH`.
 pub const MAC_EDITORS: &[&str] = &["Visual Studio Code", "Cursor", "VSCodium"];
 /// macOS terminal apps tried in order. Terminal ships with every Mac.
 pub const MAC_TERMINALS: &[&str] = &["iTerm", "Terminal"];
@@ -330,16 +330,20 @@ fn plan_files(payload: &ResumePayload, mode: RestoreMode, probe: &dyn SystemProb
     if existing.is_empty() {
         return;
     }
-    let editor = EDITORS
+    // macOS: the app bundle first. A command with the editor's name on PATH can be
+    // something else (`cursor` is also the Cursor Agent CLI).
+    let editor = MAC_EDITORS
         .iter()
-        .find_map(|name| probe.which(name).map(|path| (path, vec!["--reuse-window".to_string()])))
+        .find_map(|app| mac_open(probe, Some(app), Vec::new()))
+        .or_else(|| {
+            EDITORS.iter().find_map(|name| probe.which(name).map(|path| (path, vec!["--reuse-window".to_string()])))
+        })
         .or_else(|| {
             let visual = probe.env("VISUAL")?;
             let mut words = visual.split_whitespace();
             let program = probe.which(words.next()?)?;
             Some((program, words.map(str::to_owned).collect()))
-        })
-        .or_else(|| MAC_EDITORS.iter().find_map(|app| mac_open(probe, Some(app), Vec::new())));
+        });
     match editor {
         Some((program, mut args)) => {
             let count = existing.len();
@@ -600,13 +604,24 @@ mod tests {
     }
 
     #[test]
-    fn macos_prefers_the_code_command_and_the_default_browser() {
+    fn macos_uses_the_code_command_without_an_editor_app_and_the_default_browser() {
         let probe = mac_probe(&["open", "code"], &["iTerm", "Terminal"], &["a.rs"]);
         let plan = plan_restore_with(&payload(&["a.rs"], &["https://a.com/"], Some(ROOT)), RestoreMode::Resume, &probe);
         assert!(plan.failed.is_empty(), "{:?}", plan.failed);
         assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/code"));
         assert_eq!(args(&plan.commands[1]), ["https://a.com/"]);
         assert_eq!(args(&plan.commands[2]), ["-a", "iTerm", ROOT]);
+    }
+
+    #[test]
+    fn macos_opens_the_editor_app_not_a_same_named_command() {
+        // On a Mac, `cursor` on PATH can be the Cursor Agent CLI, not the editor.
+        let probe = mac_probe(&["open", "cursor"], &["Cursor", "Terminal"], &["a.rs"]);
+        let plan = plan_restore_with(&payload(&["a.rs"], &[], None), RestoreMode::Resume, &probe);
+        assert!(plan.failed.is_empty(), "{:?}", plan.failed);
+        let fa = file("a.rs");
+        assert_eq!(plan.commands[0].program, PathBuf::from("/usr/bin/open"));
+        assert_eq!(args(&plan.commands[0]), ["-a", "Cursor", fa.as_str()]);
     }
 
     #[test]
