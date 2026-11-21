@@ -73,6 +73,15 @@ async fn housekeeping(state: AppState) {
     }
 }
 
+/// Drop the scheduler's content hash for `dates`, so new events on a forgotten day
+/// are processed again.
+pub fn reset_schedule(store: &intent_store::Store, dates: &[String]) -> intent_store::Result<()> {
+    for date in dates {
+        store.delete_metadata(&format!("{SCHED_HASH_KEY}:{date}"))?;
+    }
+    Ok(())
+}
+
 async fn meta(state: &Shared, key: &str) -> Option<String> {
     let store = state.store.clone();
     let key = key.to_string();
@@ -152,6 +161,8 @@ pub async fn enforce_retention(state: &Shared) -> Option<intent_store::PurgeRepo
     let days = |d: Option<i64>| d.map(|v| v.clamp(1, i64::from(u32::MAX)) as u32);
     let cutoffs = RetentionCutoffs::from_days(days(policy.detailed_days), days(policy.metadata_days), now_ts());
     let store = state.store.clone();
+    // A run in progress must not save intents of days the purge removes.
+    let _lock = state.pipeline_lock.lock().await;
     match tokio::task::spawn_blocking(move || store.purge_retention(&cutoffs)).await {
         Ok(Ok(report)) => {
             if report.deleted.total > 0 {

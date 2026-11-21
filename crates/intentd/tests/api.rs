@@ -469,6 +469,12 @@ async fn pipeline_search_digest_resume_restore() {
     let (s, _) = d.call(Method::POST, "/v1/restore", Some(json!({"urls": ["javascript:alert(1)"]}))).await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
 
+    // Replay an export under its own date.
+    let (_, export) = d.call(Method::GET, &format!("/v1/export/day?date={date}"), None).await;
+    let (s, replay) = d.call(Method::POST, "/pipeline/run-replay", Some(export)).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(!replay["intents"].as_array().unwrap().is_empty());
+
     // Recompute forces a fresh run; memory deletion forgets the day.
     let (_, recomputed) = d.call(Method::POST, &format!("/pipeline/recompute?date={date}"), None).await;
     assert_eq!(recomputed["cached"], false);
@@ -479,12 +485,6 @@ async fn pipeline_search_digest_resume_restore() {
     assert!(after.as_array().unwrap().is_empty());
     let (s, _) = d.call(Method::DELETE, "/v1/memory/date/2026-13-01", None).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
-
-    // Replay an export under its own date.
-    let (_, export) = d.call(Method::GET, &format!("/v1/export/day?date={date}"), None).await;
-    let (s, replay) = d.call(Method::POST, "/pipeline/run-replay", Some(export)).await;
-    assert_eq!(s, StatusCode::OK);
-    assert!(!replay["intents"].as_array().unwrap().is_empty());
 
     let (_, status) = d.call(Method::GET, "/v1/status", None).await;
     assert_eq!(status["pipeline"]["last_run"]["date"], date.as_str());
