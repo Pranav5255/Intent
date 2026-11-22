@@ -380,7 +380,7 @@ pub async fn pause(State(state): State<AppState>, JsonBody(mut body): JsonBody<P
 // Status
 // ---------------------------------------------------------------------------
 
-const SOURCES: &[&str] = &["vscode", "firefox", "shell", "linux", "filesystem"];
+const SOURCES: &[&str] = &["vscode", "firefox", "chrome", "shell", "linux", "filesystem"];
 
 fn stale_after() -> i64 {
     std::env::var("INTENT_SOURCE_STALE_AFTER_SECONDS")

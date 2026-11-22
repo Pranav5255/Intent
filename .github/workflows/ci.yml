@@ -267,9 +267,12 @@ jobs:
         run: npm audit --audit-level=high
       - name: npm audit (companions)
         run: |
-          for dir in integrations/firefox-extension integrations/vscode-extension; do
+          for dir in integrations/firefox-extension integrations/chrome-extension integrations/vscode-extension; do
             (cd "$dir" && npm audit --audit-level=high)
           done
+      - name: Browser companion tests (Firefox and Chrome)
+        working-directory: integrations/chrome-extension
+        run: npm test
 
   # Build the .deb (daemon, CLI and app) on both architectures, install it on a clean
   # runner and exercise it for real: capture → pipeline → API, the app against the

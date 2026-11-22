@@ -23,7 +23,7 @@ Everything runs and stays on your machine. An LLM is optional and local by defau
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `shell/` | bash and zsh hooks |
 | `gnome-extension/` | Reports the focused window on GNOME Wayland |
-| `integrations/` | Firefox and VS Code companions |
+| `integrations/` | Firefox, Chrome and VS Code companions |
 | `packaging/` | `.deb` build, systemd user unit, Homebrew cask generator |
 | `Formula/` | Homebrew formula (the repository is its own tap) |
 | `dev/lima/` | Ubuntu test VM, end-to-end and measurement scripts |
@@ -58,6 +58,7 @@ Optional companions are bundled when built first:
 
 ```bash
 (cd integrations/firefox-extension && npm run build)
+(cd integrations/chrome-extension && npm run build)   # Chrome, Brave, Edge, Arc: see below
 (cd integrations/vscode-extension && npm ci && npm run package)
 ```
 
@@ -84,3 +85,15 @@ intentctl enable                  # start at login (launchd) and add the shell h
 The app installs with `brew install --cask intent-app` once a release has the disk
 images. Until then, build it with `cd app && npm ci && npx tauri build --bundles app`.
 Details and limits: [`docs/MACOS.md`](docs/MACOS.md).
+
+### Browser companions
+
+The companions record the tabs you visit (address without the query, and the page title).
+The Firefox add-on is bundled with the `.deb`. For Chrome, Brave, Edge or Arc:
+
+```bash
+(cd integrations/chrome-extension && npm run build)
+```
+
+Open `chrome://extensions`, turn on Developer mode, choose **Load unpacked** and pick
+`integrations/chrome-extension/dist/intent-chrome`. Private windows are never recorded.

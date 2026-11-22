@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { appVersion, getAutostart, getShortcut, setAutostart, setShortcut } from '../lib/bridge';
 import { IS_MAC } from '../lib/env';
 import { ago, bytes, count, tildify } from '../lib/format';
+import { BROWSER_SOURCES, combinedStatus } from '../lib/sources';
 import {
   errorText,
   intentsChanged,
@@ -138,9 +139,9 @@ function browserLevel(c: DetailedCaptureConfig | null): BrowserLevel {
   return c.browser.context_enabled ? 'excerpts' : 'actions';
 }
 
-const SOURCES: Array<{ key: string; name: string; what: string }> = [
+const SOURCES: Array<{ key: string; name: string; what: string; sources?: string[] }> = [
   { key: 'vscode', name: 'Editor', what: 'VS Code files and edits' },
-  { key: 'firefox', name: 'Browser', what: 'Firefox tabs' },
+  { key: 'firefox', name: 'Browser', what: 'Firefox and Chrome tabs', sources: BROWSER_SOURCES },
   { key: 'shell', name: 'Terminal', what: 'Commands and folders' },
   { key: 'linux', name: 'Desktop', what: 'Focused windows and idle time' },
   { key: 'filesystem', name: 'Files', what: 'Changes in approved folders' },
@@ -231,7 +232,7 @@ export function CaptureSection() {
         }
       >
         {SOURCES.map((s) => {
-          const st = status?.sources[s.key];
+          const st = combinedStatus(status?.sources, s.sources ?? [s.key]);
           const seen = st?.last_event_ts ?? null;
           return (
             <Row
@@ -529,7 +530,7 @@ export function StorageSection() {
   const totals = Object.entries(s?.sources ?? {}).sort((a, b) => b[1].event_count - a[1].event_count);
   const total = totals.reduce((sum, [, v]) => sum + v.event_count, 0);
   const detailed = Object.values(s?.detailed_capture?.event_counts ?? {}).reduce((a, b) => a + b, 0);
-  const names: Record<string, string> = { vscode: 'Editor', firefox: 'Browser', shell: 'Terminal', linux: 'Desktop', filesystem: 'Files' };
+  const names: Record<string, string> = { vscode: 'Editor', firefox: 'Firefox', chrome: 'Chrome', shell: 'Terminal', linux: 'Desktop', filesystem: 'Files' };
   return (
     <Section id="storage" title="Storage" icon="database">
       <Group>

@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use intent_types::RawEvent;
+use intent_types::{RawEvent, is_browser_source};
 
 use crate::blocklist::{Blocklist, apply_block};
 use crate::config::{DetailedCaptureConfig, is_detailed_event};
@@ -63,7 +63,7 @@ pub fn admit(event: RawEvent, policy: &AdmissionPolicy) -> Result<Admission, Red
     }
     let mut event = redact_event(event)?;
     // 2.0: enforce `browser.context_enabled` server-side (1.x trusted the extension).
-    if event.source == "firefox" && event.kind == "user_action" && !detailed.browser.context_enabled {
+    if is_browser_source(&event.source) && event.kind == "user_action" && !detailed.browser.context_enabled {
         event.payload.remove("context");
     }
     Ok(Admission::Accept(apply_block(event, &policy.blocklist)))
@@ -171,6 +171,30 @@ mod tests {
         let Admission::Accept(out) = admit(blocked, &off).unwrap() else { panic!() };
         assert_eq!(out.payload["url"], "[blocked]");
         assert_eq!(out.payload["blocked"], true);
+    }
+
+    #[test]
+    fn chrome_events_follow_the_firefox_rules() {
+        let as_chrome = |e: RawEvent| event("chrome", &e.kind, Value::Object(e.payload));
+        let off = policy(|_| {}, &[], &["chase.com"]);
+        assert_eq!(
+            admit(as_chrome(user_action()), &off).unwrap(),
+            Admission::Drop(DropReason::DetailedCaptureDisabled)
+        );
+        let no_context = policy(|d| d.set_enabled(DetailedKind::Browser, true), &[], &[]);
+        let Admission::Accept(out) = admit(as_chrome(user_action()), &no_context).unwrap() else { panic!() };
+        assert!(out.payload.get("context").is_none());
+        assert_eq!(out.payload["url"], "https://news.example/a");
+
+        let bad = event("chrome", "tab_change", json!({"url": "chrome://settings/passwords", "title": "t"}));
+        assert!(admit(bad, &off).is_err());
+        let blocked =
+            event("chrome", "tab_change", json!({"url": "https://user:pw@www.chase.com/acct?id=1", "title": "Chase"}));
+        let Admission::Accept(out) = admit(blocked, &off).unwrap() else { panic!() };
+        assert_eq!(out.payload["url"], "[blocked]");
+        let close = event("chrome", "tab_close", json!({"url": "https://www.chase.com/acct"}));
+        let Admission::Accept(out) = admit(close, &off).unwrap() else { panic!() };
+        assert_eq!(out.payload["url"], "[blocked]");
     }
 
     #[test]

@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use intent_types::{Payload, RawEvent};
+use intent_types::{Payload, RawEvent, is_browser_source};
 use serde_json::Value;
 
 use crate::config::ConfigError;
@@ -274,9 +274,9 @@ pub fn redact_blocked_browser_payload(payload: &Payload) -> Payload {
 /// (1.x stored the sanitised URL of closed tabs on blocked domains).
 pub const BLOCKABLE_KINDS: &[&str] = &["tab_change", "tab_close", "user_action"];
 
-/// Apply the blocklist to a (validated, redacted) Firefox event.
+/// Apply the blocklist to a (validated, redacted) browser event.
 pub fn apply_block(mut event: RawEvent, blocklist: &Blocklist) -> RawEvent {
-    if event.source != "firefox" || !BLOCKABLE_KINDS.contains(&event.kind.as_str()) {
+    if !is_browser_source(&event.source) || !BLOCKABLE_KINDS.contains(&event.kind.as_str()) {
         return event;
     }
     let blocked = event.payload.get("url").and_then(Value::as_str).is_some_and(|url| blocklist.is_url_blocked(url));

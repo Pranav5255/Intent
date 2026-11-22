@@ -761,6 +761,8 @@ async fn cross_site_writes_are_refused() {
     // The companions, the app and the shell hook keep working.
     let s = post_with(&d, &[("origin", "moz-extension://4b1c-any-uuid"), json], body()).await;
     assert_eq!(s, StatusCode::CREATED);
+    let s = post_with(&d, &[("origin", "chrome-extension://abcdefghijklmnopabcdefghijklmnop"), json], body()).await;
+    assert_eq!(s, StatusCode::CREATED);
     let s = post_with(&d, &[("origin", "tauri://localhost"), json], body()).await;
     assert_eq!(s, StatusCode::CREATED);
     let s = post_with(&d, &[("origin", "http://tauri.localhost"), json], body()).await;

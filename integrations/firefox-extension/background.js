@@ -1,3 +1,8 @@
+// Shared by the Firefox and Chrome companions. Firefox exposes `browser`, Chrome `chrome`;
+// both return promises in Manifest V3.
+const api = globalThis.browser ?? globalThis.chrome;
+// The event source follows the browser that runs this script.
+export const SOURCE = api.runtime.getURL("").startsWith("chrome-extension://") ? "chrome" : "firefox";
 const EVENT_ENDPOINT = "http://127.0.0.1:9477/v1/event";
 const CONFIG_ENDPOINT = "http://127.0.0.1:9477/v1/detailed-capture/config";
 const MAX_PENDING_EVENTS = 100;
@@ -36,7 +41,7 @@ export function makeEvent(tab) {
   return {
     id: crypto.randomUUID(),
     ts: Math.floor(Date.now() / 1000),
-    source: "firefox",
+    source: SOURCE,
     type: "tab_change",
     payload: {
       url,
@@ -88,7 +93,7 @@ export function makeUserActionEvent(tab, actionPayload) {
   return {
     id: crypto.randomUUID(),
     ts: Math.floor(Date.now() / 1000),
-    source: "firefox",
+    source: SOURCE,
     type: "user_action",
     payload: {
       url,
@@ -170,7 +175,7 @@ function queueTabCloseEvent(tabId) {
   queueEvent({
     id: crypto.randomUUID(),
     ts: Math.floor(Date.now() / 1000),
-    source: "firefox",
+    source: SOURCE,
     type: "tab_close",
     payload: { url: tab.url, tab_id: tabId, window_id: tab.windowId }
   });
@@ -182,7 +187,7 @@ function scheduleTab(tabId) {
   timers.set(tabId, setTimeout(async () => {
     timers.delete(tabId);
     try {
-      queueTabEvent(makeEvent(await browser.tabs.get(tabId)));
+      queueTabEvent(makeEvent(await api.tabs.get(tabId)));
     } catch {
       // The tab may have closed before its URL became available.
     }
@@ -204,16 +209,21 @@ async function handleMessage(message, sender) {
   return { accepted: true };
 }
 
-browser.tabs.onActivated.addListener(({ tabId }) => scheduleTab(tabId));
-browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+api.tabs.onActivated.addListener(({ tabId }) => scheduleTab(tabId));
+api.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url || changeInfo.title || changeInfo.status === "complete") scheduleTab(tabId);
 });
-browser.tabs.onRemoved.addListener((tabId) => {
+api.tabs.onRemoved.addListener((tabId) => {
   queueTabCloseEvent(tabId);
   lastTabs.delete(tabId);
   const timer = timers.get(tabId);
   if (timer) clearTimeout(timer);
   timers.delete(tabId);
 });
-browser.runtime.onStartup.addListener(() => void flush());
-browser.runtime.onMessage.addListener(handleMessage);
+api.runtime.onStartup.addListener(() => void flush());
+// Chrome ignores a promise returned from the listener: answer through `sendResponse`
+// and return true to keep the channel open. Firefox accepts the same form.
+api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  handleMessage(message, sender).then(sendResponse, () => sendResponse({ accepted: false }));
+  return true;
+});

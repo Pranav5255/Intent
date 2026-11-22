@@ -42,10 +42,15 @@ pub fn is_loopback_host(host: &str) -> bool {
 /// Whether a browser `Origin` may call a state-changing route.
 ///
 /// Any `moz-extension://` origin is allowed: the Firefox companion's UUID differs per
-/// install, and a web page cannot send that scheme. Web origins, `null` (sandboxed
-/// frames, `file:`) and everything else are refused.
+/// install, and a web page cannot send that scheme. So is a `chrome-extension://` origin
+/// with a well-formed id (32 letters `a`–`p`): an unpacked companion's id depends on its
+/// folder. Web origins, `null` (sandboxed frames, `file:`) and everything else are
+/// refused.
 pub fn is_allowed_origin(origin: &str) -> bool {
     origin.strip_prefix("moz-extension://").is_some_and(|id| !id.is_empty() && !id.contains('/'))
+        || origin
+            .strip_prefix("chrome-extension://")
+            .is_some_and(|id| id.len() == 32 && id.bytes().all(|b| (b'a'..=b'p').contains(&b)))
         || APP_ORIGINS.contains(&origin)
         || (cfg!(debug_assertions) && DEV_ORIGINS.contains(&origin))
 }
@@ -119,7 +124,12 @@ mod tests {
 
     #[test]
     fn allowed_origins() {
-        for origin in ["moz-extension://3f2a-uuid", "tauri://localhost", "http://tauri.localhost"] {
+        for origin in [
+            "moz-extension://3f2a-uuid",
+            "chrome-extension://abcdefghijklmnopabcdefghijklmnop",
+            "tauri://localhost",
+            "http://tauri.localhost",
+        ] {
             assert!(is_allowed_origin(origin), "{origin}");
         }
         for origin in [
@@ -129,6 +139,10 @@ mod tests {
             "moz-extension://",
             "moz-extension://a/b",
             "chrome-extension://abc",
+            "chrome-extension://",
+            "chrome-extension://abcdefghijklmnopabcdefghijklmnoz",
+            "chrome-extension://abcdefghijklmnopabcdefghijklmnop/x",
+            "chrome-extension://ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP",
             "http://localhost:5173",
             "http://127.0.0.1:9477",
             "tauri://localhost.evil.example",

@@ -1,4 +1,5 @@
 (() => {
+  const api = globalThis.browser ?? globalThis.chrome;
   const SENSITIVE_PATH = /\b(login|log-in|signin|sign-in|auth|oauth|sso|account|billing|payment|checkout|wallet)\b/i;
   const INTERACTIVE_SELECTOR = "a,button,input,select,[role='button'],[role='link'],[role='checkbox'],[role='radio'],[role='switch'],[role='menuitem'],form";
   const SCROLL_MIN_DISTANCE_PX = 240;
@@ -68,7 +69,7 @@
 
   function send(action, element, sensitive) {
     if (!captureEnabled || !element) return;
-    browser.runtime.sendMessage({
+    api.runtime.sendMessage({
       kind: "intent-user-action",
       payload: { action, sensitive_page: sensitive, target: describeTarget(element, sensitive), context: postContext(element, sensitive) }
     }).catch(() => undefined);
@@ -119,7 +120,7 @@
 
     lastCapturedScrollY = currentY;
     lastScrollSentAt = now;
-    browser.runtime.sendMessage({
+    api.runtime.sendMessage({
       kind: "intent-user-action",
       payload: {
         action: "scroll",
@@ -134,7 +135,7 @@
 
   async function refreshCaptureStatus() {
     try {
-      const status = await browser.runtime.sendMessage({ kind: "intent-detailed-capture-status" });
+      const status = await api.runtime.sendMessage({ kind: "intent-detailed-capture-status" });
       captureEnabled = Boolean(status && status.enabled);
       contextEnabled = Boolean(status && status.context_enabled);
     } catch {
