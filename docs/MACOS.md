@@ -44,8 +44,8 @@ writes the cask with their checksums.
   time the binary changes. A public release needs a Developer ID and notarization.
   For a local build, run `xattr -dr com.apple.quarantine /Applications/Intent.app`.
 - **Window titles.** Without the Screen Recording permission, threads group by app only.
-- **Browsers.** Only Firefox has a companion. Safari and Chrome tabs appear as window
-  titles only.
+- **Browsers.** Firefox and Chrome (and other Chromium browsers) have companions. Safari
+  tabs appear as window titles only.
 - **Notification.** The "Continue yesterday?" notification is Linux-only.
 - **Accent colour.** The app reads the GNOME accent colour only.
 - **Port 9477.** The Lima VM forwards its daemon's port to the Mac. Stop the VM

@@ -138,6 +138,16 @@ async fn firefox_and_vscode_payloads_are_accepted() {
     assert_eq!(s, StatusCode::CREATED, "{body}");
     assert!(!body["event"]["payload"]["cmd"].as_str().unwrap().contains("abc123"), "{body}");
 
+    // The Chrome companion sends the same shapes with `source: "chrome"`.
+    for mut event in [firefox_tab_change(), firefox_tab_close(), firefox_user_action_click()] {
+        event["source"] = json!("chrome");
+        event["id"] = json!(uuid());
+        let (s, body) = d.post_event(&event).await;
+        assert_eq!(s, StatusCode::CREATED, "{event} -> {body}");
+    }
+    let (_, status) = d.call(Method::GET, "/v1/status", None).await;
+    assert_eq!(status["sources"]["chrome"]["event_count"], 3, "{status}");
+
     // The VS Code runtime retries with the same id: idempotent.
     let retry = vscode("file_save", json!({"path": file}));
     assert_eq!(d.post_event(&retry).await.0, StatusCode::CREATED);

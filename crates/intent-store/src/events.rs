@@ -13,8 +13,12 @@ use crate::forget::drop_date_intents;
 
 /// `(source, type)` pairs that carry content-level ("detailed") capture.
 /// This is the ONE list used for retention tiers, counts and purges.
-pub const DETAILED_EVENT_KINDS: &[(&str, &str)] =
-    &[("vscode", "document_change"), ("firefox", "user_action"), ("filesystem", "file_content")];
+pub const DETAILED_EVENT_KINDS: &[(&str, &str)] = &[
+    ("vscode", "document_change"),
+    ("firefox", "user_action"),
+    ("chrome", "user_action"),
+    ("filesystem", "file_content"),
+];
 
 /// Whether an event of this `source`/`type` belongs to the detailed tier.
 pub fn is_detailed(source: &str, kind: &str) -> bool {

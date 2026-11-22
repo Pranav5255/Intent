@@ -210,7 +210,7 @@ export interface LlmSettingsUpdate {
 // Capture side (/v1/*)
 // ---------------------------------------------------------------------------
 
-export type CaptureSource = 'vscode' | 'firefox' | 'shell' | 'linux' | 'filesystem';
+export type CaptureSource = 'vscode' | 'firefox' | 'chrome' | 'shell' | 'linux' | 'filesystem';
 
 export interface SourceStatus {
   event_count: number;

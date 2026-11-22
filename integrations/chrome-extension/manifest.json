@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Intent Companion",
+  "version": "1.0.0",
+  "description": "Sends consented local Chrome tab and semantic interaction metadata to Intent.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

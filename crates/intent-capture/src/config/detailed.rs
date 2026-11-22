@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
-use intent_types::Payload;
+use intent_types::{Payload, is_browser_source};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -13,8 +13,12 @@ use crate::paths::resolve_user_path;
 use crate::secrets::is_sensitive_path;
 
 /// Event kinds that need explicit opt-in.
-pub const DETAILED_EVENT_KINDS: &[(&str, &str)] =
-    &[("vscode", "document_change"), ("firefox", "user_action"), ("filesystem", "file_content")];
+pub const DETAILED_EVENT_KINDS: &[(&str, &str)] = &[
+    ("vscode", "document_change"),
+    ("firefox", "user_action"),
+    ("chrome", "user_action"),
+    ("filesystem", "file_content"),
+];
 
 pub const DEFAULT_EXCLUDED_PATTERNS: &[&str] =
     &[".env", ".env.*", "*.pem", "*.key", "id_rsa*", "*secret*", "*credential*", "*password*", "*token*"];
@@ -145,7 +149,7 @@ impl DetailedCaptureConfig {
     pub fn is_enabled(&self, source: &str, kind: &str) -> bool {
         match (source, kind) {
             ("vscode", "document_change") => self.editor.enabled,
-            ("firefox", "user_action") => self.browser.enabled,
+            (s, "user_action") if is_browser_source(s) => self.browser.enabled,
             ("filesystem", "file_content") => self.filesystem.enabled,
             _ => true,
         }

@@ -92,6 +92,14 @@ pub enum Family {
     Other,
 }
 
+/// Sources the browser companions send. Both send the same event shapes and get the
+/// same validation, redaction, consent and blocklist rules.
+pub const BROWSER_SOURCES: &[&str] = &["firefox", "chrome"];
+
+pub fn is_browser_source(source: &str) -> bool {
+    BROWSER_SOURCES.contains(&source)
+}
+
 impl Family {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -109,7 +117,7 @@ impl Family {
     pub fn from_source(source: &str, kind: &str) -> Family {
         match source {
             "vscode" => Family::Editor,
-            "firefox" | "chrome" => Family::Browser,
+            s if is_browser_source(s) => Family::Browser,
             "linux" if kind.starts_with("idle_") => Family::Idle,
             "linux" => Family::Focus,
             "shell" => Family::Command,

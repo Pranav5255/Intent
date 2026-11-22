@@ -476,6 +476,7 @@ function captureStatus(): CaptureStatus {
     sources: {
       vscode: src(48_211, 41),
       firefox: src(31_904, 12),
+      chrome: src(8_412, 30),
       shell: src(6_877, 190),
       linux: src(92_310, 5),
       filesystem: src(14_066, 128),
@@ -483,7 +484,7 @@ function captureStatus(): CaptureStatus {
     services: { event_server: true, x11_tracker: true, workspace_watch: true },
     detailed_capture: {
       ...detailedConfig(),
-      event_counts: { 'vscode/document_change': 9_412, 'firefox/user_action': 3_208, 'filesystem/file_content': 611 },
+      event_counts: { 'vscode/document_change': 9_412, 'firefox/user_action': 3_208, 'chrome/user_action': 702, 'filesystem/file_content': 611 },
     },
     db_size_bytes: 187_430_912,
     config_warnings: [],

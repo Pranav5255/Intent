@@ -3,6 +3,7 @@ import { StatusDot } from '../components/ui';
 import { api } from '../lib/api';
 import { IS_MAC, MOCK, START_DAEMON } from '../lib/env';
 import { ago } from '../lib/format';
+import { BROWSER_SOURCES, combinedStatus } from '../lib/sources';
 import { errorText, refreshCapture, toast, useAsync, useCapture, useRetryOnReconnect } from '../lib/store';
 import { BrandMark } from './MainWindow';
 
@@ -27,15 +28,15 @@ function markDone() {
   }
 }
 
-const COMPANIONS: Array<{ source: string; name: string; missing: string }> = [
+const COMPANIONS: Array<{ sources: string[]; name: string; missing: string }> = [
   {
-    source: 'linux',
+    sources: ['linux'],
     name: 'Desktop activity',
     missing: IS_MAC ? 'Starts with “intentctl enable”' : 'Needs the GNOME extension on Wayland',
   },
-  { source: 'vscode', name: 'VS Code companion', missing: 'Install “Intent” from the VS Code marketplace' },
-  { source: 'firefox', name: 'Firefox companion', missing: 'Install the Intent add-on for Firefox' },
-  { source: 'shell', name: 'Shell history', missing: 'Run “intentctl shell enable” once in your shell' },
+  { sources: ['vscode'], name: 'VS Code companion', missing: 'Install “Intent” from the VS Code marketplace' },
+  { sources: BROWSER_SOURCES, name: 'Browser companion', missing: 'Install the Intent extension for Firefox or Chrome' },
+  { sources: ['shell'], name: 'Shell history', missing: 'Run “intentctl shell enable” once in your shell' },
 ];
 
 /** First run: one sentence, live checks, one button. No carousel. */
@@ -90,10 +91,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             </span>
           </div>
           {COMPANIONS.map((c) => {
-            const s = sources[c.source];
+            const s = combinedStatus(sources, c.sources);
             const seen = s?.last_event_ts ?? null;
             return (
-              <div key={c.source} className="onb-check">
+              <div key={c.name} className="onb-check">
                 <StatusDot tone={s?.healthy ? 'capturing' : 'idle'} />
                 <span className="onb-check-name">{c.name}</span>
                 <span className="onb-check-state t2">{seen ? `Seen ${ago(seen)}` : c.missing}</span>

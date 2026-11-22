@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use intent_types::RawEvent;
+use intent_types::{RawEvent, is_browser_source};
 use regex::Regex;
 use serde_json::Value;
 
@@ -76,7 +76,7 @@ pub fn should_redact_text(text: &str) -> bool {
 /// Return a copy of `event` that is safe to store.
 ///
 /// - `vscode/document_change`: change texts with secrets become `[redacted]`.
-/// - `firefox/*`: `url` keeps only scheme/host/port/path (non-HTTP(S) URLs reject the
+/// - `firefox/*`, `chrome/*`: `url` keeps only scheme/host/port/path (non-HTTP(S) URLs reject the
 ///   event); `target.href` is sanitised or dropped; a secret-bearing `context` is dropped.
 /// - `shell/command`: `cmd` is redacted with [`redact_shell_command`] (new in 2.0).
 /// - `filesystem/file_content`: an excerpt with a secret becomes `[redacted]`. The
@@ -100,11 +100,15 @@ pub fn redact_event(mut event: RawEvent) -> Result<RawEvent, RedactionError> {
                 }
             }
         }
-        "firefox" => {
+        source if is_browser_source(source) => {
             if let Some(url) = payload.get("url").and_then(Value::as_str) {
                 let clean = sanitize_url(url).ok_or_else(|| RedactionError {
-                    message: "firefox event url must be an http or https URL".into(),
+                    message: format!("{source} event url must be an http or https URL"),
                 })?;
+                if let Some(title) = payload.get("title").and_then(Value::as_str).and_then(|t| address_title(t, &clean))
+                {
+                    payload.insert("title".into(), Value::String(title));
+                }
                 payload.insert("url".into(), Value::String(clean));
             }
             if let Some(Value::Object(target)) = payload.get_mut("target")
@@ -383,6 +387,19 @@ fn mask_segment(segment: &str) -> String {
     tokens.concat()
 }
 
+/// A tab title that is the page's own address (Chrome shows the address until the page
+/// sets a title) keeps only what the cleaned `url` keeps: no credentials, query or fragment.
+fn address_title(title: &str, clean_url: &str) -> Option<String> {
+    let title = title.trim();
+    if title.is_empty() || title.contains(char::is_whitespace) {
+        return None;
+    }
+    let candidate =
+        if title.contains("://") { sanitize_url(title)? } else { sanitize_url(&format!("https://{title}"))? };
+    let bare = |url: &str| url.split_once("://").map_or(url, |(_, rest)| rest).to_owned();
+    (bare(&candidate) == bare(clean_url)).then(|| bare(clean_url))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -492,6 +509,33 @@ mod tests {
         .unwrap();
         assert_eq!(out.payload["url"], "https://example.com/a");
         assert_eq!(out.payload["title"], "t");
+    }
+
+    /// Chrome titles a loading tab with its raw address, query and all.
+    #[test]
+    fn a_title_that_is_the_address_loses_its_query() {
+        let cases = [
+            (
+                "github.com/tokio-rs/axum?tab=readme-ov-file#readme",
+                "https://github.com/tokio-rs/axum",
+                "github.com/tokio-rs/axum",
+            ),
+            ("https://u:p@Example.com/a?session=1", "https://example.com/a", "example.com/a"),
+            ("example.com", "https://example.com/", "example.com/"),
+        ];
+        for source in ["chrome", "firefox"] {
+            for (title, url, want) in cases {
+                let out = redact_event(raw(source, "tab_change", json!({"url": url, "title": title}))).unwrap();
+                assert_eq!(out.payload["title"], want, "{source}: {title}");
+            }
+            // A real title, or the address of another page, stays as it is.
+            for title in ["axum - Rust", "Search: a?b", "other.example/x?y=1"] {
+                let out =
+                    redact_event(raw(source, "tab_change", json!({"url": "https://example.com/a", "title": title})))
+                        .unwrap();
+                assert_eq!(out.payload["title"], title);
+            }
+        }
     }
 
     #[test]

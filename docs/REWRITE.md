@@ -52,7 +52,9 @@ app and `intentctl` read it.
 
 **CORS.** Only `INTENT_FIREFOX_EXTENSION_ORIGIN` (the companion's `moz-extension://…` origin),
 `tauri://localhost` and `http://tauri.localhost` are allowed (debug builds add the Tauri dev
-server on `:1420`); Vite/localhost dev origins are never allowed in release builds.
+server on `:1420`); Vite/localhost dev origins are never allowed in release builds. The
+Chrome companion needs no CORS entry: its host permission for `http://127.0.0.1/*` exempts
+its requests.
 
 **Browser guards.** CORS only hides responses, so three more checks run before auth:
 
@@ -60,7 +62,8 @@ server on `:1420`); Vite/localhost dev origins are never allowed in release buil
   port or none. Anything else gets 421. This stops DNS rebinding: a page that rebinds its own
   hostname to `127.0.0.1` still sends its own `Host`.
 - **Origin.** A POST, PUT or DELETE that carries an `Origin` must come from a
-  `moz-extension://` origin (a page cannot send that scheme), `tauri://localhost` or
+  `moz-extension://` origin or a `chrome-extension://` origin with a well-formed id (a page
+  cannot send either scheme), `tauri://localhost` or
   `http://tauri.localhost` (debug builds add the dev server on `:1420`). Anything else,
   `null` included, gets 403. Clients without an `Origin` (the shell hook, `intentctl`, the
   VS Code companion, the app's Rust side) pass.

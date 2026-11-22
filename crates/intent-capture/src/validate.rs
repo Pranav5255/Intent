@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use intent_types::{Payload, RawEvent};
+use intent_types::{Payload, RawEvent, is_browser_source};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -18,6 +18,9 @@ pub const EVENT_PAYLOAD_FIELDS: &[((&str, &str), &[&str])] = &[
     (("firefox", "tab_change"), &["url", "title"]),
     (("firefox", "tab_close"), &["url"]),
     (("firefox", "user_action"), &["url", "tab_id", "window_id", "action", "target", "sensitive_page"]),
+    (("chrome", "tab_change"), &["url", "title"]),
+    (("chrome", "tab_close"), &["url"]),
+    (("chrome", "user_action"), &["url", "tab_id", "window_id", "action", "target", "sensitive_page"]),
     (("vscode", "workspace_open"), &["folder"]),
     (("vscode", "file_open"), &["path"]),
     (("vscode", "file_edit"), &["path"]),
@@ -177,7 +180,7 @@ pub fn validate_payload(source: &str, kind: &str, payload: &Payload) -> VResult 
     }
     match (source, kind) {
         ("vscode", "document_change") => validate_document_change(payload),
-        ("firefox", "user_action") => validate_user_action(payload),
+        (s, "user_action") if is_browser_source(s) => validate_user_action(payload),
         ("filesystem", "file_content") => validate_file_content(payload),
         ("shell", "command") => validate_shell_command(payload),
         _ => Ok(()),
@@ -545,11 +548,12 @@ mod tests {
 
     #[test]
     fn unsupported_kind_lists_supported() {
-        let message = err("chrome", "tab_change", json!({}));
+        let message = err("safari", "tab_change", json!({}));
         assert!(
             message
-                .starts_with("unsupported event kind chrome/tab_change; supported: linux/app_focus, linux/idle_start")
+                .starts_with("unsupported event kind safari/tab_change; supported: linux/app_focus, linux/idle_start")
         );
+        assert!(message.contains("chrome/tab_change, chrome/tab_close, chrome/user_action"));
         assert!(message.ends_with("shell/command"));
     }
 
@@ -562,6 +566,9 @@ mod tests {
         assert_eq!(raw.payload["extra"], 1);
         ok("firefox", "tab_change", json!({"url": "https://a/", "title": "t"}));
         ok("firefox", "tab_close", json!({"url": "https://a/"}));
+        ok("chrome", "tab_change", json!({"url": "https://a/", "title": "t"}));
+        ok("chrome", "tab_close", json!({"url": "https://a/"}));
+        assert_eq!(err("chrome", "tab_change", json!({"url": "https://a/"})), "payload missing required fields: title");
         ok("vscode", "workspace_open", json!({"folder": "/w"}));
         ok("vscode", "file_save", json!({"path": "/w/a"}));
         ok("filesystem", "file_modify", json!({"path": "/w/a", "workspace": "/w"}));
@@ -573,7 +580,7 @@ mod tests {
         for ((source, kind), _) in EVENT_PAYLOAD_FIELDS {
             assert!(required_fields(source, kind).is_some());
         }
-        assert_eq!(EVENT_PAYLOAD_FIELDS.len(), 15);
+        assert_eq!(EVENT_PAYLOAD_FIELDS.len(), 18);
     }
 
     // ---- shell ------------------------------------------------------------

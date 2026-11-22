@@ -30,6 +30,11 @@ run "clippy" env RUSTFLAGS="-D warnings" cargo clippy --workspace --all-targets 
 if [[ "${1:-}" != --fast ]]; then
   run "test" cargo test --workspace --locked -q
   run "shell hooks" bash shell/test_hooks.sh
+  if have node; then
+    run "browser companions" bash -c 'cd integrations/chrome-extension && npm test --silent'
+  else
+    echo "(node not installed; CI runs the browser companion tests)"
+  fi
   if [[ -d app/node_modules ]]; then
     run "app typecheck" bash -c 'cd app && npm run -s typecheck'
   else

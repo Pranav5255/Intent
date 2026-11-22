@@ -28,7 +28,7 @@ crates/intentctl          CLI and shell-hook sender
 app/                      Tauri 2 desktop app: React + TypeScript in src/, Rust in src-tauri/ (own Cargo tree)
 shell/                    bash and zsh hooks, and their test driver
 gnome-extension/          reports the focused window on GNOME Wayland
-integrations/             Firefox and VS Code companions
+integrations/             Firefox, Chrome and VS Code companions (Chrome reuses the Firefox scripts)
 packaging/                .deb build, systemd user unit, maintainer scripts, Homebrew cask generator
 Formula/                  Homebrew formula; the repository is its own tap
 dev/ci/                   gate scripts: check.sh, tree-hygiene.sh, budgets.sh
