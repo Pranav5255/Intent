@@ -29,7 +29,7 @@ Everything runs and stays on your machine. An LLM is optional and local by defau
 | `dev/lima/` | Ubuntu test VM, end-to-end and measurement scripts |
 
 Architecture, API and auth details: [`docs/REWRITE.md`](docs/REWRITE.md).
-Test gates: [`docs/TESTING.md`](docs/TESTING.md).
+Test gates: [`docs/TESTING.md`](docs/TESTING.md). Changes by release: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Develop
 
