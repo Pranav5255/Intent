@@ -133,5 +133,10 @@ you can also push and read the result.
    not change the git identity.
 4. One concern per pull request. Say in the PR how you tested it and that the new test
    fails without the change.
-5. Do not commit build output, databases, `.deb`/`.xpi`/`.vsix` files, env files or files
+5. A change a user can notice adds a line under `## [Unreleased]` in `CHANGELOG.md`, in
+   the same pull request. Use the sections of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
+   Added, Changed, Deprecated, Removed, Fixed, Security. Write what changed for the user,
+   not the commit message, and link the pull request. Tests, CI and refactors need no
+   entry.
+6. Do not commit build output, databases, `.deb`/`.xpi`/`.vsix` files, env files or files
    over 1 MB. `dev/ci/tree-hygiene.sh` fails on them.
