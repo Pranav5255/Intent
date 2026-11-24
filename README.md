@@ -50,7 +50,7 @@ The `.deb` is built on the target architecture. On a Mac, use the Lima VM:
 
 ```bash
 limactl start --name=intent dev/lima/intent-dev.yaml
-limactl shell intent -- bash -lc 'INTENT_BUILD_APP=1 packaging/build-deb.sh --output ~/dist/intent_2.0.0_arm64.deb'
+limactl shell intent -- bash -lc 'INTENT_BUILD_APP=1 packaging/build-deb.sh --output ~/dist/intent_0.2.0_arm64.deb'
 limactl shell intent -- bash -lc 'dev/lima/e2e.sh && dev/lima/e2e-app.sh'
 ```
 
@@ -65,7 +65,7 @@ Optional companions are bundled when built first:
 ## Install and use
 
 ```bash
-sudo apt install ./intent_2.0.0_amd64.deb
+sudo apt install ./intent_0.2.0_amd64.deb
 intentctl enable                  # start the user service and shell hook
 intentctl workspace add ~/src     # allow file activity under a directory
 intent                            # open the app (Super+Space opens the palette)

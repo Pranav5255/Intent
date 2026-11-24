@@ -1,6 +1,6 @@
 //! User-editable capture configuration files and their cached store.
 //!
-//! File names, JSON shapes and validation messages match 1.x. Writes are atomic
+//! File names, JSON shapes and validation messages match 0.1. Writes are atomic
 //! (tempfile + fsync + rename, mode 0600).
 
 use std::path::Path;
@@ -23,7 +23,7 @@ pub use retention::{MAX_RETENTION_DAYS, RetentionPolicy, RetentionPurge};
 pub use store::ConfigStore;
 pub use workspaces::{WorkspaceGuard, WorkspacesConfig, WorkspacesUpdate};
 
-/// Configuration error. `Invalid` maps to HTTP 422 on writes / 500 on reads (1.x).
+/// Configuration error. `Invalid` maps to HTTP 422 on writes / 500 on reads (0.1).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ConfigError {
     #[error("{0}")]
@@ -38,7 +38,7 @@ impl ConfigError {
     }
 }
 
-/// A JSON config file with 1.x normalisation rules.
+/// A JSON config file with 0.1 normalisation rules.
 pub trait JsonConfig: Sized {
     /// Value used when the file does not exist.
     fn default_config() -> Self;

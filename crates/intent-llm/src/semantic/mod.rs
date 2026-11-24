@@ -1,4 +1,4 @@
-//! LLM semantic refinement of one session (port of 1.x `semantic_cluster.py`).
+//! LLM semantic refinement of one session (port of 0.1 `semantic_cluster.py`).
 //!
 //! Packets → compact summaries (+ embedding similarity hints) → size-bounded batches sent
 //! concurrently through the harness → strict proposal validation → union-find with a
@@ -26,7 +26,7 @@ pub use pack::{PackConfig, Packet, PacketEvent, PacketRole, build_packets};
 
 pub const MIN_LINK_CONFIDENCE: f64 = 0.70;
 pub const SEMANTIC_CONTENT_POLICY_VERSION: &str = "3";
-pub const SEMANTIC_CLUSTER_POLICY_VERSION: &str = "2.0-1";
+pub const SEMANTIC_CLUSTER_POLICY_VERSION: &str = "0.2-1";
 const PROMPT_VERSION: &str = "semantic-2.0-1";
 
 pub const MAX_SEMANTIC_PROMPT_CHARS: usize = 3_500;
@@ -357,7 +357,7 @@ impl LlmSemanticRefiner {
     }
 
     /// Split packets into prompt-safe batches. Sizes are tracked incrementally
-    /// (1.x re-serialized every candidate batch: quadratic in session length).
+    /// (0.1 re-serialized every candidate batch: quadratic in session length).
     pub fn batches(&self, packets: &[RequestPacket]) -> Result<Vec<Vec<usize>>, String> {
         if packets.is_empty() {
             return Ok(vec![]);

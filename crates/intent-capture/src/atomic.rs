@@ -43,7 +43,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
 }
 
 /// Atomically write `value` as 2-space indented JSON plus a trailing newline
-/// (the 1.x on-disk format).
+/// (the 0.1 on-disk format).
 pub fn write_json_atomic<T: Serialize + ?Sized>(path: &Path, value: &T) -> io::Result<()> {
     let mut bytes = serde_json::to_vec_pretty(value).map_err(io::Error::other)?;
     bytes.push(b'\n');

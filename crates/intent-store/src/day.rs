@@ -1,8 +1,8 @@
 //! Calendar-day bucketing.
 //!
-//! 1.x computed an event's day from the *current* process time zone at read time, so
+//! 0.1 computed an event's day from the *current* process time zone at read time, so
 //! changing TZ (or running the engine and capture server under different TZs) silently
-//! moved events between days. 2.0 computes the day once, at insert time, from an explicit
+//! moved events between days. 0.2 computes the day once, at insert time, from an explicit
 //! [`DayZone`] and stores it in `events.day`.
 
 use jiff::Timestamp;
@@ -52,7 +52,7 @@ impl DayZone {
     pub fn day_for_ts(&self, ts: i64) -> String {
         let Ok(instant) = Timestamp::from_second(ts) else {
             // jiff covers years -9999..=9999, so only absurd values land here. Ingest
-            // refuses a negative ts or one more than a day ahead, but the 1.x importer and
+            // refuses a negative ts or one more than a day ahead, but the 0.1 importer and
             // old rows bypass that check. Bucket them deterministically instead of failing.
             return "1970-01-01".to_string();
         };

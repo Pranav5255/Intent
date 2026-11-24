@@ -80,7 +80,7 @@ fn result(intents: Vec<Intent>, hash: &str) -> PipelineResult {
         intents,
         warnings: vec![PipelineWarning { level: WarningLevel::Warning, message: "w".into(), event_id: None }],
         source_hash: hash.into(),
-        pipeline_version: "2.0".into(),
+        pipeline_version: "0.2".into(),
         cached: false,
     }
 }
@@ -168,7 +168,7 @@ fn day_bucketing_uses_zone_at_insert_and_rebucket() {
 fn pagination_cursor_follows_sort_order() {
     let dir = TempDir::new().unwrap();
     let store = open(&dir);
-    // Same ts, ingested_at order disagrees with id order: the 1.x (ts, id) keyset
+    // Same ts, ingested_at order disagrees with id order: the 0.1 (ts, id) keyset
     // would skip rows here.
     let batch = vec![
         ev_at("z", T0 + 5, 100),
@@ -520,7 +520,7 @@ fn facts_and_metadata() {
     assert_eq!(store.ingest_cursor("engine").unwrap(), Some(cur));
 }
 
-/// Build 1.x-shaped databases exactly as the Python services created them.
+/// Build 0.1-shaped databases exactly as the Python services created them.
 fn make_legacy(dir: &Path) -> (std::path::PathBuf, std::path::PathBuf) {
     let events = dir.join("events.db");
     let c = Connection::open(&events).unwrap();
@@ -601,7 +601,7 @@ fn legacy_import_is_idempotent() {
     assert_eq!(store.events_for_day("2024-01-03").unwrap().len(), 2);
     assert_eq!(store.events_for_day("2024-01-02").unwrap()[0].payload["cmd"], "ls");
 
-    // Trees rebuild (sibling order from 1.x start_ts, id) and are searchable.
+    // Trees rebuild (sibling order from 0.1 start_ts, id) and are searchable.
     let trees = store.intents_for_date("2024-01-01").unwrap();
     assert_eq!(trees.len(), 2);
     assert_eq!(trees[0].walk().len(), 4);

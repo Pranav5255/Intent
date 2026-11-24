@@ -1,4 +1,4 @@
-//! Chronological grouping of normalized events into activity sessions (1.x `sessionize.py`).
+//! Chronological grouping of normalized events into activity sessions (0.1 `sessionize.py`).
 
 use std::ops::Range;
 

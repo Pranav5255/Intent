@@ -1,4 +1,4 @@
-//! Bounded restore payloads (1.x `resume.py`).
+//! Bounded restore payloads (0.1 `resume.py`).
 
 use std::collections::HashSet;
 

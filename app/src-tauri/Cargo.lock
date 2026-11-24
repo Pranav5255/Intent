@@ -1783,7 +1783,7 @@ dependencies = [
 
 [[package]]
 name = "intent-app"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "intent-types",
  "reqwest 0.12.28",
@@ -1802,7 +1802,7 @@ dependencies = [
 
 [[package]]
 name = "intent-types"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",

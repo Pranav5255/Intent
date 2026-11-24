@@ -1,7 +1,7 @@
-//! Ingest policy pipeline for `POST /v1/event` (the 1.x `ingest_event` handler body,
+//! Ingest policy pipeline for `POST /v1/event` (the 0.1 `ingest_event` handler body,
 //! minus HTTP and the capture-pause check, which `intentd` owns).
 //!
-//! Order (unchanged from 1.x): validation → (pause) → detailed-capture consent →
+//! Order (unchanged from 0.1): validation → (pause) → detailed-capture consent →
 //! editor workspace approval → redaction → domain blocklist.
 
 use std::sync::Arc;
@@ -22,7 +22,7 @@ pub struct AdmissionPolicy {
     pub blocklist: Arc<Blocklist>,
 }
 
-/// Why an otherwise valid event is silently dropped (HTTP 204 in 1.x).
+/// Why an otherwise valid event is silently dropped (HTTP 204 in 0.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DropReason {
     DetailedCaptureDisabled,
@@ -30,7 +30,7 @@ pub enum DropReason {
 }
 
 impl DropReason {
-    /// Metric label used by the 1.x ingestion metrics (`dropped_by_reason`).
+    /// Metric label used by the 0.1 ingestion metrics (`dropped_by_reason`).
     pub fn as_str(self) -> &'static str {
         match self {
             DropReason::DetailedCaptureDisabled => "detailed_capture_disabled",
@@ -62,7 +62,7 @@ pub fn admit(event: RawEvent, policy: &AdmissionPolicy) -> Result<Admission, Red
         return Ok(Admission::Drop(DropReason::EditorNotApproved));
     }
     let mut event = redact_event(event)?;
-    // 2.0: enforce `browser.context_enabled` server-side (1.x trusted the extension).
+    // 0.2: enforce `browser.context_enabled` server-side (0.1 trusted the extension).
     if is_browser_source(&event.source) && event.kind == "user_action" && !detailed.browser.context_enabled {
         event.payload.remove("context");
     }

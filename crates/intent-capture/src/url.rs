@@ -1,6 +1,6 @@
 //! A faithful port of CPython's `urllib.parse.urlsplit` (3.12) and the
 //! `hostname`/`port` accessors, so URL sanitising and domain blocking behave exactly
-//! like 1.x (no WHATWG path/host normalisation, no IDNA).
+//! like 0.1 (no WHATWG path/host normalisation, no IDNA).
 
 use std::net::Ipv6Addr;
 
@@ -107,7 +107,7 @@ impl SplitUrl {
 }
 
 /// Retain only an HTTP(S) scheme, host, port and path — never credentials, query or
-/// fragment. Returns `None` for anything else (1.x `sanitize_url`).
+/// fragment. Returns `None` for anything else (0.1 `sanitize_url`).
 pub fn sanitize_url(raw: &str) -> Option<String> {
     let parsed = urlsplit(raw).ok()?;
     if parsed.scheme != "http" && parsed.scheme != "https" {

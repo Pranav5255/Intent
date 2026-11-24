@@ -1,6 +1,6 @@
-//! Historical-prefix intent prediction (1.x `prediction.py`).
+//! Historical-prefix intent prediction (0.1 `prediction.py`).
 //!
-//! 1.x rebuilt the prefix index from the store on every request. Here the index is
+//! 0.1 rebuilt the prefix index from the store on every request. Here the index is
 //! built once per `(date, store revision)` and cached; callers pass the revision
 //! they read and a loader that is only invoked on a cache miss.
 

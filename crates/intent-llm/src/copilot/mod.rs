@@ -1,4 +1,4 @@
-//! Tool-grounded Intent Copilot (port of 1.x `copilot.py`).
+//! Tool-grounded Intent Copilot (port of 0.1 `copilot.py`).
 //!
 //! Native function calling where the model supports it; otherwise a JSON "action"
 //! protocol (`{"action": "search_intents", ...}` / `{"action": "answer", ...}`) through the

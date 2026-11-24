@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Intent Companion",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "Sends consented local Chrome tab and semantic interaction metadata to Intent.",
   "minimum_chrome_version": "116",
   "permissions": [

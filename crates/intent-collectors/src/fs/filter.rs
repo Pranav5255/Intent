@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-/// Directory names never watched or reported (1.x set plus common build/cache dirs).
+/// Directory names never watched or reported (0.1 set plus common build/cache dirs).
 pub const IGNORED_DIRS: &[&str] = &[
     ".git",
     ".hg",
@@ -25,7 +25,7 @@ pub const IGNORED_DIRS: &[&str] = &[
     ".cache",
 ];
 
-/// 1.x skipped files above 25 MB.
+/// 0.1 skipped files above 25 MB.
 pub const MAX_FILE_BYTES: u64 = 25 * 1024 * 1024;
 
 /// Kernel/virtual filesystems that are never workspace roots.

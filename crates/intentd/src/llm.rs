@@ -3,7 +3,7 @@
 //!
 //! Everything provider-related lives in one immutable [`LlmRuntime`] held in an
 //! `ArcSwap`; `PUT /settings/llm` builds a new runtime and swaps it in atomically
-//! (1.x mutated `os.environ` and re-created clients in place).
+//! (0.1 mutated `os.environ` and re-created clients in place).
 
 use std::sync::Arc;
 use std::time::Duration;

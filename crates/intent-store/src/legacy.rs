@@ -1,4 +1,4 @@
-//! One-time importer for the 1.x `events.db` (capture server) and `intents.db`
+//! One-time importer for the 0.1 `events.db` (capture server) and `intents.db`
 //! (engine). Each source is imported at most once (recorded in `metadata`), and every
 //! row insert is idempotent, so re-running after a crash is safe.
 
@@ -136,7 +136,7 @@ fn import_intents(tx: &Transaction<'_>, src: &Connection, report: &mut ImportRep
                 report.intents_skipped += 1;
                 continue;
             };
-            // 1.x stored nodes without children; enforce it and trust the row columns.
+            // 0.1 stored nodes without children; enforce it and trust the row columns.
             node.children.clear();
             node.parent_id = parent_id;
             node.id = id;
@@ -172,7 +172,7 @@ fn import_intents(tx: &Transaction<'_>, src: &Connection, report: &mut ImportRep
 }
 
 impl Store {
-    /// Copy 1.x data into this store if the legacy files exist. Each file is
+    /// Copy 0.1 data into this store if the legacy files exist. Each file is
     /// imported in one transaction and flagged in `metadata` so later calls are
     /// no-ops. Events are bucketed with the store's current [`crate::DayZone`].
     pub fn import_legacy(&self, events_db: &Path, intents_db: &Path) -> Result<ImportReport> {

@@ -1,7 +1,7 @@
-//! LLM settings: `llm.toml` (0600, atomic writes), one-time import of the 1.x `llm.env`,
+//! LLM settings: `llm.toml` (0600, atomic writes), one-time import of the 0.1 `llm.env`,
 //! UI summary/update DTOs, provider construction and a local-server reachability probe.
 //!
-//! Nothing here reads or mutates process environment variables (1.x exported every
+//! Nothing here reads or mutates process environment variables (0.1 exported every
 //! setting into `os.environ`, leaking secrets into child processes).
 
 use std::fs;
@@ -208,7 +208,7 @@ impl LlmSettings {
         write_private_atomic(path, text.as_bytes())
     }
 
-    /// Load `llm.toml`, importing a 1.x `llm.env` once if no TOML exists yet.
+    /// Load `llm.toml`, importing a 0.1 `llm.env` once if no TOML exists yet.
     pub fn load_or_import(config_dir: &Path) -> Result<(Self, bool), SettingsError> {
         let path = Self::path(config_dir);
         if let Some(settings) = Self::load(&path)? {
@@ -219,7 +219,7 @@ impl LlmSettings {
             Ok(text) => {
                 let settings = Self::import_llm_env(&text);
                 settings.save(&path)?;
-                tracing::info!(provider = provider_name(settings.provider), "imported 1.x llm.env into llm.toml");
+                tracing::info!(provider = provider_name(settings.provider), "imported 0.1 llm.env into llm.toml");
                 Ok((settings, true))
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok((Self::default(), false)),
@@ -227,7 +227,7 @@ impl LlmSettings {
         }
     }
 
-    /// Translate a 1.x systemd `EnvironmentFile`.
+    /// Translate a 0.1 systemd `EnvironmentFile`.
     pub fn import_llm_env(text: &str) -> Self {
         let mut env = std::collections::HashMap::new();
         for line in text.lines() {
@@ -277,7 +277,7 @@ impl LlmSettings {
         if let Some(ms) = get("ENGINE_SEMANTIC_TIMEOUT_MS").and_then(|v| v.parse::<i64>().ok()).filter(|v| *v > 0) {
             s.semantic_timeout_ms = ms.clamp(1_000, 120_000);
         }
-        // 1.x only used an LLM when ENGINE_LLM_ENABLED was true: keep that choice.
+        // 0.1 only used an LLM when ENGINE_LLM_ENABLED was true: keep that choice.
         if !truthy("ENGINE_LLM_ENABLED") {
             s.provider = LlmProvider::None;
         }

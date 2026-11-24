@@ -1,4 +1,4 @@
-//! Embedding-assisted correlation (new in 2.0, works without any LLM).
+//! Embedding-assisted correlation (new in 0.2, works without any LLM).
 //!
 //! Adjacent clusters of one session are merged when the cosine similarity of their
 //! label-free *text profiles* (domains, file names, project, context terms) reaches

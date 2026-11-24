@@ -1,6 +1,6 @@
 //! Wire and pipeline contracts shared by every Intent crate and the Tauri app.
 //!
-//! Field names and JSON shapes match the 1.x Python services so the Firefox and
+//! Field names and JSON shapes match the 0.1 Python services so the Firefox and
 //! VS Code companions keep working unchanged against `intentd`.
 
 use std::collections::BTreeMap;
@@ -439,7 +439,7 @@ pub struct SearchHit {
     pub summary: String,
     pub date: String,
     pub highlight_snippet: String,
-    /// Combined keyword + semantic score (new in 2.0; ignored by 1.x clients).
+    /// Combined keyword + semantic score (new in 0.2; ignored by 0.1 clients).
     #[serde(default)]
     pub score: f64,
 }

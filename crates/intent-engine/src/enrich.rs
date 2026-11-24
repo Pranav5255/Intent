@@ -1,4 +1,4 @@
-//! Stats, insights, TODOs, project tags and tree validation (1.x `enrich.py`).
+//! Stats, insights, TODOs, project tags and tree validation (0.1 `enrich.py`).
 
 use std::collections::BTreeMap;
 
@@ -57,7 +57,7 @@ pub fn compute_stats(cluster: &[&NormalizedEvent]) -> IntentStats {
     }
 }
 
-/// Sum child stats in child order (durations are summed, as in 1.x).
+/// Sum child stats in child order (durations are summed, as in 0.1).
 pub fn aggregate_stats(children: &[Intent]) -> IntentStats {
     let mut stats = IntentStats::default();
     for child in children {
@@ -76,7 +76,7 @@ pub fn aggregate_stats(children: &[Intent]) -> IntentStats {
 }
 
 /// Invariants for a depth-0 intent and its direct children; returns the violations
-/// (1.x asserted, which crashed the whole run).
+/// (0.1 asserted, which crashed the whole run).
 pub fn validate_intent_tree(root: &Intent) -> Vec<String> {
     let mut problems = Vec::new();
     if root.depth != 0 {
@@ -157,7 +157,7 @@ pub fn compute_insight_shell(cluster: &[&NormalizedEvent]) -> Vec<Map<String, Va
 
 /// TODO/FIXME/XXX observations from inserted editor text.
 ///
-/// The marker comes from the inserted text itself (1.x searched the event headline,
+/// The marker comes from the inserted text itself (0.1 searched the event headline,
 /// which never contains it, so every observation was reported as `TODO`).
 pub fn detect_todos(cluster: &[&NormalizedEvent]) -> Vec<TodoObservation> {
     let mut out = Vec::new();

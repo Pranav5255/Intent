@@ -17,7 +17,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-DEB=${1:-$HOME/dist/intent_2.0.0_$(dpkg --print-architecture).deb}
+DEB=${1:-$HOME/dist/intent_0.2.0_$(dpkg --print-architecture).deb}
 API=http://127.0.0.1:9477
 SHOTS=${SHOTS:-$HOME/e2e/shots}
 LOG=$HOME/e2e/app.log

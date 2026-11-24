@@ -143,7 +143,7 @@ pub fn basename(path: &str) -> Option<&str> {
     (!trimmed.is_empty()).then_some(trimmed)
 }
 
-/// Last path segment after trimming trailing separators (`_final_segment` in 1.x).
+/// Last path segment after trimming trailing separators (`_final_segment` in 0.1).
 pub fn final_segment(path: &str) -> Option<String> {
     let normalized = path.replace('\\', "/");
     let normalized = normalized.trim_end_matches('/');
@@ -153,7 +153,7 @@ pub fn final_segment(path: &str) -> Option<String> {
     normalized.rsplit('/').next().filter(|s| !s.is_empty()).map(str::to_owned)
 }
 
-/// Parent directory (`_parent_path` in 1.x enrich).
+/// Parent directory (`_parent_path` in 0.1 enrich).
 pub fn parent_path(path: &str) -> Option<String> {
     let normalized = path.replace('\\', "/");
     let normalized = normalized.trim_end_matches('/');

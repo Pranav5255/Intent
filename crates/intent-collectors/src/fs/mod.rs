@@ -2,7 +2,7 @@
 //! and (opt-in) `filesystem/file_content`.
 //!
 //! * Approved roots arrive through a `tokio::sync::watch` channel; changes are
-//!   applied live (1.x needed a service restart).
+//!   applied live (0.1 needed a service restart).
 //! * Linux: one non-recursive inotify watch per directory, skipping ignored
 //!   trees (`.git`, `node_modules`, `target`, ...) and symlinks, under a watch
 //!   budget. Other platforms: one recursive watch per root.
@@ -10,7 +10,7 @@
 //!   nearest existing parent is watched (non-recursively) until the root comes
 //!   back, and then its whole tree is watched again. Missing roots are listed in
 //!   the status detail as `missing_roots`.
-//! * `/` is refused. The 1.x "all accessible" option maps to `$HOME` (hidden
+//! * `/` is refused. The 0.1 "all accessible" option maps to `$HOME` (hidden
 //!   directories skipped) with its own smaller budget; hitting the budget or
 //!   the kernel's `max_user_watches` is reported in the status detail.
 //! * Debouncing is done by `notify-debouncer-full`; on top of that each path
@@ -53,7 +53,7 @@ const PER_DIR: bool = cfg!(target_os = "linux");
 pub struct WatcherConfig {
     /// Approved workspace roots (`~` is expanded).
     pub workspaces: Vec<PathBuf>,
-    /// 1.x "all accessible files" option: watches `$HOME` (never `/`).
+    /// 0.1 "all accessible files" option: watches `$HOME` (never `/`).
     pub all_accessible: bool,
     /// Also emit `file_content` excerpts (detailed-capture consent).
     pub capture_content: bool,

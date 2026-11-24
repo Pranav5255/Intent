@@ -664,7 +664,7 @@ export async function mockRequest(method: Method, rawPath: string, body: unknown
   const q = url.searchParams;
   await delay(path.startsWith('/copilot') ? 900 : path.startsWith('/v1/restore') ? 500 : 40);
 
-  if (path === '/healthz') return ok({ ok: true, version: '2.0.0' });
+  if (path === '/healthz') return ok({ ok: true, version: '0.2.0' });
   if (path === '/intents/yesterday') return ok(rootsFor(D1));
   if (path === '/intents' && method === 'GET') return ok(rootsFor(q.get('date') ?? TODAY));
   if (path === '/intents/digest') return ok(digest(q.get('date') ?? D1));
@@ -710,7 +710,7 @@ export async function mockRequest(method: Method, rawPath: string, body: unknown
   if (path === '/copilot/query') return ok(copilot(body as CopilotQueryRequest));
   if (path === '/pipeline/run') {
     await delay(1200);
-    return ok({ intents: rootsFor(q.get('date') ?? TODAY), warnings: [], source_hash: 'mock', pipeline_version: '2.0.0', cached: false });
+    return ok({ intents: rootsFor(q.get('date') ?? TODAY), warnings: [], source_hash: 'mock', pipeline_version: '0.2.0', cached: false });
   }
   const forgetDate = path.match(/^\/v1\/memory\/date\/(.+)$/);
   if (forgetDate && method === 'DELETE') {

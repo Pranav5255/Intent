@@ -11,7 +11,7 @@ pub use crate::url::sanitize_url;
 
 /// Replacement for a document change containing a secret.
 pub const REDACTED_TEXT: &str = "[redacted]";
-/// Replacement for a shell command / shell argument (1.x sender format).
+/// Replacement for a shell command / shell argument (0.1 sender format).
 pub const REDACTED_COMMAND: &str = "<redacted>";
 /// Title stored for a private-browsing window.
 pub const PRIVATE_WINDOW_TITLE: &str = "Private window";
@@ -60,7 +60,7 @@ static ENV_ASSIGNMENT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(^|[\s;&|(])([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|[^\s;&|)]*)"#).expect("valid regex")
 });
 
-/// Error for events that must not be stored at all (HTTP 422 in 1.x).
+/// Error for events that must not be stored at all (HTTP 422 in 0.1).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{message}")]
 pub struct RedactionError {
@@ -78,7 +78,7 @@ pub fn should_redact_text(text: &str) -> bool {
 /// - `vscode/document_change`: change texts with secrets become `[redacted]`.
 /// - `firefox/*`, `chrome/*`: `url` keeps only scheme/host/port/path (non-HTTP(S) URLs reject the
 ///   event); `target.href` is sanitised or dropped; a secret-bearing `context` is dropped.
-/// - `shell/command`: `cmd` is redacted with [`redact_shell_command`] (new in 2.0).
+/// - `shell/command`: `cmd` is redacted with [`redact_shell_command`] (new in 0.2).
 /// - `filesystem/file_content`: an excerpt with a secret becomes `[redacted]`. The
 ///   whole excerpt goes, not one line: a private key spans many lines, and the
 ///   lines around a secret often belong to it.
@@ -168,7 +168,7 @@ pub fn redact_window_title(title: &str) -> String {
 
 /// Redact a shell command line.
 ///
-/// Fully replaced by `<redacted>` (1.x sender rules) when it is longer than
+/// Fully replaced by `<redacted>` (0.1 sender rules) when it is longer than
 /// [`MAX_COMMAND_LENGTH`] characters or mentions password/secret/token/API key/
 /// bearer/credential, or `ssh`/`gpg`/`sudo`, or contains a private key or known
 /// token prefix. Otherwise individual secrets are masked in place so the command

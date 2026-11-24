@@ -1,6 +1,6 @@
 //! `intentd` — the Intent activity daemon.
 //!
-//! One process replaces the 1.x capture server, engine API, scheduled-ingest timer,
+//! One process replaces the 0.1 capture server, engine API, scheduled-ingest timer,
 //! X11 tracker and workspace watcher: an axum server on 127.0.0.1:9477, a batched
 //! event writer, in-process collectors, and a few timer-driven background jobs, all
 //! over one SQLite database (`intent-store`).
@@ -153,7 +153,7 @@ impl Daemon {
         let settings = match LlmSettings::load_or_import(&paths.config_dir()) {
             Ok((settings, imported)) => {
                 if imported {
-                    tracing::info!("imported 1.x LLM settings");
+                    tracing::info!("imported 0.1 LLM settings");
                 }
                 settings
             }
@@ -270,7 +270,7 @@ impl Daemon {
     }
 }
 
-/// One-time import of 1.x `events.db` / `intents.db` (no-op once flagged).
+/// One-time import of 0.1 `events.db` / `intents.db` (no-op once flagged).
 async fn import_legacy(store: &Store, paths: &Paths) {
     let events_db = paths.legacy_events_db();
     let intents_db = paths.data_dir().join("intents.db");
@@ -285,11 +285,11 @@ async fn import_legacy(store: &Store, paths: &Paths) {
                     events = report.events_imported,
                     intents = report.intents_imported,
                     runs = report.runs_imported,
-                    "imported 1.x data"
+                    "imported 0.1 data"
                 );
             }
         }
-        Ok(Err(err)) => tracing::warn!(error = %err, "1.x data import failed; continuing without it"),
-        Err(err) => tracing::warn!(error = %err, "1.x data import panicked"),
+        Ok(Err(err)) => tracing::warn!(error = %err, "0.1 data import failed; continuing without it"),
+        Err(err) => tracing::warn!(error = %err, "0.1 data import panicked"),
     }
 }

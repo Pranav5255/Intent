@@ -58,7 +58,7 @@ fn run(intents: Vec<Intent>, hash: &str) -> PipelineResult {
         intents,
         warnings: vec![],
         source_hash: hash.into(),
-        pipeline_version: "2.0".into(),
+        pipeline_version: "0.2".into(),
         cached: false,
     }
 }

@@ -1,10 +1,10 @@
-//! Deterministic, topic-aware grouping of one session (1.x `cluster.py`).
+//! Deterministic, topic-aware grouping of one session (0.1 `cluster.py`).
 //!
 //! Clusters are lists of indices into the session slice, matching
 //! [`intent_llm::SemanticOutcome::clusters`].
 //!
-//! Unlike 1.x, a run's topic is maintained with incremental counters while events
-//! are appended (1.x recomputed it from scratch per event: O(n²)), and invariant
+//! Unlike 0.1, a run's topic is maintained with incremental counters while events
+//! are appended (0.1 recomputed it from scratch per event: O(n²)), and invariant
 //! violations become warnings instead of `assert`s.
 
 use intent_types::{Family, NormalizedEvent, PipelineWarning, WarningLevel};
@@ -36,7 +36,7 @@ impl BoundaryReason {
 }
 
 /// Strongest project / command / file / domain / context-term signals of a group of
-/// events (1.x `_get_topic_score`).
+/// events (0.1 `_get_topic_score`).
 #[derive(Debug, Clone, Default)]
 pub struct Topic {
     pub projects: OrderedCounter,
@@ -279,7 +279,7 @@ fn cap_runs(session: &[NormalizedEvent], mut runs: Vec<Run>, max: usize, mut on_
                 continue;
             }
             let sim = topic_similarity(&runs[smallest].topic, &runs[neighbor].topic);
-            // Highest similarity wins; ties go to the lower index (1.x `(sim, -index)` key).
+            // Highest similarity wins; ties go to the lower index (0.1 `(sim, -index)` key).
             if target.is_none_or(|(best, _)| sim > best) {
                 target = Some((sim, neighbor));
             }
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn large_session_is_linear_enough() {
-        // 1.x recomputed the run topic per event (O(n²)); 20k events must be quick.
+        // 0.1 recomputed the run topic per event (O(n²)); 20k events must be quick.
         let events: Vec<NormalizedEvent> = (0..20_000)
             .map(|i| {
                 if i % 50 == 49 {

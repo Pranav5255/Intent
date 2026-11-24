@@ -1,6 +1,6 @@
 //! Capture pause, persisted in store metadata.
 //!
-//! 1.x kept the pause flag in process memory, so a crash or restart silently resumed
+//! 0.1 kept the pause flag in process memory, so a crash or restart silently resumed
 //! capture. Here the flag and its optional resume time live in the database and are
 //! re-read on start; an expired timed pause counts as resumed immediately (ingest
 //! checks the deadline itself) and the housekeeping loop persists the resume.

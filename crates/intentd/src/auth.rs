@@ -1,6 +1,6 @@
 //! Bearer-token protection for routes that change state or launch programs.
 //!
-//! 1.x served `/v1/restore` (which spawns editors, browsers and terminals) to any
+//! 0.1 served `/v1/restore` (which spawns editors, browsers and terminals) to any
 //! local process. The token lives in a 0600 file only the user can read; the Tauri
 //! app and `intentctl` read it, browser/editor companions only need the open routes.
 

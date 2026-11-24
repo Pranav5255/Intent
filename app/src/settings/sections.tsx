@@ -379,7 +379,7 @@ export function PrivacySection() {
   const config = useAsync(() => api.captureConfig(), []);
   useRetryOnReconnect(blocked, policy, config);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
-  // Initialise from the SAVED policy (1.x always showed the first preset).
+  // Initialise from the SAVED policy (0.1 always showed the first preset).
   const current = presetFor(policy.data);
   const detailedCount = Object.values(capture.status?.detailed_capture?.event_counts ?? {}).reduce((a, b) => a + b, 0);
 

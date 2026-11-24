@@ -163,7 +163,7 @@ jobs:
             -format UDZO "$RUNNER_TEMP/Intent.dmg"
           mkdir -p "$tap/Casks"
           CASK_URL="file://$RUNNER_TEMP/Intent.dmg" FORMULA=local/intentci/intent \
-            packaging/homebrew/make-cask.sh 2.0.0 "$RUNNER_TEMP/Intent.dmg" >"$tap/Casks/intent-app.rb"
+            packaging/homebrew/make-cask.sh 0.2.0 "$RUNNER_TEMP/Intent.dmg" >"$tap/Casks/intent-app.rb"
           brew style "$tap/Casks/intent-app.rb"
           brew install --cask local/intentci/intent-app
           test -x /Applications/Intent.app/Contents/MacOS/intent-app
@@ -312,10 +312,10 @@ jobs:
       - name: Build the .deb
         run: |
           arch=$(dpkg --print-architecture)
-          echo "DEB=$HOME/dist/intent_2.0.0_$arch.deb" >> "$GITHUB_ENV"
+          echo "DEB=$HOME/dist/intent_0.2.0_$arch.deb" >> "$GITHUB_ENV"
           echo "ARCH=$arch" >> "$GITHUB_ENV"
-          INTENT_BUILD_APP=1 packaging/build-deb.sh --output "$HOME/dist/intent_2.0.0_$arch.deb"
-          dpkg-deb --info "$HOME/dist/intent_2.0.0_$arch.deb"
+          INTENT_BUILD_APP=1 packaging/build-deb.sh --output "$HOME/dist/intent_0.2.0_$arch.deb"
+          dpkg-deb --info "$HOME/dist/intent_0.2.0_$arch.deb"
       - name: Start a systemd user session
         run: |
           sudo loginctl enable-linger "$(id -un)"

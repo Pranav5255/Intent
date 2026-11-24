@@ -1,5 +1,5 @@
 #!/bin/sh
-# Intent 2.0 postinst. Enables nothing per user: each user opts in with
+# Intent 0.2 postinst. Enables nothing per user: each user opts in with
 # `intentctl enable`. Only the Firefox companion policy is installed system-wide,
 # and only when this is a release build with a signed XPI and no
 # administrator-managed policy exists.

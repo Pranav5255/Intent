@@ -2,7 +2,7 @@
 //!
 //! Handles reasoning blocks (`<think>…</think>`), Markdown code fences and surrounding
 //! prose. Candidates are found with a balanced-brace scanner that understands JSON
-//! strings, so `{"a":"}"}` and prose like "use {x} here" do not confuse it (1.x used
+//! strings, so `{"a":"}"}` and prose like "use {x} here" do not confuse it (0.1 used
 //! first-`{`/last-`}`, which fails on any brace in trailing prose).
 
 use std::sync::OnceLock;

@@ -281,7 +281,7 @@ fn handle_launch(app: &AppHandle, args: &[String], first: bool) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        // Must be first: a second launch forwards its argv here and exits (1.x had no lock).
+        // Must be first: a second launch forwards its argv here and exits (0.1 had no lock).
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             handle_launch(app, &argv, false);
         }))

@@ -5,7 +5,7 @@
 //! [`ingest`]; only the waiting behaviour differs (HTTP waits for the durable write and
 //! fails fast with 503 when the queue is full, collectors apply back-pressure).
 //!
-//! The writer mirrors the 1.x `EventWriter`: one task drains a bounded queue in
+//! The writer mirrors the 0.1 `EventWriter`: one task drains a bounded queue in
 //! batches of at most `max_batch` events or `batch_wait` (whichever first) and writes
 //! each batch in ONE SQLite transaction on a blocking thread.
 
@@ -46,7 +46,7 @@ impl Default for WriterConfig {
 }
 
 impl WriterConfig {
-    /// 1.x tuning variables (`INTENT_INGEST_*`), ignoring invalid values.
+    /// 0.1 tuning variables (`INTENT_INGEST_*`), ignoring invalid values.
     pub fn from_env() -> Self {
         let get = |key: &str| std::env::var(key).ok().and_then(|v| v.trim().parse::<u64>().ok());
         let d = Self::default();
@@ -131,7 +131,7 @@ impl Metrics {
         self.lock().submit_timeouts += 1;
     }
 
-    /// 1.x `IngestionMetrics.snapshot` shape.
+    /// 0.1 `IngestionMetrics.snapshot` shape.
     pub fn snapshot(&self, queue_depth: usize, accepting: bool) -> Value {
         let m = self.lock();
         let round2 = |v: f64| (v * 100.0).round() / 100.0;
@@ -286,7 +286,7 @@ async fn run(
             }
         }
         // The batch stays open while events keep arriving (gaps ≤ LINGER), for at most
-        // `batch_wait` and `max_batch` events. 1.x always waited the full window, which
+        // `batch_wait` and `max_batch` events. 0.1 always waited the full window, which
         // capped a client that waits for its 201 at ~1 event per 25 ms.
         let deadline = Instant::now() + config.batch_wait;
         while batch.len() < config.max_batch {
@@ -382,7 +382,7 @@ pub enum Delivery {
     Enqueue,
 }
 
-/// Validate a raw JSON body the way 1.x pydantic did. `now` bounds future timestamps.
+/// Validate a raw JSON body the way 0.1 pydantic did. `now` bounds future timestamps.
 pub fn parse_event(body: &[u8], now: i64) -> Result<RawEvent, IngestError> {
     let event: EventIn = serde_json::from_slice(body).map_err(|e| IngestError::Invalid(e.to_string()))?;
     validate_event(event, now).map_err(|e| IngestError::Invalid(e.message))

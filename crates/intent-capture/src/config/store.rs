@@ -1,6 +1,6 @@
 //! In-memory config cache with change detection.
 //!
-//! 1.x re-read and re-parsed every config file on every request (including every
+//! 0.1 re-read and re-parsed every config file on every request (including every
 //! ingested event). [`ConfigStore`] keeps the parsed value and only reloads when the
 //! file's modification stamp (mtime, size, inode) changes, so edits made by hand or by
 //! another process are still picked up on the next call.
@@ -188,7 +188,7 @@ impl ConfigStore {
         Ok(self.guard.allowed(&*self.workspaces()?))
     }
 
-    /// Approved workspaces; an unreadable/invalid file means none (1.x behaviour).
+    /// Approved workspaces; an unreadable/invalid file means none (0.1 behaviour).
     /// Entries the [`WorkspaceGuard`] refuses (for example written by hand) are left out.
     pub fn approved_workspaces(&self) -> Vec<String> {
         self.effective_workspaces().map(|config| config.workspaces).unwrap_or_default()

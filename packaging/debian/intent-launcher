@@ -1,6 +1,6 @@
 #!/bin/sh
 # /usr/bin/intent: start the desktop app. Installed only when the Tauri app is
-# packaged (see build-deb.sh). Unlike 1.x, it enables the user service only the
+# packaged (see build-deb.sh). Unlike 0.1, it enables the user service only the
 # first time (when it is not enabled yet) instead of on every launch.
 set -eu
 

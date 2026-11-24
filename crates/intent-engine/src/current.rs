@@ -1,4 +1,4 @@
-//! Current-intent inference over the last 30 minutes (1.x `current.py`).
+//! Current-intent inference over the last 30 minutes (0.1 `current.py`).
 //!
 //! The label provider is passed per call (so LLM settings changes apply
 //! immediately) and is part of the cache key. The cache is bounded and keyed by
@@ -40,7 +40,7 @@ impl Default for CurrentIntentEngine {
     }
 }
 
-/// Confidence from the size of the most recent cluster (1.x thresholds).
+/// Confidence from the size of the most recent cluster (0.1 thresholds).
 pub fn cluster_confidence(event_count: usize) -> f64 {
     match event_count {
         n if n > 5 => 0.8,

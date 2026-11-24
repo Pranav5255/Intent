@@ -1,9 +1,9 @@
 //! Golden tests over day fixtures.
 //!
-//! * `*.parity.json` — structural output of the 1.x Python engine (template labels,
+//! * `*.parity.json` — structural output of the 0.1 Python engine (template labels,
 //!   semantic off), frozen when the Python code was retired. The Rust pipeline in
 //!   parity mode (no correlation step) must match it exactly.
-//! * `*.rust.json` — full 2.0 output with default settings (correlation on), plus the
+//! * `*.rust.json` — full 0.2 output with default settings (correlation on), plus the
 //!   digest and context export. Regenerate with `UPDATE_GOLDEN=1 cargo test -p intent-engine`.
 
 use std::path::PathBuf;

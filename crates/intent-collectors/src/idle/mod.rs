@@ -1,4 +1,4 @@
-//! User idle detection → `linux/idle_start` / `linux/idle_end` (empty payloads, as in 1.x).
+//! User idle detection → `linux/idle_start` / `linux/idle_end` (empty payloads, as in 0.1).
 //!
 //! Backends:
 //! * `mutter-idle-monitor` — `org.gnome.Mutter.IdleMonitor` on the session bus
@@ -7,7 +7,7 @@
 //!   A single X round-trip per check, scheduled to land on the threshold crossing.
 //!
 //! Every backend also feeds the current idle time into the shared
-//! [`ActivityFeed`] so its `recommended_poll_interval` keeps 1.x semantics.
+//! [`ActivityFeed`] so its `recommended_poll_interval` keeps 0.1 semantics.
 
 use std::sync::Arc;
 use std::time::Duration;

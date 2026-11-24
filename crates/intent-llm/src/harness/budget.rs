@@ -1,5 +1,5 @@
 //! Token/character budgets. Prompts are bounded by dropping whole items, never by
-//! slicing serialized JSON (1.x cut prompts at 4,000 chars mid-structure).
+//! slicing serialized JSON (0.1 cut prompts at 4,000 chars mid-structure).
 
 use serde_json::Value;
 

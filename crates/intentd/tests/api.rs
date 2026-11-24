@@ -38,7 +38,7 @@ async fn ingest_status_codes_and_dedupe() {
     assert_eq!(s, StatusCode::OK);
     assert_eq!(body["inserted"], false);
 
-    // Unprefixed 1.x alias.
+    // Unprefixed 0.1 alias.
     let (s, _) = d.call_open(Method::POST, "/event", Some(shell(now, "pwd", "/tmp", 0))).await;
     assert_eq!(s, StatusCode::CREATED);
 
@@ -131,7 +131,7 @@ async fn pause_persists_across_restart_and_expires() {
     assert_eq!(s, StatusCode::NO_CONTENT);
     d.stop().await;
 
-    // Restart on the same data: still paused (1.x forgot the pause on restart).
+    // Restart on the same data: still paused (0.1 forgot the pause on restart).
     let d = TestDaemon::start(dir.path()).await;
     let (_, status) = d.call(Method::GET, "/v1/status", None).await;
     assert_eq!(status["capture_paused"], true);
@@ -702,7 +702,7 @@ async fn misc_capture_routes() {
     let (s, health) = d.call_open(Method::GET, "/healthz", None).await;
     assert_eq!(s, StatusCode::OK);
     assert_eq!(health["ok"], true);
-    assert_eq!(health["version"], "2.0.0");
+    assert_eq!(health["version"], "0.2.0");
     let (_, cfg) = d.call_open(Method::GET, "/v1/config", None).await;
     assert!(cfg["blocked_domains"].is_array());
     let (s, sample) = d.call(Method::GET, "/v1/intelligence/preview-sample", None).await;
