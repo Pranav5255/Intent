@@ -65,6 +65,9 @@ Tauri (the app). It reads 1.x data and accepts the same companion events.
 
 ### Security
 
+- `url` is updated to 2.5.9. Version 2.5.8 could crash on a nested `blob:` URL
+  (RUSTSEC-2026-0592). `cookie` is updated to 0.18.3, which keeps private
+  cookie nonces unique after a fork (RUSTSEC-2026-0594). ([#34])
 - A Chrome tab title that is the page's own address no longer keeps the query string.
   Chrome titles a loading tab with its full address. ([#30])
 - Requests from other websites cannot change Intent's data. A write with an `Origin`
@@ -97,3 +100,4 @@ companions, and a `.deb` for Ubuntu.
 [#27]: https://github.com/Pranav5255/Intent/pull/27
 [#29]: https://github.com/Pranav5255/Intent/pull/29
 [#30]: https://github.com/Pranav5255/Intent/pull/30
+[#34]: https://github.com/Pranav5255/Intent/pull/34
