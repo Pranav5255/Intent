@@ -1,6 +1,6 @@
 //! The single sensitive-path rule set.
 //!
-//! 1.x kept three diverging copies (server `detailed_capture.py`, the VS Code
+//! 0.1 kept three diverging copies (server `detailed_capture.py`, the VS Code
 //! extension's `events.js`, and `collectors/content.py`). This is their union and the
 //! only implementation used by the Rust side: editor consent, filesystem content
 //! extraction and anything else that must never read or store credential-like files.
@@ -24,7 +24,7 @@ pub const SENSITIVE_SUFFIXES: &[&str] = &[".pem", ".key", ".p12", ".pfx"];
 pub const SENSITIVE_DIRS: &[&str] = &[".ssh", ".gnupg", ".pki", ".mozilla", ".password-store"];
 
 /// Multi-component directory paths whose whole subtree is sensitive.
-/// (1.x compared these against single components, so they never matched.)
+/// (0.1 compared these against single components, so they never matched.)
 pub const SENSITIVE_DIR_PATHS: &[&str] = &[".config/google-chrome", ".config/chromium"];
 
 /// Virtual filesystems never read by content extraction.
@@ -64,7 +64,7 @@ pub fn is_virtual_fs_path(path: impl AsRef<Path>) -> bool {
         .any(|root| value == *root || value.strip_prefix(root).is_some_and(|rest| rest.starts_with('/')))
 }
 
-/// Content extraction exclusion (1.x `collectors/content.py::excluded`).
+/// Content extraction exclusion (0.1 `collectors/content.py::excluded`).
 pub fn is_excluded_content_path(path: impl AsRef<Path>) -> bool {
     is_virtual_fs_path(&path) || is_sensitive_path(&path)
 }

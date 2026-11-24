@@ -1,6 +1,6 @@
-//! Resume-safe markdown context for one intent (1.x `context.py`).
+//! Resume-safe markdown context for one intent (0.1 `context.py`).
 //!
-//! 1.x described every failed command as "`{family}` test failed"; failures are now
+//! 0.1 described every failed command as "`{family}` test failed"; failures are now
 //! worded by command family ("git command failed", "pytest tests failed", ...).
 
 use intent_types::Intent;

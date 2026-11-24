@@ -1025,8 +1025,8 @@
         "todos": []
       }
     ],
-    "pipeline_version": "2.0.0",
-    "source_hash": "64e5d0945337c12f",
+    "pipeline_version": "0.2.0",
+    "source_hash": "e97307cc119de8ef",
     "warnings": []
   }
 }

@@ -6,40 +6,40 @@
 //! current intent. Pure functions and async orchestration only: no storage access,
 //! no runtime dependency (timeouts use `futures-timer`).
 //!
-//! # Parity with 1.x
+//! # Parity with 0.1
 //!
 //! `tests/golden.rs` runs [`pipeline::run`] in [`PipelineConfig::parity`] mode
-//! against the 1.x Python engine's output on four day fixtures and must match
+//! against the 0.1 Python engine's output on four day fixtures and must match
 //! boundaries, tree shape, labels, confidences, stats, tags, insights, prefixes and
 //! resume payloads exactly (the `*.parity.json` fixtures are frozen).
 //!
-//! # Intentional divergences from 1.x
+//! # Intentional divergences from 0.1
 //!
 //! * Command families come from `intent_types::COMMAND_FAMILIES` (adds cargo, go,
-//!   pnpm, yarn, kubectl); the parity generator patches 1.x with the same table.
+//!   pnpm, yarn, kubectl); the parity generator patches 0.1 with the same table.
 //! * More code extensions count as `FileKind::Code` (`.rs`, `.tsx`, `.toml`, ...);
 //!   URL domains also stop at `#`.
-//! * `source_hash`: the payload is hashed once in canonical compact form (1.x
+//! * `source_hash`: the payload is hashed once in canonical compact form (0.1
 //!   serialized every normalized event, payload twice), and the cache identity also
 //!   covers the correlation mode, pipeline version, session gap, cluster cap and
 //!   evidence cap.
 //! * Ids keep the uuid5 scheme, but hash the date, the scope and the earliest event
-//!   id instead of the source hash and the session index (1.x). Later events and
+//!   id instead of the source hash and the session index (0.1). Later events and
 //!   idle markers no longer change the ids of earlier intents. A one-task session
 //!   takes the session id rather than its cluster id.
 //! * New correlation step ([`correlate`]) merges similar adjacent clusters (default
 //!   on; disabled in parity mode). The 4-cluster cap is re-applied after semantic
-//!   refinement (1.x applied none). Invalid refiner outcomes fall back with a warning.
+//!   refinement (0.1 applied none). Invalid refiner outcomes fall back with a warning.
 //! * Intent evidence is capped at 40 deduplicated items (round-robin over events,
-//!   values ≤240 chars); 1.x copied every payload value into every intent and parent.
+//!   values ≤240 chars); 0.1 copied every payload value into every intent and parent.
 //! * Cluster/tree invariants produce `PipelineWarning`s instead of `assert`s.
 //! * Labels: 1–7 words and 1–2 sentence summaries accepted and normalised; only
 //!   unusable results are rejected (logged) and replaced by the template. Template
 //!   summaries are prose built from the safe features instead of the numbered
 //!   "1. Observed 2 browser events; ..." lines. Safe-feature lists are ordered by
 //!   frequency; parent `command_families` are the children's dominant families
-//!   (1.x: failed-command families only) and parents carry `project_key`.
-//! * TODO markers come from the inserted text (1.x always reported `TODO`).
+//!   (0.1: failed-command families only) and parents carry `project_key`.
+//! * TODO markers come from the inserted text (0.1 always reported `TODO`).
 //! * Digest: no hard-coded headline override; headline = primary label + project +
 //!   other projects of the day; `top_intent_ids` ranked by duration.
 //! * Context export words failures per family ("git command failed",
@@ -47,7 +47,7 @@
 //! * Prediction caches its prefix index per (date, store revision).
 //! * Current intent: label provider passed per call and part of the minute-keyed,
 //!   bounded cache; provider failures fall back to the template.
-//! * A lone `idle_start`/`idle_end` event yields no session (1.x returned it).
+//! * A lone `idle_start`/`idle_end` event yields no session (0.1 returned it).
 
 pub mod cluster;
 pub mod context;

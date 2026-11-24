@@ -19,7 +19,7 @@
 # * intentd redacts the command text. intentctl only caps its length.
 
 # Interactive shells only, and only once per shell. The guard is deliberately
-# NOT exported: nested shells must install their own hooks (1.x bug).
+# NOT exported: nested shells must install their own hooks (0.1 bug).
 case $- in *i*) ;; *) return 0 ;; esac
 [[ -n "${_intent_bash_loaded:-}" ]] && return 0
 _intent_bash_loaded=1

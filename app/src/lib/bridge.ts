@@ -89,7 +89,7 @@ export async function copyText(text: string): Promise<void> {
 }
 
 export async function appVersion(): Promise<string> {
-  if (!IN_TAURI) return '2.0.0';
+  if (!IN_TAURI) return '0.2.0';
   const { getVersion } = await import('@tauri-apps/api/app');
   return getVersion();
 }

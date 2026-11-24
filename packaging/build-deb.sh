@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build the Intent 2.0 .deb for the host architecture.
+# Build the Intent 0.2 .deb for the host architecture.
 #
 # Run INSIDE the Ubuntu VM / build host (not on macOS):
-#     packaging/build-deb.sh [--output dist/intent_2.0.0_arm64.deb] [--no-build]
+#     packaging/build-deb.sh [--output dist/intent_0.2.0_arm64.deb] [--no-build]
 #
 # Environment:
 #   CARGO_TARGET_DIR      cargo output dir (default: <repo>/target)
@@ -15,7 +15,7 @@ set -euo pipefail
 umask 022
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-VERSION=2.0.0
+VERSION=0.2.0
 ARCH=$(dpkg --print-architecture)
 OUTPUT="$ROOT/dist/intent_${VERSION}_${ARCH}.deb"
 TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"

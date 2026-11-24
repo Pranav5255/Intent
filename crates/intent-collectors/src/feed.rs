@@ -1,4 +1,4 @@
-//! Privacy-preserving activity timing signals (port of 1.x `collectors/activity/feed.py`).
+//! Privacy-preserving activity timing signals (port of 0.1 `collectors/activity/feed.py`).
 //!
 //! No key values, mouse coordinates, or window content are retained: only event
 //! times and coarse kinds, used to tune polling and expose capture health.
@@ -155,7 +155,7 @@ impl ActivityFeed {
     }
 }
 
-/// Recommended polling interval for a given idle time (pure; same thresholds as 1.x).
+/// Recommended polling interval for a given idle time (pure; same thresholds as 0.1).
 pub fn recommended_interval_for(idle_ms: u64) -> Duration {
     if idle_ms < 5_000 {
         Duration::from_secs(2)

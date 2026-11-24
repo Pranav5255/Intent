@@ -1,5 +1,5 @@
 //! Day pipeline: normalize → sessionize → cluster → correlate → (refine) → cap →
-//! label → enrich/resume → tree (1.x `pipeline.py`).
+//! label → enrich/resume → tree (0.1 `pipeline.py`).
 //!
 //! No storage access: the daemon passes events in, checks its cache with
 //! [`source_hash`], and persists the returned [`PipelineResult`].
@@ -32,7 +32,7 @@ use crate::resume::{RESUME_POLICY_VERSION, build_resume_payload};
 use crate::sessionize::{DEFAULT_SESSION_GAP_MINUTES, sessionize};
 use crate::util::{sha256_hex16, truncate_chars, unique, with_timeout};
 
-pub const PIPELINE_VERSION: &str = "2.0.0";
+pub const PIPELINE_VERSION: &str = "0.2.0";
 pub const MAX_INTENT_EVIDENCE: usize = 40;
 pub const MAX_EVIDENCE_VALUE_CHARS: usize = 240;
 
@@ -78,7 +78,7 @@ impl Default for PipelineConfig {
 }
 
 impl PipelineConfig {
-    /// 1.x-equivalent behaviour (no correlation step); used by the parity tests.
+    /// 0.1-equivalent behaviour (no correlation step); used by the parity tests.
     pub fn parity() -> Self {
         Self { correlate: CorrelateConfig::disabled(), ..Self::default() }
     }
@@ -274,7 +274,7 @@ async fn plan_session(
         }
     }
 
-    // 1.x applied no cap after semantic refinement; correlation never adds clusters.
+    // 0.1 applied no cap after semantic refinement; correlation never adds clusters.
     let (clusters, semantics) =
         cap_clusters(session, clusters, semantics, deps.config.max_clusters_per_session, merge_semantics);
     SessionPlan { range, clusters, semantics, refined_by, warnings }
@@ -618,7 +618,7 @@ mod tests {
     async fn builds_tree_with_single_cluster_roots() {
         let deps = parity_deps();
         let result = run(day(), &deps).await;
-        assert_eq!(result.pipeline_version, "2.0.0");
+        assert_eq!(result.pipeline_version, "0.2.0");
         assert_eq!(result.intents.len(), 2);
         let parent = &result.intents[0];
         assert_eq!(parent.depth, 0);

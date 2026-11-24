@@ -14,7 +14,7 @@ use crate::error::Result;
 /// Ordered list of `(version, sql)` migrations.
 const MIGRATIONS: &[(i64, &str)] = &[(1, V1), (2, V2)];
 
-/// Initial 2.0 schema: merged 1.x `events.db` + `intents.db` plus search/memory tables.
+/// Initial 0.2 schema: merged 0.1 `events.db` + `intents.db` plus search/memory tables.
 const V1: &str = r#"
 -- Raw capture events. `day` is the calendar day computed at insert time from the
 -- configured DayZone so reads never depend on the reader's time zone.

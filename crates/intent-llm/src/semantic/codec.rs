@@ -1,5 +1,5 @@
 //! Lossless compact encoding of complete Role A events (full-capture consent only).
-//! Port of 1.x `_full_capture_prompt`: positional records, ts deltas, a type legend,
+//! Port of 0.1 `_full_capture_prompt`: positional records, ts deltas, a type legend,
 //! key aliases and a string dictionary that is only used where it saves bytes.
 
 use std::collections::{BTreeMap, HashMap};

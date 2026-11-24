@@ -57,7 +57,7 @@ pub struct ProjectCount {
     pub count: i64,
 }
 
-/// Aggregates over root intents in an inclusive date range (1.x `get_intent_stats`).
+/// Aggregates over root intents in an inclusive date range (0.1 `get_intent_stats`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IntentStatsReport {
     pub date_from: String,
@@ -90,7 +90,7 @@ fn flatten_owned(mut node: Intent, out: &mut Vec<Intent>) {
 }
 
 /// Rebuild trees from pre-order rows. `is_root` decides which nodes start a tree;
-/// non-root nodes whose parent is absent are dropped (as in 1.x).
+/// non-root nodes whose parent is absent are dropped (as in 0.1).
 fn assemble(nodes: Vec<Intent>, is_root: impl Fn(&Intent) -> bool) -> Vec<Intent> {
     let index: HashMap<String, usize> = nodes.iter().enumerate().map(|(i, n)| (n.id.clone(), i)).collect();
     let mut kids: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];

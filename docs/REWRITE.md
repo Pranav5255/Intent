@@ -1,4 +1,4 @@
-# Intent 2.0 — Rust rewrite
+# Intent 0.2 — Rust rewrite
 
 Goal: one lightweight native daemon plus a small Tauri app, replacing 4–5 long-lived
 Python processes, per-command Python forks and Electron.
@@ -14,7 +14,7 @@ Python processes, per-command Python forks and Electron.
 
 ### HTTP
 
-`intentd` listens on **127.0.0.1:9477** only. All 1.x capture routes keep their paths and
+`intentd` listens on **127.0.0.1:9477** only. All 0.1 capture routes keep their paths and
 shapes (`/v1/event`, `/v1/events`, `/v1/export/day[/meta]`, `/v1/events/incremental`,
 `/v1/detailed-capture/config`, `/v1/workspaces`, `/v1/filesystem-capture`,
 `/v1/retention/*`, `/v1/restore`, `/v1/capture/pause`, `/v1/status`, `/v1/config`,
@@ -43,7 +43,7 @@ app and `intentctl` read it.
 | `/v1/intelligence/preview-sample` | GET | **token** | |
 | `/v1/restore`, `/restore` | POST | **token** | launches editor/browser/terminal |
 | `/v1/capture/pause` | POST | **token** | `{paused, duration_seconds?, until?}`; persisted with its resume time · 422 unless the pause lasts 1 s to 7 days (`until` in the past is refused) |
-| `/v1/status`, `/status` | GET | **token** | 1.x shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention`, `config_warnings[]` (config entries intentd ignores, in words for the user) |
+| `/v1/status`, `/status` | GET | **token** | 0.1 shape + `collectors[]`, `activity`, `llm`, `database`, `paused_until`, `pipeline.last_run`, `retention`, `config_warnings[]` (config entries intentd ignores, in words for the user) |
 | `/intents/*`, `/resume/select`, `/copilot/*` | GET/POST | **token** | `/copilot/*` → 503 `copilot_not_configured` without a usable provider |
 | `/settings/llm`, `/settings/llm/gemini-credentials` | GET, PUT / POST, DELETE | **token** | PUT rebuilds providers atomically |
 | `/pipeline/run[?date]`, `/pipeline/run-replay`, `/pipeline/recompute?date` | POST | **token** | `run` defaults to today |
@@ -98,11 +98,11 @@ filter. `INTENT_BIND` overrides the loopback listen address (tests).
 
 - One SQLite database: `$XDG_DATA_HOME/intent/intent.db` (WAL). Tables cover raw events,
   day stats, intents, pipeline runs, metadata, FTS5 search, embeddings (sqlite-vec) and
-  user facts. A one-time importer reads the 1.x `events.db` / `intents.db` if present.
-- Config stays in `$XDG_CONFIG_HOME/intent/` with the 1.x file names
+  user facts. A one-time importer reads the 0.1 `events.db` / `intents.db` if present.
+- Config stays in `$XDG_CONFIG_HOME/intent/` with the 0.1 file names
   (`detailed-capture.json`, `workspaces.json`, `filesystem-capture.json`,
   `retention-policy.json`, `blocked-domains.yaml`). LLM settings move to `llm.toml` (0600);
-  a 1.x `llm.env` is imported once.
+  a 0.1 `llm.env` is imported once.
 - No mem0. Semantic memory = FTS5 + sqlite-vec over intent summaries + a small `facts` table.
 - Deleted data leaves the disk: the writer runs with `secure_delete = ON`, the FTS index with
   FTS5 `secure-delete`, and every forget or purge ends with `wal_checkpoint(TRUNCATE)`.
@@ -130,7 +130,7 @@ The app promises that forgotten data is deleted from the computer and cannot com
 HTTP (`POST /v1/event`) and the in-process collectors share one path: validation
 (`intent_capture::validate_event`) → persisted pause check → `ConfigStore::admission_policy()`
 + `admit` (consent, workspace approval, redaction, blocklist) → bounded writer queue (1024) →
-one SQLite transaction per batch (≤ 100 events, ≤ 25 ms). Unlike 1.x the batch closes as soon
+one SQLite transaction per batch (≤ 100 events, ≤ 25 ms). Unlike 0.1 the batch closes as soon
 as no new event arrives for 2 ms, so a client waiting for its 201 is no longer capped at one
 event per 25 ms. Writer metrics (accepted, inserted, duplicates, drops by reason, batches,
 failures, queue high-water mark, average wait/write ms) are in `/v1/status.ingestion`.
@@ -155,10 +155,10 @@ collector's status detail as `missing_roots`.
 ## Packaging and verification
 
 - `packaging/build-deb.sh` (run on the Ubuntu build host / Lima VM) builds release `intentd` +
-  `intentctl` and assembles `intent_2.0.0_<arch>.deb` with `dpkg-deb`: binaries in `/usr/bin`,
+  `intentctl` and assembles `intent_0.2.0_<arch>.deb` with `dpkg-deb`: binaries in `/usr/bin`,
   `intentd.service` in `/usr/lib/systemd/user`, shell hooks in `/usr/share/intent/shell`, the
   GNOME extension, the companions found under `integrations/*/dist` (skipped with a
-  warning otherwise) and the Firefox policy logic ported from 1.x (policy only installed for a
+  warning otherwise) and the Firefox policy logic ported from 0.1 (policy only installed for a
   release build with a signed XPI, never over an administrator-managed policy). Depends:
   `libc6, libgcc-s1` only. With `INTENT_BUILD_APP=1` it also builds the Tauri app
   (`npm ci` + `tauri build --no-bundle`) and ships `/usr/lib/intent/intent-app` behind the
@@ -166,7 +166,7 @@ collector's status detail as `missing_roots`.
   then come from `dpkg-shlibdeps` plus `libayatana-appindicator3-1 | libappindicator3-1`
   (dlopen()ed for the tray). No system-wide XDG autostart: "Launch at login" in the app writes
   the per-user entry. The launcher runs `intentctl enable` only when the service is not enabled
-  yet (1.x did it every launch). The app disables WebKit accelerated compositing unless
+  yet (0.1 did it every launch). The app disables WebKit accelerated compositing unless
   `WEBKIT_DISABLE_COMPOSITING_MODE` is set (≈ 320 MB vs 680 MB PSS idle in the VM).
 - `dev/lima/e2e.sh` installs the .deb in the VM, drives an Xvfb + openbox session (xdotool focus
   switches, an interactive bash with the hook, file writes in an approved workspace, companion
@@ -183,7 +183,7 @@ collector's status detail as `missing_roots`.
 | Crate | Responsibility | Depends on |
 |---|---|---|
 | `intent-types` | Wire + pipeline contracts (serde). **Frozen contract** — change only with care. | serde |
-| `intent-store` | rusqlite (bundled) + FTS5 + sqlite-vec. Single writer thread, read pool, migrations, 1.x importer. Sync API. | types |
+| `intent-store` | rusqlite (bundled) + FTS5 + sqlite-vec. Single writer thread, read pool, migrations, 0.1 importer. Sync API. | types |
 | `intent-capture` | Event validation, redaction (incl. shell), URL blocklist, consent configs, retention policy, restore launcher, XDG paths. Pure / sync. | types |
 | `intent-llm` | Provider clients, structured-output harness, embeddings, semantic refinement, LLM labeler, copilot loop. Exposes the traits in `traits.rs`. | types |
 | `intent-engine` | Deterministic pipeline: normalize → sessionize → cluster → (refine via trait) → label (via trait) → enrich/resume → tree. Plus digest, context, prediction, resume selection, current intent. Pure + async orchestration. | types, llm (traits only) |
@@ -194,6 +194,6 @@ collector's status detail as `missing_roots`.
 ## Engineering rules
 
 - Edition 2024, stable Rust. `cargo clippy --workspace -- -D warnings` and `cargo test --workspace` stay green.
-- Port behaviour, not bugs: the 1.x bugs found during the audit are fixed (see git history / PR).
+- Port behaviour, not bugs: the 0.1 bugs found during the audit are fixed (see git history / PR).
 - Golden tests: engine behaviour is checked against fixtures under `crates/intent-engine/tests/fixtures`.
 - Linux-only code is behind `#[cfg(target_os = "linux")]` so the workspace still builds and tests on macOS.

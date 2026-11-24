@@ -3,12 +3,13 @@
 All notable changes to Intent are listed here. The newest changes come first.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Intent
-uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Versions stay below 1.0.0
+until the first stable release.
 
 ## [Unreleased]
 
-Intent 2.0 is a rewrite of 1.x in Rust (the daemon, the CLI and the pipeline) and
-Tauri (the app). It reads 1.x data and accepts the same companion events.
+Intent 0.2 is a rewrite of 0.1 in Rust (the daemon, the CLI and the pipeline) and
+Tauri (the app). It reads 0.1 data and accepts the same companion events.
 
 ### Added
 
@@ -23,11 +24,11 @@ Tauri (the app). It reads 1.x data and accepts the same companion events.
   and iTerm or Terminal. ([#27])
 - User-behaviour scenarios that act like a user, a hostile web page or a broken
   environment. CI runs them against the macOS build. ([#18], [#27])
-- The 2.0 daemon `intentd`, with a single ingest path, a local HTTP API on
+- The 0.2 daemon `intentd`, with a single ingest path, a local HTTP API on
   `127.0.0.1:9477` and a bearer token for every route that reads captured data.
-- The 2.0 desktop app (Tauri 2), with a tray icon, a command palette and
+- The 0.2 desktop app (Tauri 2), with a tray icon, a command palette and
   close-to-tray.
-- The 2.0 `intentctl` CLI, with a fast sender for the bash and zsh hooks.
+- The 0.2 `intentctl` CLI, with a fast sender for the bash and zsh hooks.
 - Search over intents with SQLite full-text search and optional vectors (sqlite-vec).
 - Local-first labelling with a local LLM by default. A cloud provider is used only
   when the user configures one.
@@ -37,6 +38,8 @@ Tauri (the app). It reads 1.x data and accepts the same companion events.
 
 ### Changed
 
+- Versions start again below 1.0. The daemon, the CLI, the app, the `.deb` and the
+  companions are 0.2.0, and the release that was called 1.0.0 is now 0.1.0.
 - The desktop app shows Firefox and Chrome as one browser companion. ([#30])
 - Intent ids stay the same when the pipeline runs again for a day. Before, every new
   event changed every id, so open views and links broke. ([#21])
@@ -46,7 +49,7 @@ Tauri (the app). It reads 1.x data and accepts the same companion events.
 
 ### Removed
 
-- The 1.x Python services and the Electron app.
+- The 0.1 Python services and the Electron app.
 
 ### Fixed
 
@@ -80,13 +83,13 @@ Tauri (the app). It reads 1.x data and accepts the same companion events.
 - Forgotten data is overwritten on disk, not only marked as deleted. ([#20])
 - Workspaces cannot be `/`, the home folder or Intent's own folders. ([#24])
 
-## [1.0.0] - 2026-07-25
+## [0.1.0] - 2026-07-25
 
 The first release: Python services, an Electron app, the Firefox and VS Code
-companions, and a `.deb` for Ubuntu.
+companions, and a `.deb` for Ubuntu. It was published as 1.0.0 and is renumbered here.
 
 [Unreleased]: https://github.com/Pranav5255/Intent/compare/b42fe8e...HEAD
-[1.0.0]: https://github.com/Pranav5255/Intent/tree/b42fe8e
+[0.1.0]: https://github.com/Pranav5255/Intent/tree/b42fe8e
 [#4]: https://github.com/Pranav5255/Intent/pull/4
 [#18]: https://github.com/Pranav5255/Intent/pull/18
 [#19]: https://github.com/Pranav5255/Intent/pull/19

@@ -34,7 +34,7 @@ fn default_token_uri() -> String {
 }
 
 impl ServiceAccountKey {
-    /// Validate a service-account JSON document (same rules as 1.x).
+    /// Validate a service-account JSON document (same rules as 0.1).
     pub fn parse(raw: &[u8]) -> Result<Self, String> {
         let value: Value =
             serde_json::from_slice(raw).map_err(|_| "Gemini credentials must be valid JSON".to_owned())?;

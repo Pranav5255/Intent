@@ -1,7 +1,7 @@
 //! Linux activity collectors for `intentd`.
 //!
 //! Every collector is an async tokio task that turns OS signals into
-//! [`RawEvent`]s (same `source`/`type`/`payload` shapes as Intent 1.x) and pushes
+//! [`RawEvent`]s (same `source`/`type`/`payload` shapes as Intent 0.1) and pushes
 //! them into a shared `mpsc` channel. Collectors share a [`CancellationToken`]
 //! and publish a [`CollectorStatus`] for `/v1/status`.
 //!

@@ -1,4 +1,4 @@
-//! Deterministic, privacy-bounded packets (port of 1.x `semantic_pack.py`).
+//! Deterministic, privacy-bounded packets (port of 0.1 `semantic_pack.py`).
 
 use intent_types::{Family, NormalizedEvent, Payload};
 use serde_json::{Map, Value};

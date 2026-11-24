@@ -243,7 +243,7 @@ pub(crate) fn insert_tx<'a>(
                     Some(p) if p > agg.last => p,
                     _ => agg.last,
                 };
-                // Like 1.x, revision advances once per inserted event.
+                // Like 0.1, revision advances once per inserted event.
                 (count + agg.n, first, last, rev + agg.n)
             }
         };
@@ -379,7 +379,7 @@ impl Store {
     /// Keyset-paginated events for one day, ordered `(ts, ingested_at, id)`.
     ///
     /// The wire cursor only carries `(after_ts, after_id)`; the cursor event's
-    /// `ingested_at` is looked up so the keyset matches the sort order exactly (1.x
+    /// `ingested_at` is looked up so the keyset matches the sort order exactly (0.1
     /// compared `(ts, id)` against a `(ts, ingested_at, id)` sort and could skip rows).
     /// If the cursor event has since been purged, every event at `after_ts` is
     /// conservatively re-delivered rather than risking a skip (clients dedupe by id).

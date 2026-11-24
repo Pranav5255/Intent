@@ -22,7 +22,7 @@ pub fn yesterday(store: &Store) -> String {
     previous_day(&today(store))
 }
 
-/// A real `YYYY-MM-DD` calendar date (1.x `_validated_date`).
+/// A real `YYYY-MM-DD` calendar date (0.1 `_validated_date`).
 pub fn is_valid_date(value: &str) -> bool {
     value.parse::<Date>().is_ok_and(|d| d.to_string() == value)
 }

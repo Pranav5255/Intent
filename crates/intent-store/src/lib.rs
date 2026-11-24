@@ -10,7 +10,7 @@
 //!
 //! Module map: [`events`] (capture side), [`intents`] (pipeline results, trees, stats),
 //! [`search`] (FTS5, sqlite-vec, hybrid), [`facts`], [`meta`] (metadata + cursors),
-//! [`legacy`] (1.x importer), `forget` (forget a day or a project, scrub the files).
+//! [`legacy`] (0.1 importer), `forget` (forget a day or a project, scrub the files).
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

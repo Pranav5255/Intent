@@ -1786,7 +1786,7 @@ dependencies = [
 
 [[package]]
 name = "intent-capture"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "globset",
  "intent-types",
@@ -1801,7 +1801,7 @@ dependencies = [
 
 [[package]]
 name = "intent-collectors"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "futures-util",
  "intent-types",
@@ -1823,7 +1823,7 @@ dependencies = [
 
 [[package]]
 name = "intent-engine"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1840,7 +1840,7 @@ dependencies = [
 
 [[package]]
 name = "intent-llm"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -1866,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "intent-store"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "intent-types",
  "jiff",
@@ -1880,7 +1880,7 @@ dependencies = [
 
 [[package]]
 name = "intent-types"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1888,7 +1888,7 @@ dependencies = [
 
 [[package]]
 name = "intentctl"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1901,7 +1901,7 @@ dependencies = [
 
 [[package]]
 name = "intentd"
-version = "2.0.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",

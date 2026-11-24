@@ -4,5 +4,5 @@
   "description": "Reports the focused window (app id, WM class, title) to the local Intent daemon over the session D-Bus (org.intent.Focus). Needed on Wayland, where other apps cannot see which window is focused. Sends nothing over the network.",
   "shell-version": ["46", "47", "48", "49"],
   "url": "https://github.com/Pranav5255/Intent",
-  "version-name": "2.0.0"
+  "version-name": "0.2.0"
 }

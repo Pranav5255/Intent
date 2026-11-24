@@ -1,4 +1,4 @@
-//! Deterministic conversion of capture events into pipeline events (1.x `normalize.py`).
+//! Deterministic conversion of capture events into pipeline events (0.1 `normalize.py`).
 
 use std::collections::HashSet;
 
@@ -14,9 +14,9 @@ use crate::util::{basename, collapse_whitespace, hex16};
 pub const MAX_CONTEXT_TERMS: usize = 64;
 
 const CODE_EXTENSIONS: &[&str] = &[
-    // 1.x set
+    // 0.1 set
     ".py", ".js", ".ts", ".go", ".java", ".cpp", ".c", ".tf", ".yaml", ".json", ".sh",
-    // 2.0 additions (only affect the `file_kinds` aggregate)
+    // 0.2 additions (only affect the `file_kinds` aggregate)
     ".rs", ".tsx", ".jsx", ".yml", ".toml", ".rb", ".kt", ".swift", ".h", ".hpp", ".cs", ".php", ".sql",
 ];
 const IMAGE_EXTENSIONS: &[&str] = &[".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"];
@@ -129,7 +129,7 @@ pub fn normalize_event(raw: &RawEvent, ordinal: usize) -> NormalizedEvent {
     }
 }
 
-/// The 1.x `raw` shape (`{id, ts, source, type, payload, schema_version}`), which the
+/// The 0.1 `raw` shape (`{id, ts, source, type, payload, schema_version}`), which the
 /// semantic packer and resume builder read through `raw.payload`.
 fn raw_view(raw: &RawEvent) -> Payload {
     let mut map = Map::new();

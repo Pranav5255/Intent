@@ -1,4 +1,4 @@
-//! Bounded local text extraction for observed file changes (port of 1.x `collectors/content.py`).
+//! Bounded local text extraction for observed file changes (port of 0.1 `collectors/content.py`).
 //!
 //! Never walks the disk: only a path the watcher just observed is examined.
 //! Text files: first 64 KiB. PDFs via `pdftotext` (first 3 pages) and images via
@@ -156,7 +156,7 @@ async fn command_output(program: &Path, args: &[&std::ffi::OsStr], timeout: Dura
     (!text.is_empty()).then_some(text)
 }
 
-/// Extract a bounded excerpt. Returns the 1.x `file_content` payload
+/// Extract a bounded excerpt. Returns the 0.1 `file_content` payload
 /// (`path, kind, mime, size_bytes, sha256, excerpt`) without `workspace`.
 /// Blocking file reads run on tokio's blocking pool; callers bound concurrency.
 pub async fn extract(path: PathBuf, max_file_bytes: u64, tools: &Tools) -> Option<Payload> {

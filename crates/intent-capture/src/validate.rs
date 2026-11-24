@@ -1,6 +1,6 @@
 //! Strict ingest validation.
 //!
-//! Error messages match 1.x so companions and logs read the same.
+//! Error messages match 0.1 so companions and logs read the same.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
-/// Supported `(source, type)` pairs and their required payload fields, in 1.x order.
+/// Supported `(source, type)` pairs and their required payload fields, in 0.1 order.
 pub const EVENT_PAYLOAD_FIELDS: &[((&str, &str), &[&str])] = &[
     (("linux", "app_focus"), &["app", "title"]),
     (("linux", "idle_start"), &[]),
@@ -278,7 +278,7 @@ fn validate_document_change(payload: &Payload) -> VResult {
         if !is_non_negative_int(change.get("removed_characters")) {
             return fail(format!("payload changes[{index}].removed_characters must be a non-negative integer"));
         }
-        // An explicit `"text": null` is treated like an absent text (1.x `dict.get`).
+        // An explicit `"text": null` is treated like an absent text (0.1 `dict.get`).
         let text = change.get("text").filter(|value| !value.is_null());
         if matches!(kind, Some("insert" | "replace")) && !matches!(text, Some(Value::String(_))) {
             return fail(format!("payload changes[{index}].text is required for insert and replace"));
@@ -349,7 +349,7 @@ fn validate_user_action(payload: &Payload) -> VResult {
         if !keys_exactly(target, &["tag", "role"]) {
             return fail("sensitive-page targets may contain only tag and role");
         }
-        // 2.0: 1.x returned early here, so a sensitive-page event could still carry
+        // 0.2: 0.1 returned early here, so a sensitive-page event could still carry
         // a page excerpt or scroll data. The extension never sends them; reject.
         if payload.contains_key("context") {
             return fail("sensitive-page payload may not include context");
@@ -423,8 +423,8 @@ fn validate_file_content(payload: &Payload) -> VResult {
     Ok(())
 }
 
-/// 2.0: shell commands are redacted server-side, which requires `cmd` to be a string
-/// (1.x accepted any JSON value, so a list could bypass the sender's redaction).
+/// 0.2: shell commands are redacted server-side, which requires `cmd` to be a string
+/// (0.1 accepted any JSON value, so a list could bypass the sender's redaction).
 fn validate_shell_command(payload: &Payload) -> VResult {
     if !matches!(payload.get("cmd"), Some(Value::String(_))) {
         return fail("payload cmd must be a string");

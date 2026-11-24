@@ -1,5 +1,5 @@
 //! Privacy-safe label features, label validation and the deterministic template
-//! label provider (1.x `labeling.py`).
+//! label provider (0.1 `labeling.py`).
 //!
 //! [`SafeIntentFeatures`] is the only packet allowed to reach a (possibly remote)
 //! [`LabelProvider`]; [`sanitize_features`] re-projects it onto the allowlist before
@@ -40,7 +40,7 @@ fn is_safe_command_family(value: &str) -> bool {
 // Feature builders
 // ---------------------------------------------------------------------------
 
-/// Deterministic per-cluster hints (1.x `build_cluster_hints`); local only.
+/// Deterministic per-cluster hints (0.1 `build_cluster_hints`); local only.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClusterHints {
     pub command_family: Option<String>,
@@ -121,7 +121,7 @@ pub fn build_safe_cluster_features(
 /// Aggregate child metadata for a parent without reusing child labels or evidence.
 ///
 /// `child_command_families` are the children's dominant command families in child
-/// order (1.x parent hints); they become `command_families`.
+/// order (0.1 parent hints); they become `command_families`.
 pub fn build_safe_parent_features(
     children: &[Intent],
     child_command_families: &[String],
@@ -375,7 +375,7 @@ fn normalise_label_result(result: LabelResult) -> Result<LabelResult, LabelRejec
     Ok(LabelResult { label, summary, confidence: result.confidence.clamp(0.0, 1.0) })
 }
 
-/// Sentence split equivalent to 1.x `(?<=[A-Za-z])[.!?]+(?=\s|$)` (terminators kept).
+/// Sentence split equivalent to 0.1 `(?<=[A-Za-z])[.!?]+(?=\s|$)` (terminators kept).
 pub fn split_sentences(text: &str) -> Vec<String> {
     let chars: Vec<char> = text.chars().collect();
     let mut out = Vec::new();

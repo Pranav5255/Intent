@@ -18,7 +18,7 @@ Test gates: [`docs/TESTING.md`](docs/TESTING.md).
 
 ```
 crates/intent-types       wire and pipeline contracts (serde); the frozen contract
-crates/intent-store       SQLite (WAL) + FTS5 + sqlite-vec; single writer, migrations, 1.x importer; sync
+crates/intent-store       SQLite (WAL) + FTS5 + sqlite-vec; single writer, migrations, 0.1 importer; sync
 crates/intent-capture     validation, redaction, blocklist, consent configs, retention, restore, XDG paths; pure, sync
 crates/intent-llm         provider clients, structured-output harness, embeddings, refinement, labeler, copilot
 crates/intent-engine      deterministic pipeline, digest, resume selection, current intent
@@ -138,5 +138,8 @@ you can also push and read the result.
    Added, Changed, Deprecated, Removed, Fixed, Security. Write what changed for the user,
    not the commit message, and link the pull request. Tests, CI and refactors need no
    entry.
-6. Do not commit build output, databases, `.deb`/`.xpi`/`.vsix` files, env files or files
+6. Versions stay below 1.0.0 (`0.y.z`) until the owner says to release 1.0. Bump the
+   minor version for a release with new features, the patch version for fixes only. One
+   version covers the workspace, the app, the `.deb` and the companions.
+7. Do not commit build output, databases, `.deb`/`.xpi`/`.vsix` files, env files or files
    over 1 MB. `dev/ci/tree-hygiene.sh` fails on them.

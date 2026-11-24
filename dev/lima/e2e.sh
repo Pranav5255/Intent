@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end check of the Intent 2.0 .deb inside the Lima dev VM:
+# End-to-end check of the Intent 0.2 .deb inside the Lima dev VM:
 #   limactl shell intent -- bash -lc '<repo>/dev/lima/e2e.sh [path/to/intent.deb]'
 #
 # Installs the package, starts a headless X session (Xvfb + openbox), enables the
@@ -7,7 +7,7 @@
 # events, runs the pipeline and checks the API. Exits non-zero on any failure.
 set -euo pipefail
 
-DEB=${1:-$HOME/dist/intent_2.0.0_$(dpkg --print-architecture).deb}
+DEB=${1:-$HOME/dist/intent_0.2.0_$(dpkg --print-architecture).deb}
 API=http://127.0.0.1:9477
 export DISPLAY=:99 XDG_SESSION_TYPE=x11
 WS=$HOME/e2e/intent-demo

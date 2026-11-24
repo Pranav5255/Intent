@@ -1,11 +1,11 @@
 //! Background jobs. Everything runs on one housekeeping timer (one wake-up per
 //! minute) plus an event-driven embedding backfill, so an idle daemon costs ~0 CPU.
 //!
-//! * Scheduler (replaces the 1.x 3-hourly systemd timer): runs today's pipeline when
+//! * Scheduler (replaces the 0.1 3-hourly systemd timer): runs today's pipeline when
 //!   new events arrived AND (the user has been idle ≥ 2 min OR 30 min passed since the
 //!   last run); skips when the day's content hash is unchanged. Yesterday is finalized
 //!   once after midnight. Outcomes are persisted (`pipeline_last_run`).
-//! * Retention: applied ~30 s after start and then daily (1.x never applied the
+//! * Retention: applied ~30 s after start and then daily (0.1 never applied the
 //!   policy automatically).
 //! * Pause expiry: persists the automatic resume of a timed pause.
 //! * "Continue yesterday?" notification once per morning (Linux, see `notify`).

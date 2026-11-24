@@ -249,8 +249,8 @@ fn unquote(value: &str) -> &str {
 }
 
 /// Keep only audit-safe browser metadata for a blocked domain: URL → `[blocked]`,
-/// `blocked: true`, no `context`, target reduced to `tag`/`role`, and (2.0) a
-/// `title` replaced by `[blocked]` — 1.x kept the page title of blocked sites.
+/// `blocked: true`, no `context`, target reduced to `tag`/`role`, and (0.2) a
+/// `title` replaced by `[blocked]` — 0.1 kept the page title of blocked sites.
 pub fn redact_blocked_browser_payload(payload: &Payload) -> Payload {
     let mut safe = payload.clone();
     safe.insert("url".into(), Value::String(BLOCKED_URL.into()));
@@ -270,8 +270,8 @@ pub fn redact_blocked_browser_payload(payload: &Payload) -> Payload {
     safe
 }
 
-/// Browser event kinds the blocklist applies to. 2.0 adds `tab_close`
-/// (1.x stored the sanitised URL of closed tabs on blocked domains).
+/// Browser event kinds the blocklist applies to. 0.2 adds `tab_close`
+/// (0.1 stored the sanitised URL of closed tabs on blocked domains).
 pub const BLOCKABLE_KINDS: &[&str] = &["tab_change", "tab_close", "user_action"];
 
 /// Apply the blocklist to a (validated, redacted) browser event.

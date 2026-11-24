@@ -240,17 +240,17 @@ export interface CaptureStatus {
   session_type: string;
   capture_paused: boolean;
   /**
-   * Epoch seconds when a timed pause ends. 2.0 addition: intentd accepts
+   * Epoch seconds when a timed pause ends. 0.2 addition: intentd accepts
    * `{"paused": true, "until": <epoch>}` on /v1/capture/pause and echoes it here.
    */
   capture_paused_until?: number | null;
   sources: Record<string, SourceStatus>;
   services?: Record<string, boolean>;
   detailed_capture?: DetailedCaptureConfig & { event_counts: Record<string, number> };
-  /** 2.0 addition: on-disk database size in bytes. */
+  /** 0.2 addition: on-disk database size in bytes. */
   db_size_bytes?: number | null;
   /**
-   * 2.0 addition: problems in the config files that intentd works around (an
+   * 0.2 addition: problems in the config files that intentd works around (an
    * invalid blocked-domains entry, a refused workspace), in words for the user.
    */
   config_warnings?: string[];

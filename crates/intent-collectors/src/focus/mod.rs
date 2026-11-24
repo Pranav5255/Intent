@@ -26,7 +26,7 @@ mod x11;
 #[cfg(target_os = "linux")]
 pub use gnome::{DBUS_INTERFACE, DBUS_NAME, DBUS_PATH};
 
-/// 1.x truncated titles to 512 characters.
+/// 0.1 truncated titles to 512 characters.
 pub const MAX_TITLE_CHARS: usize = 512;
 
 /// One observation of the focused window.
@@ -58,7 +58,7 @@ pub fn truncate_title(title: &str) -> String {
     }
 }
 
-/// Map a WM_CLASS / Wayland app id to the stable names 1.x emitted.
+/// Map a WM_CLASS / Wayland app id to the stable names 0.1 emitted.
 pub fn friendly_app_name(raw: &str) -> String {
     let candidate = raw.trim().trim_end_matches(".desktop").to_lowercase();
     let mapped = match candidate.as_str() {

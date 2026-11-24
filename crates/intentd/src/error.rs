@@ -1,5 +1,5 @@
 //! HTTP error type and body extractors with FastAPI-compatible error bodies
-//! (`{"detail": "..."}`), so 1.x clients keep parsing failures the same way.
+//! (`{"detail": "..."}`), so 0.1 clients keep parsing failures the same way.
 
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{FromRequest, FromRequestParts, Request};
@@ -37,7 +37,7 @@ impl ApiError {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, detail)
     }
 
-    /// Map a store error; `InvalidArgument` becomes `invalid` (1.x: 422 on capture
+    /// Map a store error; `InvalidArgument` becomes `invalid` (0.1: 422 on capture
     /// routes, 400 on engine routes), everything else a logged 500.
     pub fn store(err: StoreError, invalid: StatusCode) -> Self {
         match err {

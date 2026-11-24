@@ -1,4 +1,4 @@
-//! Read-only copilot tools with a strict model-safe projection (port of 1.x `tools.py`).
+//! Read-only copilot tools with a strict model-safe projection (port of 0.1 `tools.py`).
 
 use async_trait::async_trait;
 use intent_types::{CurrentIntent, Intent, ResumePayload, SAFE_INTENT_PRIVACY_POLICY_VERSION, SearchHit};

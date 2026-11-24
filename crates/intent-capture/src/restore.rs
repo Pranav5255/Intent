@@ -5,7 +5,7 @@
 //! - [`plan_restore`] / [`plan_restore_with`] — decide which programs to launch.
 //! - [`execute`] — launch them (no shell, new session, stdio detached).
 //!
-//! 2.0 changes: launchers are detected instead of hard-coding VS Code / Firefox /
+//! 0.2 changes: launchers are detected instead of hard-coding VS Code / Firefox /
 //! GNOME Terminal; `last_cmd` is never executed or pre-filled.
 
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ pub enum RestoreMode {
     Continue,
 }
 
-/// `POST /v1/restore` body (1.x `ResumePayload` with `mode`).
+/// `POST /v1/restore` body (0.1 `ResumePayload` with `mode`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RestoreRequest {
     #[serde(default = "default_mode")]
@@ -59,7 +59,7 @@ fn default_mode() -> String {
 }
 
 impl RestoreRequest {
-    /// 1.x validation: de-duplicate, at most 5 files / 8 URLs, URLs must be
+    /// 0.1 validation: de-duplicate, at most 5 files / 8 URLs, URLs must be
     /// http(s) with a host, `last_cmd` at most 500 characters.
     pub fn validate(self) -> Result<(ResumePayload, RestoreMode), ValidationError> {
         let mode = match self.mode.as_str() {
@@ -145,7 +145,7 @@ pub struct RestorePlan {
     pub already_open: Vec<String>,
 }
 
-/// `POST /v1/restore` response (1.x shape).
+/// `POST /v1/restore` response (0.1 shape).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RestoreResult {
     pub ok: bool,

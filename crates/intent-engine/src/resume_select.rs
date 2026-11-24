@@ -1,4 +1,4 @@
-//! Stored-intent selection and resume preview (1.x `resume_select.py`).
+//! Stored-intent selection and resume preview (0.1 `resume_select.py`).
 //!
 //! Pure: the caller supplies the stored intents. Deterministic keyword scoring,
 //! optionally reranked by a [`Reranker`]; a rerank is only accepted when it is an

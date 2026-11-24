@@ -1,9 +1,9 @@
 //! The one XDG path resolver shared by every Intent component.
 //!
-//! 1.x resolved `XDG_CONFIG_HOME` separately in six modules (and treated an empty or
+//! 0.1 resolved `XDG_CONFIG_HOME` separately in six modules (and treated an empty or
 //! relative value as a relative path). Here the XDG base directories are resolved
 //! once, following the XDG Base Directory spec: empty or relative values are ignored.
-//! The 1.x `INTENT_*_CONFIG` per-file overrides keep working.
+//! The 0.1 `INTENT_*_CONFIG` per-file overrides keep working.
 
 use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
@@ -13,12 +13,12 @@ pub const ENV_DETAILED_CAPTURE_CONFIG: &str = "INTENT_DETAILED_CAPTURE_CONFIG";
 pub const ENV_WORKSPACES_CONFIG: &str = "INTENT_WORKSPACES_CONFIG";
 pub const ENV_RETENTION_POLICY_CONFIG: &str = "INTENT_RETENTION_POLICY_CONFIG";
 pub const ENV_BLOCKED_DOMAINS_CONFIG: &str = "INTENT_BLOCKED_DOMAINS_CONFIG";
-/// New in 2.0 (1.x had no override for this file).
+/// New in 0.2 (0.1 had no override for this file).
 pub const ENV_FILESYSTEM_CAPTURE_CONFIG: &str = "INTENT_FILESYSTEM_CAPTURE_CONFIG";
 pub const ENV_CONFIG_DIR: &str = "INTENT_CONFIG_DIR";
-/// 1.x override for the capture database (`events.db`); used by the importer.
+/// 0.1 override for the capture database (`events.db`); used by the importer.
 pub const ENV_LEGACY_DATABASE: &str = "INTENT_DATABASE";
-/// 1.x override for `llm.env`; used by the one-time LLM settings import.
+/// 0.1 override for `llm.env`; used by the one-time LLM settings import.
 pub const ENV_LEGACY_LLM_CONFIG: &str = "INTENT_LLM_CONFIG";
 
 pub const DETAILED_CAPTURE_FILE: &str = "detailed-capture.json";
@@ -118,22 +118,22 @@ impl Paths {
         self.file(&self.blocked_domains_override, BLOCKED_DOMAINS_FILE)
     }
 
-    /// 2.0 LLM settings (`llm.toml`, 0600).
+    /// 0.2 LLM settings (`llm.toml`, 0600).
     pub fn llm_config(&self) -> PathBuf {
         self.config_dir().join(LLM_CONFIG_FILE)
     }
 
-    /// 1.x `llm.env`, imported once.
+    /// 0.1 `llm.env`, imported once.
     pub fn legacy_llm_env(&self) -> PathBuf {
         self.file(&self.legacy_llm_override, "llm.env")
     }
 
-    /// The single 2.0 SQLite database.
+    /// The single 0.2 SQLite database.
     pub fn database(&self) -> PathBuf {
         self.data_dir().join(DATABASE_FILE)
     }
 
-    /// 1.x capture database (`$INTENT_DATABASE` or `$XDG_DATA_HOME/intent/events.db`).
+    /// 0.1 capture database (`$INTENT_DATABASE` or `$XDG_DATA_HOME/intent/events.db`).
     pub fn legacy_events_db(&self) -> PathBuf {
         self.legacy_database_override.clone().unwrap_or_else(|| self.data_dir().join("events.db"))
     }

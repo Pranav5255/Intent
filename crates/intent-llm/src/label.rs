@@ -69,7 +69,7 @@ fn sentence_count(text: &str) -> usize {
     count + usize::from(has_content)
 }
 
-/// Port of 1.x `validate_label_result`.
+/// Port of 0.1 `validate_label_result`.
 pub fn validate_label(label: &str, summary: &str, confidence: f64) -> Result<(), String> {
     let words = label.split_whitespace().count();
     // The prompt asks for 2-5 words; up to 7 is accepted (the engine's MAX_LABEL_WORDS)

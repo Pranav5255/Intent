@@ -1,4 +1,4 @@
-//! HTTP surface: 1.x capture routes (+ unprefixed aliases), engine routes, settings,
+//! HTTP surface: 0.1 capture routes (+ unprefixed aliases), engine routes, settings,
 //! auth matrix and CORS.
 //!
 //! ## Auth matrix

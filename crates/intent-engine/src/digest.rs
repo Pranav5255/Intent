@@ -1,7 +1,7 @@
-//! Daily digest from persisted intents (1.x `digest.py`).
+//! Daily digest from persisted intents (0.1 `digest.py`).
 //!
-//! 1.x replaced the headline for `project:taskflow-app` with a hard-coded demo
-//! string; 2.0 derives the headline from the data only.
+//! 0.1 replaced the headline for `project:taskflow-app` with a hard-coded demo
+//! string; 0.2 derives the headline from the data only.
 
 use intent_types::{Digest, Intent};
 
@@ -36,7 +36,7 @@ pub fn build_digest(intents: &[Intent], date: &str) -> Digest {
 fn primary_root<'a>(roots: &[&'a Intent]) -> &'a Intent {
     let tagged: Vec<&Intent> = roots.iter().copied().filter(|r| r.project_tag().is_some()).collect();
     let candidates = if tagged.is_empty() { roots.to_vec() } else { tagged };
-    // `max_by_key` keeps the last maximum; 1.x `max` kept the first.
+    // `max_by_key` keeps the last maximum; 0.1 `max` kept the first.
     let mut best = candidates[0];
     for candidate in candidates.iter().skip(1) {
         if (candidate.children.len(), candidate.stats.duration_seconds)

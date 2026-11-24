@@ -1,6 +1,6 @@
-//! Credential redaction for provider-bound text (port of 1.x `redact_for_prompt`).
+//! Credential redaction for provider-bound text (port of 0.1 `redact_for_prompt`).
 //!
-//! Unlike 1.x, the value patterns never consume quotes, backslashes or brackets, so
+//! Unlike 0.1, the value patterns never consume quotes, backslashes or brackets, so
 //! redacting serialized JSON cannot break its structure, and nothing is truncated here
 //! (bounded prompts are built at item boundaries by [`super::budget`]).
 
